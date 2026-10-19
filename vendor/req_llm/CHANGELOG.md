@@ -1,0 +1,1328 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+<!-- changelog -->
+
+## [v1.28.0](https://github.com/agentjido/req_llm/compare/v1.27.0...v1.28.0) (2026-10-09)
+
+
+
+
+### Features:
+
+* add StepFun chat and audio providers (#1087) by mikehostetler
+
+* openai: honour image detail on Responses API input_image parts (#1084) by KLoevengreen
+
+### Bug Fixes:
+
+* preserve Codex reasoning across tool turns (#1090) by mikehostetler
+
+* coverage: validate catalog community providers with live LLM API fixtures (#1089) by denys-rekun
+
+* preserve streamed cache TTLs and native OpenAI billing facts (#1081) by Matthew Neel
+
+* streaming: use concrete Mint HTTP2 type (#1083) by mikehostetler
+
+* openai_codex: decode terminal stream errors (#1082) by mikehostetler
+
+* deps: update Zoi and compatible Jido dependencies by mikehostetler
+
+## [v1.27.0](https://github.com/agentjido/req_llm/compare/v1.26.0...v1.27.0) (2026-10-08)
+
+
+
+
+### Features:
+
+* azure: support Chat Completions logprobs (#1073) by Arton Ragsdale
+
+* allow Gemini 3 object output with tools (#1077) by mvanhorn
+
+* openai: support Decisions evaluations (#1075) by mikehostetler
+
+### Bug Fixes:
+
+* schema: bound validator cache memory (#1078) by mikehostetler
+
+* redact unknown provider reasoning payloads (#1070) by Wu Shuwen
+
+* close shared contract gaps from design review (#1069) by mikehostetler
+
+* openai: enforce anonymous auth and exact streaming model identity (#1065) by Justin Smestad
+
+* openai: decode Responses refusals as text with content_filter finish reason (#1064) by Nickjgniklu
+
+* http: prevent non-streaming connection pool timeouts (#1067) by mikehostetler
+
+## [v1.26.0](https://github.com/agentjido/req_llm/compare/v1.25.0...v1.26.0) (2026-09-29)
+
+
+
+
+### Features:
+
+* openai: add DevDay Responses and model support (#1063) by mikehostetler
+
+### Bug Fixes:
+
+* openai: read nested error details from Responses stream error events (#1061) by Diaphel Thompson
+
+* bedrock: send output_config.effort for adaptive-thinking Claude models (#1055) by jhlee111
+
+* streaming: honor per-request proxy connection options (#1054) by mikehostetler
+
+## [v1.25.0](https://github.com/agentjido/req_llm/compare/v1.24.0...v1.25.0) (2026-09-25)
+
+
+
+
+### Features:
+
+* Responses API reasoning summaries, reasoning.context and compaction for OpenAI and Azure (#1048) by fv-teacherspace
+
+* price conditional LLMDB tariffs from complete usage (#1046) by houllette
+
+* Image streaming support for OpenAI (#1043) by Vasilis Spilka
+
+* openai: carry assistant phase on each output text part (#1047) by Mark Ericksen
+
+* streaming: support in-process providers (#1040) by mikehostetler
+
+* Add transparent option for openai images (#1037) by Vasilis Spilka
+
+* forward OpenRouter evaluation provider options (#1038) by fschucht
+
+* router: add dynamic model router spike (#1036) by mikehostetler
+
+* streaming: carry provider response ids on streamed responses (#1023) by dankentfield-sona
+
+* generation: dispatch catalog OpenAI chat gateways from execution metadata (#1028) by mikehostetler
+
+* support OpenRouter Jev evaluation (#1027) by mikehostetler
+
+### Bug Fixes:
+
+* anthropic: report Claude Code 2.1.282 on subscription OAuth requests (#1052) by neilberkman
+
+* preserve non-strict Responses tool schemas (#1049) by mikehostetler
+
+* deps: update Mint for security advisory by mikehostetler
+
+* usage: distinguish cache reads and writes (#1035) by mikehostetler
+
+* bedrock: surface mid-stream exceptions and map all Converse stop reasons (#1033) by adriencohen
+
+* bedrock: send serviceTier on Converse and honor explicit region (#1032) by adriencohen
+
+* anthropic: replay tool search blocks in place (#1034) by mikehostetler
+
+* deepseek: map reasoning effort levels to supported values (#1025) by Matthew Neel
+
+### Performance:
+
+* context: batch message assembly (#1031) by mikehostetler
+
+## [v1.24.0](https://github.com/agentjido/req_llm/compare/v1.23.0...v1.24.0) (2026-09-17)
+
+
+
+
+### Features:
+
+* evaluation: add TypeSafe Jev evaluation API (#1022) by mikehostetler
+
+* lmstudio: add LM Studio provider (#1020) by Michael Mazurczak
+
+### Bug Fixes:
+
+* openai: keep replayed reasoning items at their own turn in Responses input (#1016) by Michael Mazurczak
+
+## [v1.23.0](https://github.com/agentjido/req_llm/compare/v1.22.0...v1.23.0) (2026-09-15)
+
+
+
+
+### Features:
+
+* add tool search for Anthropic, Bedrock, and OpenAI Responses (#1013) by mikehostetler
+
+* bedrock: support prompt caching on the Converse API (#1006) by adriencohen
+
+* bedrock: return document citations on the Converse API (#1005) by adriencohen
+
+* bedrock: send documents and video on the Converse API (#1004) by adriencohen
+
+* codex: support caller-owned turn attribution (#1003) by Danila Poyarkov
+
+* bedrock: guard selected content parts on the Converse API (#1002) by adriencohen
+
+* google: support validated function calling mode (#1001) by Javier Cuevas
+
+* bedrock: round-trip reasoning on the Converse API (#997) by adriencohen
+
+* bedrock: support guardrails (#995) by adriencohen
+
+* openai: keep a builtin tool call's status and mark failed calls as error spans (#991) by Vasilis Spilka
+
+### Bug Fixes:
+
+* bedrock: route Mantle models through the correct API (#1014) by mikehostetler
+
+* model: resolve prefixes consistently across spec formats (#1012) by mikehostetler
+
+* normalize numeric-string usage counters (#1009) by mikehostetler
+
+* codex: preserve session and prompt cache identity across transports (#996) by Danila Poyarkov
+
+* deps: update ex_doc and vulnerable igniter (#994) by dependabot[bot]
+
+* azure: accept include in provider_options for Responses API models (#990) by Vasilis Spilka
+
+## [v1.22.0](https://github.com/agentjido/req_llm/compare/v1.21.1...v1.22.0) (2026-09-04)
+
+
+
+
+### Features:
+
+* openai: add experimental GPT-6 Astra Responses support (#987) by mikehostetler
+
+* bedrock: serve requests through the bedrock-mantle endpoint (#979) by adriencohen
+
+* bedrock: support application inference profiles (#978) by adriencohen
+
+### Bug Fixes:
+
+* deps: update vulnerable example dependencies by mikehostetler
+
+* deps: allow monthly llm_db catalog updates (#988) by BlueHotDog
+
+* embedding: forward dimensions to compatible providers (#986) by mikehostetler
+
+* zai: include tool_call_id and name in tool result messages (#985) by Bill Huang
+
+## [v1.21.1](https://github.com/agentjido/req_llm/compare/v1.21.0...v1.21.1) (2026-08-26)
+
+
+
+
+### Bug Fixes:
+
+* openai: decode response.failed and error stream events as terminal error chunks (#977) by Eric Draut
+
+* anthropic: read thinking tokens from output_tokens_details (#976) by brent-emb
+
+* tool: ignore unknown schema input keys (#975) by Niklas Johansson
+
+* google: respect model thinking levels (#972) by mikehostetler
+
+## [v1.21.0](https://github.com/agentjido/req_llm/compare/v1.20.0...v1.21.0) (2026-08-23)
+
+
+
+
+### Features:
+
+* google: accept base_url, receive_timeout, and req_http_options in CachedContent (#970) by Aaron Renner
+
+* ollama: forward reasoning_effort to disable thinking on reasoning models by David Bluestein II
+
+* OpenAI (and compatible providers) web search citations (#964) by Vasilis Spilka
+
+* minimax: add video generation support (#961) by Gilbert
+
+* Azure image support (#956) by Vasilis Spilka
+
+### Bug Fixes:
+
+* test: stabilize llm db release fixture (#968) by mikehostetler
+
+* treat llm_db as a regular OTP dependency (#963) by mikehostetler
+
+* OpenAI cost per image (#957) by Vasilis Spilka
+
+* streaming: fall back after oversized websocket messages (#958) by Danila Poyarkov
+
+## [v1.20.0](https://github.com/agentjido/req_llm/compare/v1.19.0...v1.20.0) (2026-08-10)
+
+
+
+
+### Features:
+
+* add unverified model warning configuration (#954) by anagrius
+
+### Bug Fixes:
+
+* use current Req Finch options (#952) by mikehostetler
+
+## [v1.19.0](https://github.com/agentjido/req_llm/compare/v1.18.0...v1.19.0) (2026-08-04)
+
+
+
+
+### Features:
+
+* google_vertex: support multi-region (us/eu) endpoints (#948) by matija-workera
+
+* openrouter: forward Google safety settings to Gemini models (#947) by Gilles Dubuc
+
+### Bug Fixes:
+
+* minimax: preserve normalized streaming reasoning details (#943) by Oliver Grüttner
+
+* google: stop reporting non-streaming aborts as a clean stop (#945) by Gilles Dubuc
+
+* remove deleted roadmap references by mikehostetler
+
+## [v1.18.0](https://github.com/agentjido/req_llm/compare/v1.17.1...v1.18.0) (2026-07-31)
+
+
+
+
+### Features:
+
+* openai: support explicit cache breakpoints (#942) by mikehostetler
+
+* minimax: add image generation support (#919) by Gilbert
+
+* providers: add Moonshot AI Kimi K3 support by mikehostetler
+
+* reasoning: support max effort by Danila Poyarkov
+
+* add speech call metadata by mikehostetler
+
+* add transcription call metadata by mikehostetler
+
+* add OpenAI file uploads by mikehostetler
+
+* add owned provider file references (#908) by mikehostetler
+
+* add the V2 migration audit (#907) by mikehostetler
+
+* add ReqLLM environment diagnostics by mikehostetler
+
+* stabilize ReqLLM runtime telemetry by mikehostetler
+
+* meta: add Meta Model API provider (#902) by mikehostetler
+
+* openai_codex: support Responses Lite models (#897) by Danila Poyarkov
+
+* add tool context continuation helpers (#899) by mikehostetler
+
+* harden canonical tool exchange contracts (#898) by mikehostetler
+
+* add visible structured output validation policies by mikehostetler
+
+* add structured output contracts (#895) by mikehostetler
+
+* add model call timeout budgets by mikehostetler
+
+* add canonical stream event projections by mikehostetler
+
+* add model call projections by mikehostetler
+
+* add namespaced provider options by mikehostetler
+
+* add execution plan inspection by mikehostetler
+
+* add evidence-backed model support tiers by mikehostetler
+
+* add Anthropic OAuth token refresh (#809) by Alexander Arellano
+
+### Bug Fixes:
+
+* streaming: surface empty-body HTTP failures (#941) by mikehostetler
+
+* google: map Gemini policy stops to content_filter by Gilles Dubuc
+
+* google: preserve raw Gemini finish reason and message by Gilles Dubuc
+
+* openrouter: retain generated chat images by mikehostetler
+
+* google,bedrock: route non-streaming requests to the configured Finch pool (#932) by Gilles Dubuc
+
+* openai: encode canonical Responses tool choice (#926) by Danila Poyarkov
+
+* streaming: separate WebSocket timeout phases (#930) by Danila Poyarkov
+
+* google: avoid duplicate tool result text (#925) by mikehostetler
+
+* openrouter: encode PDFs as file inputs (#923) by mikehostetler
+
+* harden OCR operation observability (#914) by mikehostetler
+
+* harden canonical reasoning options by mikehostetler
+
+* handle tuple model specification options (#875) by mikehostetler
+
+* deps: update Mint for CVE-2026-59249 by mikehostetler
+
+* streaming: classify terminal failures (#827) by mikehostetler
+
+* streaming: terminate metadata handles (#825) by mikehostetler
+
+* preserve Anthropic thinking signatures with tool calls (#810) by Alexander Arellano
+
+* streaming: enforce high-watermark backpressure (#823) by mikehostetler
+
+* streaming: finalize metadata lifecycle (#820) by mikehostetler
+
+* retry: honor caller retry limits (#819) by mikehostetler
+
+* oauth: serialize and atomically persist refreshes (#818) by mikehostetler
+
+* deps: update mint to 1.9.2 (#822) by mikehostetler
+
+### Refactoring:
+
+* normalize OpenAI realtime events (#915) by mikehostetler
+
+* separate OpenAI Chat Completions provider seams by mikehostetler
+
+* share Anthropic Messages materialization (#892) by mikehostetler
+
+* share OpenAI Responses materialization (#891) by mikehostetler
+
+* share OpenAI Chat Completions result materialization by mikehostetler
+
+* plan Anthropic Messages requests by mikehostetler
+
+* plan OpenAI text requests by mikehostetler
+
+* add internal request planning by mikehostetler
+
+* centralize compatibility scenario metadata by mikehostetler
+
+## [v1.17.1](https://github.com/agentjido/req_llm/compare/v1.17.0...v1.17.1) (2026-07-06)
+
+
+
+
+### Bug Fixes:
+
+* openrouter: preserve reasoning details by Danila Poyarkov
+
+* openrouter: encode audio files as input_audio by mikehostetler
+
+* clarify tool call response contract by mikehostetler
+
+* make goth and ex_aws_auth optional dependencies by Dave Lucia
+
+* keys: support default options for get by schwarz
+
+* streaming: preserve leading tool call argument fragments by anagrius
+
+* retry transport errors wrapped in ReqLLM.Error.API.Request by mark-a-12
+
+* ollama: streaming provider also sent an empty request body by cash-mckeeman
+
+* context: encode provider-specific content blocks by Danila Poyarkov
+
+## [v1.17.0](https://github.com/agentjido/req_llm/compare/v1.16.0...v1.17.0) (2026-06-26)
+
+
+
+
+### Features:
+
+* openai: support reasoning.summary parameter in Responses API by OmarGoubail
+
+* openai: pass through code_interpreter tool in Responses API by OmarGoubail
+
+* bedrock: add bidirectional streaming (Nova Sonic speech-to-speech) by neilberkman
+
+* github_copilot: add provider by mikehostetler
+
+* google_vertex: support Application Default Credentials by Philip Munksgaard
+
+### Bug Fixes:
+
+* openai: capture trailing streamed usage chunk after finish_reason by Valentin
+
+* openrouter: send transcription audio as JSON (#787) by Susan
+
+* harden object support metadata detection (#788) by mikehostetler
+
+* groq: omit reasoning fields from assistant history by mikehostetler
+
+* ollama: provider sent an empty request body (Content-Length: 0) â Ollama 400 EOF (#782) by cash-mckeeman
+
+* streaming: cleanup killed stream consumers (#779) by BlueHotDog
+
+## [v1.16.0](https://github.com/agentjido/req_llm/compare/v1.15.0...v1.16.0) (2026-06-11)
+
+
+
+
+### Features:
+
+* schema: support nimble options' `:non_neg_integer` (#759) by Federico Ravasio
+
+### Bug Fixes:
+
+* remove stale deep_merge lock entry by mikehostetler
+
+* context: improve error handling around tool calls by Federico Ravasio
+
+* streaming: don't finalize OpenAI-compatible streams at finish_reason by Michelle Tilley
+
+* support google vertex app config credentials by mikehostetler
+
+* streaming: preserve empty tool argument fragments by mikehostetler
+
+* google: disable thought summaries for object generation by Shawn Vo
+
+* streaming: expose stream pool configuration by mikehostetler
+
+## [v1.15.0](https://github.com/agentjido/req_llm/compare/v1.14.0...v1.15.0) (2026-06-09)
+
+
+
+
+### Features:
+
+* anthropic: support adaptive thinking for hosted Claude by dl-alexandre
+
+* add thinking and reasoning options to deepseek (#754) by Bill Huang
+
+* google-vertex: grammar-constrained structured output for Claude via output_config.format by Arthur Valingot
+
+* anthropic: honor explicit cache_control from ContentPart metadata by Arthur Valingot
+
+### Bug Fixes:
+
+* google: pass thinking config to Gemini image generation (#757) by Shawn Vo
+
+* ci: clear Elixir 1.20 compile warnings (#758) by mikehostetler
+
+* openai_codex: keep HTTP responses stateless (#756) by BlueHotDog
+
+* bedrock: preserve Cohere inference profile IDs by dl-alexandre
+
+* remove deepseek's max reasoning level, and use xhigh instead by Bill Huang
+
+* anthropic: map refusal/pause_turn/model_context_window_exceeded stop_reasons instead of collapsing to :error (#749) by Arthur Valingot
+
+* Fix reasoning_effort not being passed through to OpenAI Chat Completions API (#753) by green-david
+
+* google_vertex: Allow for specifying google_thinking_level for Google Vertex (#752) by green-david
+
+* mistral: parse nested thinking chunks (#744) by mikehostetler
+
+* openai: preserve Responses file_id inputs (#740) by mikehostetler
+
+* anthropic: return adaptive thinking text by green-david
+
+* openai: send previous_response_id with store: false on Responses API by bowd
+
+## [v1.14.0](https://github.com/agentjido/req_llm/compare/v1.13.0...v1.14.0) (2026-05-30)
+
+
+
+
+### Features:
+
+* providers: add OpenAI image edit support by Nicolò G.
+
+### Bug Fixes:
+
+* streaming: handle iodata request bodies (#734) by mikehostetler
+
+## [v1.13.0](https://github.com/agentjido/req_llm/compare/v1.12.0...v1.13.0) (2026-05-28)
+
+
+
+
+### Features:
+
+* anthropic: support claude opus 4.8 (#732) by mikehostetler
+
+* Otel sub-span allocation to parent spans by Vasilis Spilka
+
+* leave JSON encoding to Req's native encode step by mikehostetler
+
+* providers: add built-in Ollama provider by cash-mckeeman
+
+* Add Mistral support for Azure (#721) by Vasilis Spilka
+
+### Bug Fixes:
+
+* stream Google JSON array chunks incrementally (#720) by mikehostetler
+
+* emit signal when streamed tool args are lost by Manuel Zubieta
+
+* avoid record typespec conflict by mikehostetler
+
+## [v1.12.0](https://github.com/agentjido/req_llm/compare/v1.11.0...v1.12.0) (2026-05-22)
+
+
+
+
+### Features:
+
+* add NEAR AI Cloud provider by PierreLeGuen
+
+* fireworks_ai: add Fireworks AI provider by mikehostetler
+
+* add spans wrapper to OpenTelemetry by Vasilis Spilka
+
+* openai: include encrypted reasoning content by mikehostetler
+
+* OpenTelemetry GenAI semantic conventions by Vasilis Spilka
+
+* xai: expose explicit Responses API routing via xai_api provider option (#699) by mikehostetler
+
+* xai: allow reasoning_effort on Grok-4 family by Adrian Rangel
+
+* xai: expose explicit Responses API routing via xai_api provider option by acrogenesis
+
+* support Anthropic uploaded file references by mikehostetler
+
+* anthropic: gate Claude subscription OAuth shaping by Itay Adler
+
+* add MiniMax provider by Barna Kovacs
+
+### Bug Fixes:
+
+* preserve xAI model metadata in Responses API lookup by mikehostetler
+
+* anthropic: avoid blank system prompt blocks by mikehostetler
+
+* strip minItems and maxItems from Anthropic schemas (#707) by Pedro Assunção
+
+* google: nest multimodal content inside functionResponse.parts for Gemini 3+ (#701) by Dekkon
+
+* #624: introduce a small detector helper, branch on multimodal by Dekkon
+
+* preserve partial Google usage metadata by mikehostetler
+
+* bedrock: clarify canonical specs and inference profiles by mikehostetler
+
+* add Azure Responses API reasoning effort and parallel tool calls by Vasilis Spilka
+
+* openrouter: encode file-parser PDFs as files by mikehostetler
+
+* openai_codex: omit unsupported token limit by Itay Adler
+
+* default token limits from model metadata by mikehostetler
+
+### Refactoring:
+
+* deduplicate provider code by Danila Poyarkov
+
+* remove DualKeyAccess patterns across codebase by Danila Poyarkov
+
+* fix ex_slop refactoring findings by Danila Poyarkov
+
+## [v1.11.0](https://github.com/agentjido/req_llm/compare/v1.10.0...v1.11.0) (2026-05-01)
+
+
+
+
+### Features:
+
+* openrouter: support session_id option by mikehostetler
+
+* support reusable Responses WebSocket sessions (#663) by Danila Poyarkov
+
+* azure: support Kimi family on Azure AI Foundry by Senthil
+
+* openai: add logprobs support for chat completions by Jad Tarabay
+
+* schema: support {:or, [type, nil]} for nullable JSON Schema types (#637) by Gustavo Honorato
+
+* anthropic: signal tool execution failures with is_error (#625) by BlueHotDog
+
+* add cost usage support for rerank (#622) by sezaru
+
+* azure: support Azure OpenAI v1 GA API (no api-version) (#623) by neilberkman
+
+### Bug Fixes:
+
+* stream: emit terminal :error chunk for SSE error events from OpenAI-compatible providers (#661) by RamXX
+
+* deepseek: inject reasoning_content to all assistant messages (#660) by Bill Huang
+
+* openai: decode completed responses stream items (#662) by Itay Adler
+
+* openai: disable response storage for codex models by Itay Adler
+
+* fix google gemini token calculation by mikehostetler
+
+* encode thinking content parts as reasoning_content for OpenAI-compatible providers (#647) by Senthil
+
+* anthropic: reject trailing assistant object contexts by mikehostetler
+
+* openrouter: support embeddings by mikehostetler
+
+* google: preserve Gemini SSE finish reasons by ycastorium
+
+* openai: preserve responses assistant phases (#636) by mikehostetler
+
+* bedrock: preserve native Claude thinking signatures by mikehostetler
+
+* vertex: preserve Claude thinking signatures in streams by mikehostetler
+
+* azure: preserve Claude thinking signatures in streams by mikehostetler
+
+* anthropic: preserve streamed thinking blocks (#627) by mikehostetler
+
+* openai: encode multimodal tool outputs in Responses API (#624) by BlueHotDog
+
+* include embedding cost metadata (#621) by mikehostetler
+
+* openai: dedupe Responses API commentary and final answer (#618) by Zack
+
+### Performance:
+
+* streaming: adopt server_sent_events 1.0 parser (#649) by mikehostetler
+
+## [v1.10.0](https://github.com/agentjido/req_llm/compare/v1.9.0...v1.10.0) (2026-04-17)
+
+
+
+
+### Features:
+
+* schema: apply property ordering at wire encoding for non-Google providers (#600) by mhsdef
+
+* schema: preserve property ordering in generated JSON schema (#599) by mikehostetler
+
+* forward parallel_tool_calls to Responses API body (#595) by BlueHotDog
+
+* openai: add explicit ollama auth marker (#594) by mikehostetler
+
+* openai: add `store` provider option for ZDR orgs, allow PDFs for Responses API models (#584) by mhsdef
+
+* Allow redaction of message content when inspecting Context struct (#590) by Shane Howley
+
+* google_vertex: add label support to vertex (#587) by thiagomajesk
+
+### Bug Fixes:
+
+* http: preserve custom finch in sync requests (#617) by mikehostetler
+
+* openai_codex: omit previous_response_id on tool resume (#613) by nsi-inco
+
+* azure: route responses models correctly by neilberkman
+
+* openai: include summary field in reasoning block encoding by mhsdef
+
+* normalize provider tool choice handling and harden tool call decoding (#598) by Zack
+
+* streaming: return structured stream timeouts (#592) by mikehostetler
+
+* anthropic: handle malformed tool arguments gracefully (#586) by BlueHotDog
+
+* bedrock: preserve inference profile prefix in API URLs (#578) by neilberkman
+
+## [v1.9.0](https://github.com/agentjido/req_llm/compare/v1.8.0...v1.9.0) (2026-03-27)
+
+
+
+
+### Features:
+
+* add mistral provider (#554) by mikehostetler
+
+* add `thinkingLevel` support to Google provider (#565) by Tom Taylor
+
+* add `thinkingLevel` support to Google provider by Tom Taylor
+
+* add `finch_request_adapter` config to modify streaming requests (#566) by johantell
+
+* add FinchRequestAdapter for config-level streaming request transforms by johantell
+
+* add OpenAI websocket streaming and realtime support (#559) by mikehostetler
+
+* allow unknown models with warnings instead of errors (#561) by dl-alexandre
+
+* add reranking API with batch processing (#553) by mikehostetler
+
+* add OpenTelemetry bridge and telemetry stubs (#548) by mikehostetler
+
+* add video URL message support (#549) by mikehostetler
+
+* support Anthropic native tool options (#547) by mikehostetler
+
+* support Anthropic native tool options by mikehostetler
+
+* add Google Imagen image generation support (#550) by mikehostetler
+
+* generation: repair lightly malformed structured JSON (#543) by mikehostetler
+
+* add available model discovery (#544) by mikehostetler
+
+* add application-layer cache hooks (#541) by mikehostetler
+
+* generation: add application cache hooks by mikehostetler
+
+* rate limit retry (429) and custom headers for streaming (#537) by dl-alexandre
+
+* pass custom headers to Finch streaming requests by dl-alexandre
+
+* Add Deepseek support (#538) by Luis Ezcurdia
+
+### Bug Fixes:
+
+* openai: retrieve structured output from tool call (#572) by Robin Verton
+
+* openai: retrieve structured output from tool call by Robin Verton
+
+* openai: validate tool-call structured output by Robin Verton
+
+* track google thinking levels in telemetry by Tom Taylor
+
+* restore streaming fixture recording functionality (#560) by dl-alexandre
+
+* add Google long-context pricing tiers (#546) by mikehostetler
+
+* Allow model specific base_url for streaming responses (#562) by meanderingstream
+
+* Support json schema usage for gemini 3.1 (#563) by Akash Khan
+
+* preserve Anthropic tool formatter shape by mikehostetler
+
+* default GPT-4o models to OpenAI Responses API (#552) by mikehostetler
+
+* zero app-cache usage on response hits (#542) by mikehostetler
+
+* usage: zero app cache hit usage by mikehostetler
+
+* remove dead cache provider meta fallback by mikehostetler
+
+* support multiple system messages (#545) by mikehostetler
+
+* register azure request options from defaults by mikehostetler
+
+* schema: preserve doc option in nested {:map, opts} fields by dl-alexandre
+
+* openai: validate nested object schemas with string keys by dl-alexandre
+
+* streaming retry accumulator and 429 detection bugs by dl-alexandre
+
+* streaming: retry 429 responses and honor map headers by dl-alexandre
+
+* streaming: resolve 429 retry dialyzer warning by dl-alexandre
+
+* streaming: restore 429 failure callback order by dl-alexandre
+
+* bedrock: drop empty messages in Converse encoder (#540) by Julian Scheid
+
+### Refactoring:
+
+* simplify transient streaming logs by mikehostetler
+
+## [v1.8.0](https://github.com/agentjido/req_llm/compare/v1.7.1...v1.8.0) (2026-03-23)
+
+
+
+
+### Features:
+
+* add web_fetch server tool support by Tonyhaenn
+
+* add oauth-backed OpenAI Codex routing (#513) by l3wi
+
+* openai: add oauth-backed codex routing by l3wi
+
+* add native request and reasoning telemetry (#515) by mikehostetler
+
+* add native request and reasoning telemetry by mikehostetler
+
+* add cross-provider tool call ID compatibility (#417) by mikehostetler
+
+* add cross-provider tool call id compatibility by mikehostetler
+
+### Bug Fixes:
+
+* honor req_llm load_dotenv when starting llm_db (#536) by mikehostetler
+
+* honor req_llm load_dotenv when starting llm_db by mikehostetler
+
+* include llm_db in dialyzer plt apps by mikehostetler
+
+* openai: validate nested object schemas with string keys (#533) by dl-alexandre
+
+* bedrock: filter empty text blocks in Converse (#534) by Julian Scheid
+
+* schema: preserve doc option in nested {:map, opts} fields (#532) by dl-alexandre
+
+* retry transient streaming transport failures (#531) by mikehostetler
+
+* preserve google embedding usage metadata (#530) by mikehostetler
+
+* break azure anthropic xref cycle (#529) by mikehostetler
+
+* make livebook validation deterministic by dl-alexandre
+
+* format livebook parse errors from metadata by dl-alexandre
+
+* remove unsupported outputMimeType and add response_modalities foâ¦ (#517) by mrdotb
+
+* remove unsupported outputMimeType and add response_modalities for Google images by mrdotb
+
+* normalize Gemini response modalities by mrdotb
+
+* gate Anthropic server tools behind beta headers by Tonyhaenn
+
+* default Codex streaming auth to oauth by l3wi
+
+* merge consecutive same-role entries in Gemini message encoding (#525) by paulorumor
+
+* prevent Inspect.ReqLLM.Context crash on Logger depth truncation (#519) by Edgar Gomes
+
+* azure: add Grok to known model families (#518) by shelvick
+
+* azure: add Grok to known model families by shelvick
+
+* azure: add Grok to OpenAI-compatible prefix lists and add reasoning_token_budget by shelvick
+
+* support image content in Bedrock tool results (#516) by Julian Scheid
+
+* OpenAI content encoding for thinking parts and empty arrays (#428) by laudney
+
+* restore telemetry raw payload capture (#520) by mikehostetler
+
+* restore telemetry raw payload capture by mikehostetler
+
+* resolve CI regressions for telemetry by mikehostetler
+
+* harden telemetry reasoning normalization by mikehostetler
+
+* update tool call IDs and timestamps in compatibility JSON fixtures by mikehostetler
+
+* accept map-based vertex model metadata by mikehostetler
+
+* google: strip atom-keyed forbidden schema fields (#504) by pcharbon70
+
+* remove impossible role == :tool checks (#508) by Barna Kovacs
+
+* remove redundant fallback for reasoning tokens in normalize (#507) by Barna Kovacs
+
+### Refactoring:
+
+* only inherit llm_db load_dotenv when unset by mikehostetler
+
+## [v1.7.1](https://github.com/agentjido/req_llm/compare/v1.7.0...v1.7.1) (2026-03-14)
+
+
+
+
+### Bug Fixes:
+
+* make image tests resilient to llm_db catalog updates by mikehostetler
+
+* preserve assistant metadata and reasoning details when normalizing loose maps (#501) by Chris Lema
+
+* format context normalization branches by Chris Lema
+
+## [v1.7.0](https://github.com/agentjido/req_llm/compare/v1.6.0...v1.7.0) (2026-03-14)
+
+
+
+
+### Features:
+
+* normalize and document inline model specs (#500) by mikehostetler
+
+* normalize and document inline model specs by mikehostetler
+
+* add Alibaba Cloud Bailian (DashScope) provider (#470) by Steven Holdsworth
+
+* auth: support OAuth tokens and codex Responses routing (#478) by l3wi
+
+* auth: support OAuth tokens and codex Responses routing by l3wi
+
+* Uses the same Finch Pool for streaming/non-streaming (#466) by ycastorium
+
+* Add Usage to Embeddings (#444) by ycastorium
+
+* add response_format to Vertex AI provider schema for OpenAI-compat MaaS models (#450) by shelvick
+
+* pass anthropic_beta through Bedrock to request body (#468) by stevehodgkiss
+
+* add Igniter installer for automated package setup by Nickcom4
+
+### Bug Fixes:
+
+* remove unreachable inline model clause by mikehostetler
+
+* honor Google image output format (#499) by mikehostetler
+
+* emit usage for Vertex embeddings (#498) by mikehostetler
+
+* GoogleVertex extract_gcp_credentials from provider_options (#496) by paulorumor
+
+* streaming: propagate transport errors instead of swallowing (#491) by Julian Scheid
+
+* streaming: propagate transport errors instead of swallowing by Julian Scheid
+
+* move examples into nested mix project by Dave Lucia
+
+* docs: clean up sidebar (#490) by Dave Lucia
+
+* docs: clean up sidebar by Dave Lucia
+
+* docs: restore public providers and usage docs by Dave Lucia
+
+* docs: improve exdoc module grouping by Dave Lucia
+
+* ReqLLM.Response.object returns string keys (#488) by Dave Lucia
+
+* expose stream keepalive callbacks (#495) by mikehostetler
+
+* clean up StreamServer processes after streaming completes (#494) by mikehostetler
+
+* clean up stream servers after stream completion by mikehostetler
+
+* harden stream server lifecycle cleanup by mikehostetler
+
+* auth: honor auth_mode and string-key wire protocol by l3wi
+
+* Fixes sse in case of server failure (#463) by ycastorium
+
+* Fixes sse in case of server failure by ycastorium
+
+* Adds a new termination field by ycastorium
+
+* preserve stop finish_reason for buffered done event by ycastorium
+
+* exclude embedding return_usage from provider transport options (#471) by mikehostetler
+
+* normalize nested string-key tool arguments safely (#459) by mikehostetler
+
+* tool: normalize nested string-key tool arguments by mikehostetler
+
+* tool: normalize map keys in union and tuple types by mikehostetler
+
+* core: remove unsafe runtime string-to-atom conversions by mikehostetler
+
+* ReqLLM embed should use embedding schema, not generation (#446) by ycastorium
+
+* handle API error responses in Vertex AI OpenAI-compat endpoint (#451) by shelvick
+
+* handle API error responses in Vertex AI OpenAI-compat parse_response by shelvick
+
+* unwrap single-element list body in OpenAICompat.parse_response by shelvick
+
+* bedrock: update inference profile prefixes (#449) by stevehodgkiss
+
+* stream usage normalization and accumulation (#464) by stevehodgkiss
+
+* encode tool outputs inline in Responses API input array (#454) by austin macciola
+
+* only add cache_control to last tool in Anthropic prompt caching (#453) by tomtrin
+
+* remove $schema and additionalProperties recursively in to_google_format (#460) by Jhon Pedroza
+
+* allow max_retries to be 0 to disable retries (#469) by stevehodgkiss
+
+* omit mimeType from fileData for YouTube and extensionless URLs (#442) by Nickcom4
+
+* omit mimeType from fileData for YouTube and extensionless URLs by Nickcom4
+
+* google: return nil for unknown inferred mime type by Nickcom4
+
+* strip redundant tool_choice auto from OpenRouter requests (#437) by Noah S
+
+* strip redundant tool_choice auto from OpenRouter requests by Noah S
+
+* widen generation function specs to match Context.normalize/2 (#441) by Nickcom4
+
+* widen generation function specs to match Context.normalize/2 by Nickcom4
+
+* Removes redundant validation (#448) by ycastorium
+
+## [v1.6.0](https://github.com/agentjido/req_llm/compare/v1.5.1...v1.6.0) (2026-02-19)
+
+
+
+
+### Features:
+
+* implement #431 response classify, usage API, and tool key safety (#432) by mikehostetler
+
+* add response classify API and harden usage/tool normalization by mikehostetler
+
+* add igniter installer (#410) by AdwayKasture
+
+* add embedding support to google_vertex provider (#423) by paulorumor
+
+* enable reasoning support for DeepSeek models on Azure (#412) by shelvick
+
+* enable reasoning support for DeepSeek models on Azure by shelvick
+
+* Add on_tool_call callback to StreamResponse (#413) by Arjan Scherpenisse
+
+* add OpenAI-compatible model family support for Vertex AI MaaS models (#422) by shelvick
+
+* jido: enhance agent functionality with usage tracking and multi-turn support by mikehostetler
+
+### Bug Fixes:
+
+* Updating model data (#435) by Pedro Assunção
+
+* resolve dialyzer warnings in response classify normalization by mikehostetler
+
+* handle string finish reasons in response classify by mikehostetler
+
+* add Gemini 3 thought_signature support for function calls (#427) by Brandon L'Europa
+
+* Do not force strict tools for responses api (#399) by ycastorium
+
+* use proportional estimate for inferred reasoning tokens by shelvick
+
+* route Vertex AI MaaS models to endpoints/openapi/chat/completions (#424) by shelvick
+
+* increase default timeout for DeepSeek and MAI-DS models on Azure (#425) by shelvick
+
+* Azure AI Foundry auth header and API version defaults (#411) by shelvick
+
+* remove invalid `id` field from Google functionCall serialization (#414) by paulorumor
+
+* remove invalid `id` field from Google functionCall serialization by paulorumor
+
+* pass strict flag through to Anthropic tool format (#415) by Edgar Gomes
+
+* pass strict flag through to Anthropic tool format by Edgar Gomes
+
+* pass strict flag through to Bedrock Converse tool format by Edgar Gomes
+
+* harden ZAI thinking re-encoding and req_llm.gen model errors (#420) by mikehostetler
+
+* harden zai thinking re-encoding and gen model validation by mikehostetler
+
+* zai: remove unreachable encode_zai_content clauses by mikehostetler
+
+* streaming decode for inference profile models using InvokeModel API (#406) by neilberkman
+
+* req_llm: improve streaming stability with finch client fixes by mikehostetler
+
+## [v1.5.1](https://github.com/agentjido/req_llm/compare/v1.5.0...v1.5.1) (2026-02-04)
+
+
+
+
+### Bug Fixes:
+
+* Return metadata for incomplete responses (#403) by Tom Duffield
+
+* include metadata with incomplete responses by Tom Duffield
+
+* add missing verbosity documention for openai by Tom Duffield
+
+* improve streaming stability with finch client fixes (#400) by mikehostetler
+
+* req_llm: improve streaming stability with finch client fixes by mikehostetler
+
+* move changelog marker so git_ops inserts in correct position by mikehostetler
+
+### Refactoring:
+
+* Centralize text extraction and update dependencies by mikehostetler
+
+## [v1.5.0](https://github.com/agentjido/req_llm/compare/v1.4.1...v1.5.0) (2026-02-01)
+
+### Features:
+
+* add xAI image generation support (#397) by Victor
+
+* add xai image generation support by Victor
+
+### Bug Fixes:
+
+* remove unsupported-option warnings by Victor
+
+## [1.4.1] - 2026-01-31
+
+### Added
+
+- Tool call normalization helpers: `ToolCall.from_map/1` and `ToolCall.to_map/1` for consistent tool-call handling across providers (#396)
+
+### Fixed
+
+- Made `git_ops` configuration available outside dev-only config so CI releases work correctly
+
+## [1.4.0] - 2026-01-30
+
+### Added
+
+- Comprehensive usage and billing infrastructure with richer usage/cost reporting (#371)
+- Reasoning cost breakdown with `reasoning_cost` field in cost calculations (#394)
+- OpenRouter enhancements:
+  - `openrouter_usage` and `openrouter_plugins` provider options (#393)
+  - Native JSON schema structured output support (#374)
+- Google provider options:
+  - `google_url_context` for URL grounding (#392)
+  - `google_auth_header` option for streaming requests (#382)
+- OpenAI improvements:
+  - Configurable strict mode for JSON schema validation (#368)
+  - Verbosity support for reasoning models (#354)
+- Cohere Embeddings on Bedrock (#365)
+- Structured and multimodal tool outputs (#357)
+- Model `base_url` override in model configuration (#366)
+
+### Changed
+
+- Replaced TypedStruct with Zoi schemas for data structures (#376)
+
+### Fixed
+
+- Image-only attachments validation for OpenAI and xAI (#389)
+- `translate_options` changes now preserved in `provider_options` (#381)
+- StreamServer termination handled gracefully in FinchClient (#379)
+- Anthropic schema constraints stripped when unsupported (#378)
+- `api_key` added to internal keys preventing leakage (#355)
+
+## [1.3.0] - 2026-01-21
+
+### Added
+
+- **New Providers:**
+  - Zenmux provider and playground (#342)
+  - vLLM provider for self-hosted OpenAI-compatible models (#202)
+  - Venice AI provider (#200)
+  - Azure DeepSeek model support (#254)
+- Azure Foundry Bearer token authentication (#338)
+- Z.ai thinking parameter support (#303)
+- OpenAI `service_tier` option (#321)
+- OpenAI wire protocol routing (#318)
+- Context and streaming improvements:
+  - `Context.normalize/1` extended for `tool_calls` and tool result messages (#313)
+  - Preserve `reasoning_details` during streaming tool-call round-trips (#300)
+  - `StreamResponse.classify/1` and `Response.Stream.summarize/1` (#311)
+- Google file URI support for `image_url` content parts (#339)
+- Reasoning signatures retainment (#344)
+- `generate_object` now accepts map input (#301)
+- OpenRouter support for google/gemini-3-flash-preview (#298)
+
+### Fixed
+
+- Anthropic `encrypted?` flag in reasoning details extraction
+- Anthropic cache token handling for API semantics (#316)
+- Missing reasoning levels (#332)
+- Google Gemini thinking tokens in cost calculation (#336)
+- Hyphenated tool names for MCP server compatibility (#323)
+- Azure `provider_options` validation and ResponsesAPI `finish_reason` parsing (#266)
+- Cache token extraction and cost calculation (#309)
+- JSON arrays for JsonSchema and Gemini 3 schema calls (#310)
+- Gemini `generate_object` always sets `responseMimeType` (#299)
+- Z.ai `zai_coding_plan` provider support (#347)
+- Ecosystem conflicts with typedstruct naming (#315)
+
+## [1.2.0] - 2025-12-22
+
+### Added
+
+- Image generation support (#293)
+- Anthropic web search support for models (#292)
+- OpenRouter first-class `reasoning_details` support (#267)
+- Google Vertex AI:
+  - Inline JSON credentials support (#260)
+  - Google Search grounding for Gemini models (#284)
+- Anthropic message caching for conversation prefixes (#281)
+- `load_dotenv` config option to control .env file loading (#287)
+
+### Changed
+
+- Response assembly unified across providers (#274)
+- Streaming preserves grounding metadata (#278)
+
+### Fixed
+
+- Streaming errors propagate to `process_stream` result (#286)
+- Debug URLs sanitized when streaming with Google (#279)
+- Functional tool streaming response bug (#263)
+
+## [1.1.0] - 2025-12-21
+
+### Added
+
+- **New Providers:**
+  - Azure OpenAI provider (#245)
+  - Google Vertex Gemini support
+  - Google Vertex AI Anthropic provider (#217)
+- OAuth2 token caching for Google Vertex AI (#174)
+- Google Context Caching for Gemini models (#193)
+- Amazon Bedrock `service_tier` support (#225)
+- OpenAI / Responses API:
+  - `tool_choice: required` support (#215)
+  - Reasoning effort support (#244)
+- Model capability helper functions (#222)
+- `StreamResponse.process_stream/2` for real-time callbacks (#178)
+- Custom providers defined outside req_llm (#201)
+- llm_db integration for model metadata (#212)
+- Credential fallback for fixture recording (#218)
+
+### Changed
+
+- Data structures migrated to typedstruct (#256)
+- Streaming metadata access made reusable (#206)
+- Anthropic structured output modes enhanced (#223)
+
+### Fixed
+
+- Default timeout increased for OpenAI reasoning models (#252)
+- Consecutive tool results merged into single user message (#250)
+- `.env` loading respects existing env vars (#249)
+- Responses API tool encoding uses flat structure (#247)
+- `finish_reason` captured correctly when streaming (#241)
+- OpenAI Responses context replay and Anthropic structured output decode (#228)
+- StreamResponse context merging (#224)
+- `tool_budget_for` pattern match regression from LLMDB integration (#221)
+- `reasoning_overlay` pattern match for llmdb structure (#219)
+- Missing `api_key` in Anthropic extra options (#216)
+- Typespec for object generation to allow Zoi schemas (#208)
+- Cerebras strict mode handling (#180)
+- JSV schema validation preserves original data types (#173)
+- Cached token extraction from Google API responses (#192)
+
+## [1.0.0] - 2025-11-02
+
+First production-ready release of ReqLLM.
+
+### Added
+
+- **Google Vertex AI provider** with comprehensive Claude 4.x support
+  - OAuth2 authentication with service accounts
+  - Full Claude model support (Haiku 4.5, Sonnet 4.5, Opus 4.1)
+  - Extended thinking and prompt caching capabilities
+- **AWS Bedrock inference profile models** with complete fixture coverage
+  - Anthropic Claude inference profiles
+  - OpenAI OSS models
+  - Meta Llama inference profiles
+  - Cohere Command R models
+- **Provider base URL override** capability via application config
+- AWS Bedrock API key authentication (introduced by AWS in July 2025)
+- Context tools persistence for AWS Bedrock multi-turn conversations
+- Schema map-subtyped list support for complex nested structures
+
+### Changed
+
+- Google provider uses v1beta API as default version
+- Streaming protocol callback renamed from `decode_sse_event` to `decode_stream_event`
+
+### Fixed
+
+- Groq UTF-8 boundary handling in streaming responses
+- Schema boolean encoding preventing invalid string coercion
+- AWS Bedrock Anthropic inference profile model ID preservation
+- AWS Bedrock Converse API usage field parsing
+- AWS Bedrock model ID normalization for metadata lookup
+
+[Unreleased]: https://github.com/agentjido/req_llm/compare/v1.4.1...HEAD
+[1.4.1]: https://github.com/agentjido/req_llm/compare/v1.4.0...v1.4.1
+[1.4.0]: https://github.com/agentjido/req_llm/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/agentjido/req_llm/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/agentjido/req_llm/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/agentjido/req_llm/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/agentjido/req_llm/releases/tag/v1.0.0

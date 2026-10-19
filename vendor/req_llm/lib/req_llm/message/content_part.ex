@@ -1,0 +1,239 @@
+defmodule ReqLLM.Message.ContentPart do
+  @moduledoc """
+  ContentPart represents a single piece of content within a message.
+
+  Supports multiple content types:
+  - `:text` - Plain text content
+  - `:image_url` - Image from URL
+  - `:video_url` - Video from URL
+  - `:image` - Image from binary data
+  - `:file` - File attachment or uploaded file reference
+  - `:thinking` - Chain-of-thought thinking content
+  - `:provider_block` - An opaque, provider-owned block that must be replayed
+    unchanged (e.g. Anthropic `server_tool_use` / `tool_search_tool_result`)
+
+  Provider-owned file references are opt-in through `owned_file_id/3`. Legacy
+  `file_id/1` values remain unowned and preserve their existing behavior.
+
+  ## See also
+
+  - `ReqLLM.Message` - Multi-modal message composition using ContentPart collections
+  """
+
+  @schema Zoi.struct(__MODULE__, %{
+            type:
+              Zoi.enum([:text, :image_url, :video_url, :image, :file, :thinking, :provider_block]),
+            text: Zoi.string() |> Zoi.nullable() |> Zoi.default(nil),
+            url: Zoi.string() |> Zoi.nullable() |> Zoi.default(nil),
+            data: Zoi.any() |> Zoi.nullable() |> Zoi.default(nil),
+            file_id: Zoi.string() |> Zoi.nullable() |> Zoi.default(nil),
+            media_type: Zoi.string() |> Zoi.nullable() |> Zoi.default(nil),
+            filename: Zoi.string() |> Zoi.nullable() |> Zoi.default(nil),
+            metadata: Zoi.map() |> Zoi.default(%{})
+          })
+
+  @type t :: unquote(Zoi.type_spec(@schema))
+
+  @enforce_keys Zoi.Struct.enforce_keys(@schema)
+  defstruct Zoi.Struct.struct_fields(@schema)
+
+  @doc "Returns the Zoi schema for this module"
+  def schema, do: @schema
+
+  @spec valid?(t()) :: boolean()
+  def valid?(%__MODULE__{type: type}) when is_atom(type), do: true
+  def valid?(_), do: false
+
+  @spec text(String.t()) :: t()
+  def text(content), do: %__MODULE__{type: :text, text: content}
+
+  @spec text(String.t(), map()) :: t()
+  def text(content, metadata), do: %__MODULE__{type: :text, text: content, metadata: metadata}
+
+  @spec thinking(String.t()) :: t()
+  def thinking(content), do: %__MODULE__{type: :thinking, text: content}
+
+  @spec thinking(String.t(), map()) :: t()
+  def thinking(content, metadata),
+    do: %__MODULE__{type: :thinking, text: content, metadata: metadata}
+
+  @doc """
+  Wraps a provider-owned content block that ReqLLM does not model itself.
+
+  The raw block lives in `:data` exactly as the provider returned it, and
+  `:metadata` carries the owning `:provider` (plus a `:block_type` for
+  inspection). The owning provider's encoder replays the block verbatim in
+  the assistant turn; every other provider drops it. Anthropic's tool-search
+  blocks (`server_tool_use`, `tool_search_tool_result`) are the first case —
+  the API rejects a replayed assistant turn that lost them when extended
+  thinking is on ("thinking blocks … cannot be modified").
+  """
+  @spec provider_block(atom(), map(), map()) :: t()
+  def provider_block(provider, block, metadata \\ %{})
+      when is_atom(provider) and is_map(block) and is_map(metadata) do
+    block_type = Map.get(block, "type") || Map.get(block, :type)
+
+    %__MODULE__{
+      type: :provider_block,
+      data: block,
+      metadata: Map.merge(metadata, %{provider: provider, block_type: block_type})
+    }
+  end
+
+  @spec image_url(String.t()) :: t()
+  def image_url(url), do: %__MODULE__{type: :image_url, url: url}
+
+  @spec image_url(String.t(), map()) :: t()
+  def image_url(url, metadata), do: %__MODULE__{type: :image_url, url: url, metadata: metadata}
+
+  @spec video_url(String.t()) :: t()
+  def video_url(url), do: %__MODULE__{type: :video_url, url: url}
+
+  @spec video_url(String.t(), map()) :: t()
+  def video_url(url, metadata), do: %__MODULE__{type: :video_url, url: url, metadata: metadata}
+
+  @spec image(binary(), String.t()) :: t()
+  def image(data, media_type \\ "image/png"),
+    do: %__MODULE__{type: :image, data: data, media_type: media_type}
+
+  @spec image(binary(), String.t(), map()) :: t()
+  def image(data, media_type, metadata),
+    do: %__MODULE__{type: :image, data: data, media_type: media_type, metadata: metadata}
+
+  @spec file(binary(), String.t(), String.t(), map()) :: t()
+  def file(data, filename, media_type \\ "application/octet-stream", metadata \\ %{}),
+    do: %__MODULE__{
+      type: :file,
+      data: data,
+      filename: filename,
+      media_type: media_type,
+      metadata: metadata
+    }
+
+  @spec file_id(String.t()) :: t()
+  @spec file_id(String.t(), String.t() | map()) :: t()
+  @spec file_id(String.t(), String.t(), map()) :: t()
+  def file_id(file_id, media_type_or_metadata \\ "application/pdf", metadata \\ %{})
+
+  def file_id(file_id, metadata, %{}) when is_map(metadata),
+    do: %__MODULE__{
+      type: :file,
+      file_id: file_id,
+      media_type: "application/pdf",
+      metadata: metadata
+    }
+
+  def file_id(file_id, media_type, metadata),
+    do: %__MODULE__{type: :file, file_id: file_id, media_type: media_type, metadata: metadata}
+
+  @doc """
+  Creates an explicitly provider-owned file reference.
+
+  Ownership is stored in the reserved `"req_llm" -> "provider_file"` metadata
+  namespace. Legacy `file_id/1` references remain unowned and keep their existing
+  behavior.
+
+  Supported options are `:media_type`, `:metadata`, `:purpose`, `:status`,
+  `:expires_at`, `:size`, `:sha256`, and `:provider_metadata`.
+  """
+  @spec owned_file_id(String.t(), atom() | String.t(), keyword()) :: t()
+  def owned_file_id(file_id, provider, opts \\ []) when is_list(opts) do
+    unless Keyword.keyword?(opts) do
+      raise ArgumentError, "provider-owned file options must be a keyword list"
+    end
+
+    media_type = Keyword.get(opts, :media_type, "application/pdf")
+    metadata = Keyword.get(opts, :metadata, %{})
+
+    unless is_binary(media_type) and media_type != "" do
+      raise ArgumentError, "media_type must be a non-empty string"
+    end
+
+    unless is_map(metadata) do
+      raise ArgumentError, "metadata must be a map"
+    end
+
+    reference_opts = Keyword.drop(opts, [:media_type, :metadata])
+    reference = ReqLLM.ProviderFileReference.new!(provider, file_id, reference_opts)
+
+    %__MODULE__{
+      type: :file,
+      file_id: file_id,
+      media_type: media_type,
+      metadata: ReqLLM.ProviderFileReference.put(metadata, reference)
+    }
+  end
+
+  @doc "Returns whether a file reference has explicit provider ownership metadata."
+  @spec owned_file?(t() | map()) :: boolean()
+  def owned_file?(part), do: ReqLLM.ProviderFileReference.owned?(part)
+
+  @doc "Returns the full metadata record for an explicitly owned provider file."
+  @spec provider_file_reference(t() | map()) ::
+          {:ok, ReqLLM.ProviderFileReference.t()} | :error
+  def provider_file_reference(part), do: ReqLLM.ProviderFileReference.fetch(part)
+
+  @doc "Returns redacted provider file metadata suitable for logs and diagnostics."
+  @spec inspect_provider_file(t() | map()) ::
+          {:ok, ReqLLM.ProviderFileReference.t()} | :error
+  def inspect_provider_file(part), do: ReqLLM.ProviderFileReference.redacted(part)
+
+  defimpl Inspect do
+    def inspect(%{type: type} = part, opts) do
+      content_desc =
+        case type do
+          :text -> inspect_text(part.text, opts)
+          :thinking -> inspect_text(part.text, opts)
+          :image_url -> "url: #{part.url}"
+          :video_url -> "url: #{part.url}"
+          :image -> "#{part.media_type} (#{byte_size(part.data || <<>>)} bytes)"
+          :file -> inspect_file(part)
+          :provider_block -> inspect_provider_block(part)
+        end
+
+      Inspect.Algebra.concat([
+        "#ContentPart<",
+        Inspect.Algebra.to_doc(type, opts),
+        " ",
+        content_desc,
+        ">"
+      ])
+    end
+
+    defp inspect_text(text, _opts) when is_nil(text), do: "nil"
+
+    defp inspect_text(text, _opts) do
+      truncated = String.slice(text, 0, 30)
+      if String.length(text) > 30, do: "\"#{truncated}...\"", else: "\"#{truncated}\""
+    end
+
+    defp inspect_file(%{file_id: file_id} = part) when is_binary(file_id) and file_id != "" do
+      case ReqLLM.ProviderFileReference.redacted(part) do
+        {:ok, reference} ->
+          "owned file provider: #{reference["provider"]}, file_id: #{reference["reference_id"]}"
+
+        :error ->
+          "file_id: #{file_id}"
+      end
+    end
+
+    defp inspect_file(part), do: "#{part.media_type} (#{byte_size(part.data || <<>>)} bytes)"
+
+    defp inspect_provider_block(part) do
+      provider = Map.get(part.metadata, :provider) || Map.get(part.metadata, "provider")
+      block_type = Map.get(part.metadata, :block_type) || Map.get(part.metadata, "block_type")
+      "provider: #{provider}, block_type: #{block_type}"
+    end
+  end
+
+  defimpl Jason.Encoder do
+    def encode(%{data: data} = part, opts) when is_binary(data) do
+      encoded_part = %{part | data: Base.encode64(data)}
+      Jason.Encode.map(Map.from_struct(encoded_part), opts)
+    end
+
+    def encode(part, opts) do
+      Jason.Encode.map(Map.from_struct(part), opts)
+    end
+  end
+end

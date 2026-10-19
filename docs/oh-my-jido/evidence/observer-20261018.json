@@ -1,0 +1,43 @@
+{
+  "recorded_date": "2026-10-18",
+  "scope": "Native headless Observer Action; owned local and separate-node OTP application fixtures",
+  "initial_smoke_source_before_final_format_and_ci": {
+    "adapter_sha256": "84f2b8d4a6ed915f8b9554a2305673377449e0386f19596e3961c651147d1e83",
+    "action_sha256": "80fd80391f29657c3610ed7f7eb18c7a97dc1500f127bec0448cd8b44b8ddabb"
+  },
+  "behavior_tests": {"passed": 10, "evidence": "artifact://412"},
+  "local_action": {
+    "verified": true,
+    "command_exit_status": 0,
+    "registered_native_tool_dispatcher_verified": true,
+    "observed_process_count": 221,
+    "requested_inventory_limit": 3,
+    "returned_inventory_count": 3,
+    "actual_supervision_children": 1,
+    "actual_private_table_metadata": true,
+    "private_state_and_table_contents_excluded": true,
+    "independent_permission_denial": true,
+    "observer_or_wx_application_started": false
+  },
+  "remote_action": {
+    "verified": true,
+    "command_exit_status": 0,
+    "transport": "native erpc to fixed collector",
+    "distinct_target_vm": true,
+    "actual_started_application": true,
+    "actual_supervision_children": 1,
+    "target_state_unchanged": true,
+    "private_state_and_table_contents_excluded": true,
+    "no_adapter_distribution_change": true,
+    "target_exit_reported": true,
+    "owned_peer_and_client_stopped": true,
+    "owned_loopback_only_epmd_stopped": true
+  },
+  "limitations": [
+    "These direct smokes precede the new-feature full quality gate",
+    "Snapshots are live and non-atomic",
+    "No arbitrary RPC or live evaluator is supplied by Observer",
+    "Distribution and verification-only authentication were configured by the disposable operator harness, never by the adapter",
+    "Earlier harness assertion, fixture-authentication and duplicate-cleanup failures were corrected and are not counted as successful commands"
+  ]
+}

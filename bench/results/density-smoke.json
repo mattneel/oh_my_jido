@@ -1,0 +1,3395 @@
+{
+  "host": {
+    "dirty_cpu_schedulers_online": 32,
+    "schedulers_online": 32,
+    "os": "linux",
+    "otp_release": "28",
+    "schedulers": 32,
+    "elixir_version": "1.20.2",
+    "executables": {
+      "cat": "/usr/bin/cat",
+      "kill": "/usr/bin/kill",
+      "mkfifo": "/usr/bin/mkfifo",
+      "setsid": "/usr/bin/setsid",
+      "sh": "/usr/bin/sh",
+      "sleep": "/usr/bin/sleep"
+    },
+    "kernel_release": "7.2.6-locietta-WSL2-xanmod1",
+    "architecture": "x86_64-pc-linux-gnu",
+    "cpu_model": "AMD Ryzen 9 9955HX3D 16-Core Processor",
+    "logical_processors": 32,
+    "physical_memory_bytes": 33164689408,
+    "cgroup": {
+      "version": "v2",
+      "cpu_max": "max 100000",
+      "cpuset_cpus_effective": null,
+      "memory_max_bytes": "unlimited",
+      "pids_max": "unlimited"
+    },
+    "elixir_build": {
+      "otp_release": "28",
+      "build": "1.20.2 (compiled with Erlang/OTP 28)",
+      "revision": "545dddf"
+    },
+    "erts_version": "16.4.0.2",
+    "word_size_bytes": 8,
+    "dirty_io_schedulers": 10,
+    "beam_process_limit": 1048576,
+    "beam_port_limit": 1048576,
+    "mix_environment": "test",
+    "application_versions": {
+      "oh_my_jido": "0.1.0",
+      "req_llm": "1.28.0",
+      "jido_action": "2.4.0",
+      "jido": "2.4.0",
+      "jido_ai": "2.4.0"
+    },
+    "source_fingerprints": {
+      "library_sha256": "3d3a3c648868627994235808485a3b432dc7794e9cb78e6be44b047f9191d24c",
+      "benchmark_sha256": "5acc7e37991d96f8985d59021e71d789c3ccae1135ac0b32ef44908ef2dc8303",
+      "mix_project_sha256": "498c61a15ba7586c8bdf42e72bdf7e25f1243fe6a85d4ca54f430ae9fc33b125",
+      "mix_lock_sha256": "91d28b57da8e88595c882695e210b7fa0c555390bb3574ff67438e85282de282"
+    },
+    "loaded_beam_sha256": {
+      "Elixir.Jido.AI.Reasoning.ReAct.Runner": "a269783d3523570e686e76e2fa568d7da6a1e4b331602438a9b572fd303a4e1b",
+      "Elixir.Jido.AI.Test.ReActScript": "a5cfd0f0b317b9f9aca09bceed5ae1dab3c1bedb81e0d7992fa0f2a2bbe42ead",
+      "Elixir.Jido.AgentServer": "07c2943c3ba28f5dfd60502b016fb57cc452d74b8a4aaab9d25010f2c5f64326",
+      "Elixir.OhMyJido.CodingAgent": "2b635d75b216107b2749f27b885f1cf74d3e44ef44435add582f66d7dbf30209",
+      "Elixir.OhMyJido.Models.Transformer": "618f2104e0e6651eca46c44b9d1725451de7754eaeac1ffe023639c1b855b6fa",
+      "Elixir.OhMyJido.Runtime": "d08bbecc9fc1c753f44fa01f1e16160c230c3bc7b167f1fe7c323d2860b59a09",
+      "Elixir.OhMyJido.Session": "176c9a81b4148856952d3d9d4b3d4014d0c791e46cf0d06339ceb4f5bd5f800f"
+    }
+  },
+  "after": {
+    "os": {
+      "live_descendant_count": 1,
+      "beam_rss_bytes": 566833152,
+      "beam_rss_high_water_bytes": 794374144,
+      "descendant_rss_sum_bytes": 1990656,
+      "descendant_rss_unavailable_count": 0,
+      "descendant_scan_read_errors": 0,
+      "observed_zombie_descendant_count": 0
+    },
+    "session_coordinator_count": null,
+    "native_agent_supervisor_count": null,
+    "leases": {
+      "process": null,
+      "model": null,
+      "subagent": null
+    },
+    "mailboxes": {
+      "observer": 0,
+      "runtime_total": 0,
+      "runtime_max": 0,
+      "runtime_nonempty": 0,
+      "observed_runtime_processes": 0,
+      "vanished_runtime_processes": 0
+    },
+    "at_ms": 5044.126,
+    "beam_memory_bytes": {
+      "atom": 2585482,
+      "atom_used": 2585482,
+      "binary": 12716304,
+      "code": 65273215,
+      "ets": 6842552,
+      "processes": 30751936,
+      "processes_used": 30560616,
+      "system": 190785416,
+      "total": 221537352
+    },
+    "beam_process_count": 251,
+    "beam_port_count": 2,
+    "beam_run_queue": 1,
+    "runtime_supervised_process_count": 0,
+    "runtime_tree_read_errors": 0,
+    "sampling_ms": 6.44
+  },
+  "result": "passed",
+  "cleanup": {
+    "supervisor_stopped": true,
+    "runtime_stopped": true,
+    "driver_supervisor_stopped": true,
+    "disposable_root_removed": true,
+    "host_cwd_unchanged": true,
+    "host_environment_unchanged": true,
+    "os_live_descendants_before": 1,
+    "os_live_descendants_after": 1,
+    "os_descendants_returned_to_baseline": true
+  },
+  "errors": [],
+  "schema": "oh_my_jido.density",
+  "schema_version": 1,
+  "configuration": {
+    "active": 1,
+    "deadline_ms": 20000,
+    "populations": [
+      1,
+      3
+    ],
+    "rounds": 1,
+    "idle_ms": 25,
+    "sample_ms": 25,
+    "model_ms": [
+      10,
+      15,
+      10,
+      15
+    ],
+    "tool_ms": {
+      "read": 1,
+      "exec": 1,
+      "edit": 2
+    },
+    "process_ms": [
+      10,
+      20
+    ],
+    "run_timeout_ms": 3000,
+    "tool_timeout_ms": 1000
+  },
+  "before": {
+    "os": {
+      "live_descendant_count": 1,
+      "beam_rss_bytes": 414740480,
+      "beam_rss_high_water_bytes": 422215680,
+      "descendant_rss_sum_bytes": 1990656,
+      "descendant_rss_unavailable_count": 0,
+      "descendant_scan_read_errors": 0,
+      "observed_zombie_descendant_count": 0
+    },
+    "session_coordinator_count": null,
+    "native_agent_supervisor_count": null,
+    "leases": {
+      "process": null,
+      "model": null,
+      "subagent": null
+    },
+    "mailboxes": {
+      "observer": 0,
+      "runtime_total": 0,
+      "runtime_max": 0,
+      "runtime_nonempty": 0,
+      "observed_runtime_processes": 0,
+      "vanished_runtime_processes": 0
+    },
+    "at_ms": 0.001,
+    "beam_memory_bytes": {
+      "atom": 1522033,
+      "atom_used": 1522033,
+      "binary": 992488,
+      "code": 37600895,
+      "ets": 4354160,
+      "processes": 29601776,
+      "processes_used": 29466616,
+      "system": 108519072,
+      "total": 138120848
+    },
+    "beam_process_count": 251,
+    "beam_port_count": 2,
+    "beam_run_queue": 0,
+    "runtime_supervised_process_count": 0,
+    "runtime_tree_read_errors": 0,
+    "sampling_ms": 15.621
+  },
+  "populations": [
+    {
+      "active": [
+        {
+          "errors": {},
+          "waves": [
+            {
+              "round": 1,
+              "elapsed_ms": 725.308,
+              "jobs": [
+                {
+                  "error": null,
+                  "status": "completed",
+                  "round": 1,
+                  "run_id": "01a13802-f945-71ab-97c1-b1e3d12362cb",
+                  "job_id": "p1-s1-g0",
+                  "offered_concurrency": 1,
+                  "admission": "admitted",
+                  "delay_observations": [
+                    {
+                      "step": "1",
+                      "kind": "model",
+                      "requested_ms": 10,
+                      "observed_ms": 10.336
+                    },
+                    {
+                      "step": "read",
+                      "kind": "tool_authorization",
+                      "requested_ms": 1,
+                      "observed_ms": 1.221
+                    },
+                    {
+                      "step": "2",
+                      "kind": "model",
+                      "requested_ms": 15,
+                      "observed_ms": 15.503
+                    },
+                    {
+                      "step": "edit",
+                      "kind": "tool_authorization",
+                      "requested_ms": 2,
+                      "observed_ms": 2.814
+                    },
+                    {
+                      "step": "3",
+                      "kind": "model",
+                      "requested_ms": 10,
+                      "observed_ms": 10.937
+                    },
+                    {
+                      "step": "exec",
+                      "kind": "tool_authorization",
+                      "requested_ms": 1,
+                      "observed_ms": 1.612
+                    },
+                    {
+                      "step": "4",
+                      "kind": "model",
+                      "requested_ms": 15,
+                      "observed_ms": 15.277
+                    }
+                  ],
+                  "unexpected_host_calls": [],
+                  "requested_process_ms": 20,
+                  "offered_at_ms": 3562.646,
+                  "driver_dispatch_ms": 0.018,
+                  "admission_ms": 29.478,
+                  "run_latency_ms": 706.388,
+                  "checks": {
+                    "native_terminal_completed": true,
+                    "expected_native_answer": true,
+                    "native_model_turns": true,
+                    "native_tool_trace": true,
+                    "complete_effect_records": true,
+                    "read_exact": true,
+                    "guarded_write_observed": true,
+                    "write_exact": true,
+                    "shell_exit_zero": true,
+                    "shell_streams_exact": true,
+                    "shell_cleanup_confirmed": true,
+                    "child_cwd_scoped": true,
+                    "child_env_scoped": true,
+                    "shell_processed_written_file": true
+                  },
+                  "tool_evidence": {
+                    "completed_effect_count": 3,
+                    "read_snapshot_sha256": "8207d74e05702f0333b1a01c6e509c0ed605fca28df1067744486ab18f359d9f",
+                    "written_snapshot_sha256": "78db75a0b1f58f8635d23273284a907288566179baee25d1498cb5c791e5a106",
+                    "written_bytes": 24,
+                    "process_duration_ms": 57,
+                    "process_exit_status": 0,
+                    "process_status": "exited",
+                    "process_cleanup": "confirmed",
+                    "process_effect": "completed",
+                    "stdout_bytes": 24,
+                    "stderr_bytes": 15
+                  },
+                  "native_status": "completed"
+                }
+              ],
+              "samples": [
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 656211968,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 1,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 20,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3562.632,
+                  "beam_memory_bytes": {
+                    "atom": 2347022,
+                    "atom_used": 2347022,
+                    "binary": 12455536,
+                    "code": 58671447,
+                    "ets": 6192376,
+                    "processes": 29657000,
+                    "processes_used": 29537408,
+                    "system": 180754560,
+                    "total": 210411560
+                  },
+                  "beam_process_count": 276,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 20,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 28.522
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 657170432,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 1,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 20,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3616.239,
+                  "beam_memory_bytes": {
+                    "atom": 2358012,
+                    "atom_used": 2358012,
+                    "binary": 12081240,
+                    "code": 58836207,
+                    "ets": 6224064,
+                    "processes": 29774688,
+                    "processes_used": 29654520,
+                    "system": 180643648,
+                    "total": 210418336
+                  },
+                  "beam_process_count": 276,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 20,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.15
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 657231872,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3652.403,
+                  "beam_memory_bytes": {
+                    "atom": 2360686,
+                    "atom_used": 2360686,
+                    "binary": 12184720,
+                    "code": 59084991,
+                    "ets": 6252400,
+                    "processes": 29889624,
+                    "processes_used": 29769744,
+                    "system": 181137736,
+                    "total": 211027360
+                  },
+                  "beam_process_count": 278,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 25.829
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 657993728,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3703.313,
+                  "beam_memory_bytes": {
+                    "atom": 2365363,
+                    "atom_used": 2365363,
+                    "binary": 12183552,
+                    "code": 59323863,
+                    "ets": 6275952,
+                    "processes": 30014200,
+                    "processes_used": 29892768,
+                    "system": 181509888,
+                    "total": 211524088
+                  },
+                  "beam_process_count": 280,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 11.04
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 660148224,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3741.252,
+                  "beam_memory_bytes": {
+                    "atom": 2366692,
+                    "atom_used": 2366692,
+                    "binary": 12173968,
+                    "code": 59481511,
+                    "ets": 6297008,
+                    "processes": 30173544,
+                    "processes_used": 30051496,
+                    "system": 181695064,
+                    "total": 211868608
+                  },
+                  "beam_process_count": 280,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 8.002
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 661262336,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3775.298,
+                  "beam_memory_bytes": {
+                    "atom": 2367389,
+                    "atom_used": 2367389,
+                    "binary": 12180528,
+                    "code": 59584863,
+                    "ets": 6316288,
+                    "processes": 30169160,
+                    "processes_used": 30047112,
+                    "system": 181871440,
+                    "total": 212040600
+                  },
+                  "beam_process_count": 280,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 72.207
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 667095040,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3873.607,
+                  "beam_memory_bytes": {
+                    "atom": 2368597,
+                    "atom_used": 2368597,
+                    "binary": 12261480,
+                    "code": 59976423,
+                    "ets": 6370496,
+                    "processes": 30307696,
+                    "processes_used": 30185504,
+                    "system": 182534208,
+                    "total": 212841904
+                  },
+                  "beam_process_count": 280,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 8.73
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 667836416,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 1,
+                    "runtime_max": 1,
+                    "runtime_nonempty": 1,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3908.268,
+                  "beam_memory_bytes": {
+                    "atom": 2371811,
+                    "atom_used": 2371811,
+                    "binary": 12379432,
+                    "code": 60219927,
+                    "ets": 6391464,
+                    "processes": 30616096,
+                    "processes_used": 30493040,
+                    "system": 183003848,
+                    "total": 213619944
+                  },
+                  "beam_process_count": 280,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.808
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 668020736,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 2,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3943.404,
+                  "beam_memory_bytes": {
+                    "atom": 2373809,
+                    "atom_used": 2373809,
+                    "binary": 12349488,
+                    "code": 60385135,
+                    "ets": 6417080,
+                    "processes": 31032696,
+                    "processes_used": 30905600,
+                    "system": 183187920,
+                    "total": 214220616
+                  },
+                  "beam_process_count": 280,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 18.911
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 669405184,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 3988.375,
+                  "beam_memory_bytes": {
+                    "atom": 2383327,
+                    "atom_used": 2383327,
+                    "binary": 12092232,
+                    "code": 60490239,
+                    "ets": 6443800,
+                    "processes": 31085016,
+                    "processes_used": 30954928,
+                    "system": 183105176,
+                    "total": 214190192
+                  },
+                  "beam_process_count": 283,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.782
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 639184896,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 4026.041,
+                  "beam_memory_bytes": {
+                    "atom": 2387830,
+                    "atom_used": 2387830,
+                    "binary": 12190536,
+                    "code": 60795727,
+                    "ets": 6467800,
+                    "processes": 31113904,
+                    "processes_used": 30978624,
+                    "system": 183679280,
+                    "total": 214793184
+                  },
+                  "beam_process_count": 283,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 115.517
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 639418368,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 22,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 4169.191,
+                  "beam_memory_bytes": {
+                    "atom": 2399030,
+                    "atom_used": 2399030,
+                    "binary": 12250416,
+                    "code": 61493999,
+                    "ets": 6537200,
+                    "processes": 31696904,
+                    "processes_used": 31561696,
+                    "system": 184668520,
+                    "total": 216365424
+                  },
+                  "beam_process_count": 285,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 22,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 15.847
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 641220608,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 22,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 4210.232,
+                  "beam_memory_bytes": {
+                    "atom": 2436071,
+                    "atom_used": 2436071,
+                    "binary": 12357360,
+                    "code": 62424455,
+                    "ets": 6553504,
+                    "processes": 31817448,
+                    "processes_used": 31682056,
+                    "system": 186005440,
+                    "total": 217822888
+                  },
+                  "beam_process_count": 285,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 2,
+                  "runtime_supervised_process_count": 22,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.277
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 647856128,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 2,
+                    "runtime_max": 2,
+                    "runtime_nonempty": 1,
+                    "observed_runtime_processes": 21,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 4245.312,
+                  "beam_memory_bytes": {
+                    "atom": 2437091,
+                    "atom_used": 2437091,
+                    "binary": 12375736,
+                    "code": 62497687,
+                    "ets": 6573560,
+                    "processes": 31019136,
+                    "processes_used": 30874712,
+                    "system": 186099024,
+                    "total": 217118160
+                  },
+                  "beam_process_count": 279,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 21,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 8.681
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 647921664,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 1,
+                  "native_agent_supervisor_count": 2,
+                  "leases": {
+                    "process": 0,
+                    "model": 0,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 0,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 20,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 4271.822,
+                  "beam_memory_bytes": {
+                    "atom": 2438486,
+                    "atom_used": 2438486,
+                    "binary": 12313216,
+                    "code": 62615423,
+                    "ets": 6622672,
+                    "processes": 30959440,
+                    "processes_used": 30811848,
+                    "system": 186222328,
+                    "total": 217181768
+                  },
+                  "beam_process_count": 275,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 20,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 8.677
+                }
+              ],
+              "offered_concurrency": 1,
+              "pressure": {
+                "model_leases": {
+                  "count": 15,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "beam_process_count": {
+                  "count": 15,
+                  "max": 285,
+                  "min": 275,
+                  "p50": 280,
+                  "p95": 285,
+                  "p99": 285
+                },
+                "beam_run_queue": {
+                  "count": 15,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "runtime_supervised_process_count": {
+                  "count": 15,
+                  "max": 22,
+                  "min": 20,
+                  "p50": 21,
+                  "p95": 22,
+                  "p99": 22
+                },
+                "runtime_tree_read_errors": 0,
+                "sampling_ms": {
+                  "count": 15,
+                  "max": 115.517,
+                  "min": 8.002,
+                  "p50": 9.808,
+                  "p95": 115.517,
+                  "p99": 115.517
+                },
+                "sample_count": 15,
+                "os_live_descendant_count": {
+                  "count": 15,
+                  "max": 1,
+                  "min": 1,
+                  "p50": 1,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "os_beam_rss_bytes": {
+                  "count": 15,
+                  "max": 669405184,
+                  "min": 639184896,
+                  "p50": 657231872,
+                  "p95": 669405184,
+                  "p99": 669405184
+                },
+                "beam_total_memory_bytes": {
+                  "count": 15,
+                  "max": 217822888,
+                  "min": 210411560,
+                  "p50": 213619944,
+                  "p95": 217822888,
+                  "p99": 217822888
+                },
+                "runtime_mailbox_total": {
+                  "count": 15,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "runtime_mailbox_max": {
+                  "count": 15,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "observer_mailbox": {
+                  "count": 15,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "process_leases": {
+                  "count": 15,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 1,
+                  "p99": 1
+                }
+              }
+            }
+          ],
+          "rounds": 1,
+          "offered_concurrency": 1,
+          "pressure": {
+            "model_leases": {
+              "count": 15,
+              "max": 1,
+              "min": 0,
+              "p50": 1,
+              "p95": 1,
+              "p99": 1
+            },
+            "beam_process_count": {
+              "count": 15,
+              "max": 285,
+              "min": 275,
+              "p50": 280,
+              "p95": 285,
+              "p99": 285
+            },
+            "beam_run_queue": {
+              "count": 15,
+              "max": 2,
+              "min": 0,
+              "p50": 1,
+              "p95": 2,
+              "p99": 2
+            },
+            "runtime_supervised_process_count": {
+              "count": 15,
+              "max": 22,
+              "min": 20,
+              "p50": 21,
+              "p95": 22,
+              "p99": 22
+            },
+            "runtime_tree_read_errors": 0,
+            "sampling_ms": {
+              "count": 15,
+              "max": 115.517,
+              "min": 8.002,
+              "p50": 9.808,
+              "p95": 115.517,
+              "p99": 115.517
+            },
+            "sample_count": 15,
+            "os_live_descendant_count": {
+              "count": 15,
+              "max": 1,
+              "min": 1,
+              "p50": 1,
+              "p95": 1,
+              "p99": 1
+            },
+            "os_beam_rss_bytes": {
+              "count": 15,
+              "max": 669405184,
+              "min": 639184896,
+              "p50": 657231872,
+              "p95": 669405184,
+              "p99": 669405184
+            },
+            "beam_total_memory_bytes": {
+              "count": 15,
+              "max": 217822888,
+              "min": 210411560,
+              "p50": 213619944,
+              "p95": 217822888,
+              "p99": 217822888
+            },
+            "runtime_mailbox_total": {
+              "count": 15,
+              "max": 2,
+              "min": 0,
+              "p50": 0,
+              "p95": 2,
+              "p99": 2
+            },
+            "runtime_mailbox_max": {
+              "count": 15,
+              "max": 2,
+              "min": 0,
+              "p50": 0,
+              "p95": 2,
+              "p99": 2
+            },
+            "observer_mailbox": {
+              "count": 15,
+              "max": 2,
+              "min": 0,
+              "p50": 0,
+              "p95": 2,
+              "p99": 2
+            },
+            "process_leases": {
+              "count": 15,
+              "max": 1,
+              "min": 0,
+              "p50": 0,
+              "p95": 1,
+              "p99": 1
+            }
+          },
+          "admission": {
+            "rejected": 0,
+            "completed": 1,
+            "queued": 0,
+            "offered": 1,
+            "model_capacity_rejections": 0,
+            "admitted": 1,
+            "failed_or_unobserved": 0
+          },
+          "latency_ms": {
+            "admitted_run": {
+              "count": 1,
+              "max": 706.388,
+              "min": 706.388,
+              "p50": 706.388,
+              "p95": 706.388,
+              "p99": 706.388
+            },
+            "completed_run": {
+              "count": 1,
+              "max": 706.388,
+              "min": 706.388,
+              "p50": 706.388,
+              "p95": 706.388,
+              "p99": 706.388
+            },
+            "admitted_call": {
+              "count": 1,
+              "max": 29.478,
+              "min": 29.478,
+              "p50": 29.478,
+              "p95": 29.478,
+              "p99": 29.478
+            },
+            "rejected_call": {
+              "count": 0,
+              "max": null,
+              "min": null,
+              "p50": null,
+              "p95": null,
+              "p99": null
+            },
+            "driver_dispatch": {
+              "count": 1,
+              "max": 0.018,
+              "min": 0.018,
+              "p50": 0.018,
+              "p95": 0.018,
+              "p99": 0.018
+            }
+          }
+        }
+      ],
+      "idle": {
+        "sample": {
+          "os": {
+            "live_descendant_count": 1,
+            "beam_rss_bytes": 714403840,
+            "beam_rss_high_water_bytes": 794374144,
+            "descendant_rss_sum_bytes": 1990656,
+            "descendant_rss_unavailable_count": 0,
+            "descendant_scan_read_errors": 0,
+            "observed_zombie_descendant_count": 0
+          },
+          "session_coordinator_count": 1,
+          "native_agent_supervisor_count": 1,
+          "leases": {
+            "process": 0,
+            "model": 0,
+            "subagent": 0
+          },
+          "mailboxes": {
+            "observer": 0,
+            "runtime_total": 0,
+            "runtime_max": 0,
+            "runtime_nonempty": 0,
+            "observed_runtime_processes": 19,
+            "vanished_runtime_processes": 0
+          },
+          "at_ms": 3417.198,
+          "beam_memory_bytes": {
+            "atom": 2343165,
+            "atom_used": 2343165,
+            "binary": 12400864,
+            "code": 58157031,
+            "ets": 6094608,
+            "processes": 29755232,
+            "processes_used": 29635208,
+            "system": 179804144,
+            "total": 209559376
+          },
+          "beam_process_count": 274,
+          "beam_port_count": 2,
+          "beam_run_queue": 1,
+          "runtime_supervised_process_count": 19,
+          "runtime_tree_read_errors": 0,
+          "sampling_ms": 138.031
+        },
+        "samples": [
+          {
+            "os": {
+              "live_descendant_count": 1,
+              "beam_rss_bytes": 714092544,
+              "beam_rss_high_water_bytes": 794374144,
+              "descendant_rss_sum_bytes": 1990656,
+              "descendant_rss_unavailable_count": 0,
+              "descendant_scan_read_errors": 0,
+              "observed_zombie_descendant_count": 0
+            },
+            "session_coordinator_count": 1,
+            "native_agent_supervisor_count": 1,
+            "leases": {
+              "process": 0,
+              "model": 0,
+              "subagent": 0
+            },
+            "mailboxes": {
+              "observer": 0,
+              "runtime_total": 0,
+              "runtime_max": 0,
+              "runtime_nonempty": 0,
+              "observed_runtime_processes": 19,
+              "vanished_runtime_processes": 0
+            },
+            "at_ms": 3391.322,
+            "beam_memory_bytes": {
+              "atom": 2342140,
+              "atom_used": 2342140,
+              "binary": 12343456,
+              "code": 58029503,
+              "ets": 6079472,
+              "processes": 29606320,
+              "processes_used": 29486872,
+              "system": 179588000,
+              "total": 209194320
+            },
+            "beam_process_count": 274,
+            "beam_port_count": 2,
+            "beam_run_queue": 1,
+            "runtime_supervised_process_count": 19,
+            "runtime_tree_read_errors": 0,
+            "sampling_ms": 9.568
+          },
+          {
+            "os": {
+              "live_descendant_count": 1,
+              "beam_rss_bytes": 714403840,
+              "beam_rss_high_water_bytes": 794374144,
+              "descendant_rss_sum_bytes": 1990656,
+              "descendant_rss_unavailable_count": 0,
+              "descendant_scan_read_errors": 0,
+              "observed_zombie_descendant_count": 0
+            },
+            "session_coordinator_count": 1,
+            "native_agent_supervisor_count": 1,
+            "leases": {
+              "process": 0,
+              "model": 0,
+              "subagent": 0
+            },
+            "mailboxes": {
+              "observer": 0,
+              "runtime_total": 0,
+              "runtime_max": 0,
+              "runtime_nonempty": 0,
+              "observed_runtime_processes": 19,
+              "vanished_runtime_processes": 0
+            },
+            "at_ms": 3417.198,
+            "beam_memory_bytes": {
+              "atom": 2343165,
+              "atom_used": 2343165,
+              "binary": 12400864,
+              "code": 58157031,
+              "ets": 6094608,
+              "processes": 29755232,
+              "processes_used": 29635208,
+              "system": 179804144,
+              "total": 209559376
+            },
+            "beam_process_count": 274,
+            "beam_port_count": 2,
+            "beam_run_queue": 1,
+            "runtime_supervised_process_count": 19,
+            "runtime_tree_read_errors": 0,
+            "sampling_ms": 138.031
+          }
+        ],
+        "pressure": {
+          "model_leases": {
+            "count": 2,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "beam_process_count": {
+            "count": 2,
+            "max": 274,
+            "min": 274,
+            "p50": 274,
+            "p95": 274,
+            "p99": 274
+          },
+          "beam_run_queue": {
+            "count": 2,
+            "max": 1,
+            "min": 1,
+            "p50": 1,
+            "p95": 1,
+            "p99": 1
+          },
+          "runtime_supervised_process_count": {
+            "count": 2,
+            "max": 19,
+            "min": 19,
+            "p50": 19,
+            "p95": 19,
+            "p99": 19
+          },
+          "runtime_tree_read_errors": 0,
+          "sampling_ms": {
+            "count": 2,
+            "max": 138.031,
+            "min": 9.568,
+            "p50": 9.568,
+            "p95": 138.031,
+            "p99": 138.031
+          },
+          "sample_count": 2,
+          "os_live_descendant_count": {
+            "count": 2,
+            "max": 1,
+            "min": 1,
+            "p50": 1,
+            "p95": 1,
+            "p99": 1
+          },
+          "os_beam_rss_bytes": {
+            "count": 2,
+            "max": 714403840,
+            "min": 714092544,
+            "p50": 714092544,
+            "p95": 714403840,
+            "p99": 714403840
+          },
+          "beam_total_memory_bytes": {
+            "count": 2,
+            "max": 209559376,
+            "min": 209194320,
+            "p50": 209194320,
+            "p95": 209559376,
+            "p99": 209559376
+          },
+          "runtime_mailbox_total": {
+            "count": 2,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "runtime_mailbox_max": {
+            "count": 2,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "observer_mailbox": {
+            "count": 2,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "process_leases": {
+            "count": 2,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          }
+        },
+        "invariant_passed": true,
+        "delta_from_empty_runtime": {
+          "beam_process_count": 3,
+          "runtime_supervised_process_count": 2,
+          "os_beam_rss_bytes": 310210560,
+          "beam_total_bytes": 71513624
+        }
+      },
+      "result": "passed",
+      "cleanup": {
+        "after_sessions": {
+          "os": {
+            "live_descendant_count": 1,
+            "beam_rss_bytes": 649494528,
+            "beam_rss_high_water_bytes": 794374144,
+            "descendant_rss_sum_bytes": 1990656,
+            "descendant_rss_unavailable_count": 0,
+            "descendant_scan_read_errors": 0,
+            "observed_zombie_descendant_count": 0
+          },
+          "session_coordinator_count": 0,
+          "native_agent_supervisor_count": 0,
+          "leases": {
+            "process": 0,
+            "model": 0,
+            "subagent": 0
+          },
+          "mailboxes": {
+            "observer": 0,
+            "runtime_total": 0,
+            "runtime_max": 0,
+            "runtime_nonempty": 0,
+            "observed_runtime_processes": 17,
+            "vanished_runtime_processes": 0
+          },
+          "at_ms": 4313.63,
+          "beam_memory_bytes": {
+            "atom": 2440040,
+            "atom_used": 2440040,
+            "binary": 12358592,
+            "code": 62722943,
+            "ets": 6587456,
+            "processes": 30643480,
+            "processes_used": 30495344,
+            "system": 186460536,
+            "total": 217104016
+          },
+          "beam_process_count": 271,
+          "beam_port_count": 2,
+          "beam_run_queue": 0,
+          "runtime_supervised_process_count": 17,
+          "runtime_tree_read_errors": 0,
+          "sampling_ms": 6.815
+        },
+        "population_removed": true
+      },
+      "limits": {
+        "max_sessions": 3,
+        "storage": "dedicated Jido.Storage.ETS tables; checkpoints removed on session retirement",
+        "run_timeout_ms": 3000,
+        "tool_timeout_ms": 1000,
+        "max_active": 1,
+        "max_processes": 1,
+        "max_subagents": 1,
+        "max_jido_tasks": 1000,
+        "max_iterations": 8,
+        "event_limit": 64,
+        "subscriber_limit": 16,
+        "max_pending_questions": 1,
+        "question_timeout_ms": 1000,
+        "process_timeout_ms": 1000,
+        "max_output_bytes": 4096,
+        "max_file_bytes": 8192,
+        "max_read_bytes": 8192,
+        "context_policy": {
+          "max_bytes": 120000,
+          "max_messages": 80,
+          "keep_recent": 16
+        },
+        "max_runs_per_session": 16,
+        "max_effects_per_session": 32,
+        "eval_backends": [],
+        "max_resources_per_session": 16,
+        "max_secrets_per_session": 1
+      },
+      "elapsed_ms": 4320.465,
+      "population": 1,
+      "baseline": {
+        "os": {
+          "live_descendant_count": 1,
+          "beam_rss_bytes": 404193280,
+          "beam_rss_high_water_bytes": 422215680,
+          "descendant_rss_sum_bytes": 1990656,
+          "descendant_rss_unavailable_count": 0,
+          "descendant_scan_read_errors": 0,
+          "observed_zombie_descendant_count": 0
+        },
+        "session_coordinator_count": 0,
+        "native_agent_supervisor_count": 0,
+        "leases": {
+          "process": 0,
+          "model": 0,
+          "subagent": 0
+        },
+        "mailboxes": {
+          "observer": 0,
+          "runtime_total": 0,
+          "runtime_max": 0,
+          "runtime_nonempty": 0,
+          "observed_runtime_processes": 17,
+          "vanished_runtime_processes": 0
+        },
+        "at_ms": 0.001,
+        "beam_memory_bytes": {
+          "atom": 1540404,
+          "atom_used": 1540404,
+          "binary": 622888,
+          "code": 38106879,
+          "ets": 4445320,
+          "processes": 28485136,
+          "processes_used": 28352888,
+          "system": 109560616,
+          "total": 138045752
+        },
+        "beam_process_count": 271,
+        "beam_port_count": 2,
+        "beam_run_queue": 1,
+        "runtime_supervised_process_count": 17,
+        "runtime_tree_read_errors": 0,
+        "sampling_ms": 9.953
+      },
+      "saturation": {
+        "session_admission": {
+          "reason": "population is below the configured session ceiling",
+          "status": "not_exercised"
+        },
+        "first_observed_model_rejection_concurrency": null,
+        "max_sampled_model_leases": 1,
+        "model_limit_exercised": false,
+        "oversubscription_offered": false,
+        "admission_protocol_passed": true,
+        "resource_bounds_passed": true,
+        "queued_work_count": 0,
+        "capacity_mechanism": "immediate Task.Supervisor max_children rejection; no native admission queue"
+      }
+    },
+    {
+      "active": [
+        {
+          "errors": {},
+          "waves": [
+            {
+              "round": 1,
+              "elapsed_ms": 307.319,
+              "jobs": [
+                {
+                  "error": null,
+                  "status": "completed",
+                  "round": 1,
+                  "run_id": "01a13802-fc93-7c65-b9ed-5dd04db35d76",
+                  "job_id": "p3-s1-g0",
+                  "offered_concurrency": 1,
+                  "admission": "admitted",
+                  "delay_observations": [
+                    {
+                      "step": "1",
+                      "kind": "model",
+                      "requested_ms": 10,
+                      "observed_ms": 10.158
+                    },
+                    {
+                      "step": "read",
+                      "kind": "tool_authorization",
+                      "requested_ms": 1,
+                      "observed_ms": 2.528
+                    },
+                    {
+                      "step": "2",
+                      "kind": "model",
+                      "requested_ms": 15,
+                      "observed_ms": 16.298
+                    },
+                    {
+                      "step": "edit",
+                      "kind": "tool_authorization",
+                      "requested_ms": 2,
+                      "observed_ms": 2.304
+                    },
+                    {
+                      "step": "3",
+                      "kind": "model",
+                      "requested_ms": 10,
+                      "observed_ms": 11.022
+                    },
+                    {
+                      "step": "exec",
+                      "kind": "tool_authorization",
+                      "requested_ms": 1,
+                      "observed_ms": 3.862
+                    },
+                    {
+                      "step": "4",
+                      "kind": "model",
+                      "requested_ms": 15,
+                      "observed_ms": 15.765
+                    }
+                  ],
+                  "unexpected_host_calls": [],
+                  "requested_process_ms": 10,
+                  "offered_at_ms": 87.21,
+                  "driver_dispatch_ms": 0.039,
+                  "admission_ms": 0.349,
+                  "run_latency_ms": 295.91,
+                  "checks": {
+                    "native_terminal_completed": true,
+                    "expected_native_answer": true,
+                    "native_model_turns": true,
+                    "native_tool_trace": true,
+                    "complete_effect_records": true,
+                    "read_exact": true,
+                    "guarded_write_observed": true,
+                    "write_exact": true,
+                    "shell_exit_zero": true,
+                    "shell_streams_exact": true,
+                    "shell_cleanup_confirmed": true,
+                    "child_cwd_scoped": true,
+                    "child_env_scoped": true,
+                    "shell_processed_written_file": true
+                  },
+                  "tool_evidence": {
+                    "completed_effect_count": 3,
+                    "read_snapshot_sha256": "8207d74e05702f0333b1a01c6e509c0ed605fca28df1067744486ab18f359d9f",
+                    "written_snapshot_sha256": "d1105950e594cc6a80c2d451da6e0677e2c050bf9fb73174c21c82b6ce0fa570",
+                    "written_bytes": 24,
+                    "process_duration_ms": 152,
+                    "process_exit_status": 0,
+                    "process_status": "exited",
+                    "process_cleanup": "confirmed",
+                    "process_effect": "completed",
+                    "stdout_bytes": 24,
+                    "stderr_bytes": 15
+                  },
+                  "native_status": "completed"
+                }
+              ],
+              "samples": [
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 651878400,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 1,
+                    "runtime_total": 1,
+                    "runtime_max": 1,
+                    "runtime_nonempty": 1,
+                    "observed_runtime_processes": 24,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 87.174,
+                  "beam_memory_bytes": {
+                    "atom": 2453729,
+                    "atom_used": 2453729,
+                    "binary": 12390016,
+                    "code": 63156191,
+                    "ets": 6641416,
+                    "processes": 31585984,
+                    "processes_used": 31428968,
+                    "system": 187147728,
+                    "total": 218733712
+                  },
+                  "beam_process_count": 286,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 24,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 12.908
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 651718656,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 1,
+                    "runtime_total": 2,
+                    "runtime_max": 2,
+                    "runtime_nonempty": 1,
+                    "observed_runtime_processes": 25,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 125.086,
+                  "beam_memory_bytes": {
+                    "atom": 2455750,
+                    "atom_used": 2455750,
+                    "binary": 12408792,
+                    "code": 63307359,
+                    "ets": 6660376,
+                    "processes": 32259848,
+                    "processes_used": 32104576,
+                    "system": 187340256,
+                    "total": 219600104
+                  },
+                  "beam_process_count": 289,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 25,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 8.356
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 651390976,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 25,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 160.561,
+                  "beam_memory_bytes": {
+                    "atom": 2456927,
+                    "atom_used": 2456927,
+                    "binary": 12117728,
+                    "code": 63409983,
+                    "ets": 6679144,
+                    "processes": 32094864,
+                    "processes_used": 31935344,
+                    "system": 187206576,
+                    "total": 219301440
+                  },
+                  "beam_process_count": 289,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 2,
+                  "runtime_supervised_process_count": 25,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 14.971
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 6,
+                    "beam_rss_bytes": 653033472,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 12480512,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 26,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 200.957,
+                  "beam_memory_bytes": {
+                    "atom": 2460847,
+                    "atom_used": 2460847,
+                    "binary": 12443432,
+                    "code": 63610191,
+                    "ets": 6697576,
+                    "processes": 32914872,
+                    "processes_used": 32755896,
+                    "system": 187900744,
+                    "total": 220815616
+                  },
+                  "beam_process_count": 291,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 26,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 7.846
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 656740352,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 26,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 234.307,
+                  "beam_memory_bytes": {
+                    "atom": 2463458,
+                    "atom_used": 2463458,
+                    "binary": 12489832,
+                    "code": 63751775,
+                    "ets": 6713976,
+                    "processes": 32910520,
+                    "processes_used": 32752120,
+                    "system": 188065984,
+                    "total": 220976504
+                  },
+                  "beam_process_count": 291,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 26,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 13.414
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 659968000,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 26,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 273.083,
+                  "beam_memory_bytes": {
+                    "atom": 2467677,
+                    "atom_used": 2467677,
+                    "binary": 12702400,
+                    "code": 63923407,
+                    "ets": 6728600,
+                    "processes": 32869616,
+                    "processes_used": 32710024,
+                    "system": 188610512,
+                    "total": 221480128
+                  },
+                  "beam_process_count": 291,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 2,
+                  "runtime_supervised_process_count": 26,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 76.092
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 660164608,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 0,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 3,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 25,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 374.964,
+                  "beam_memory_bytes": {
+                    "atom": 2479977,
+                    "atom_used": 2479977,
+                    "binary": 12689488,
+                    "code": 64194151,
+                    "ets": 6774200,
+                    "processes": 32193512,
+                    "processes_used": 32027600,
+                    "system": 189089712,
+                    "total": 221283224
+                  },
+                  "beam_process_count": 286,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 25,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.887
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 660377600,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 0,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 0,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 24,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 384.862,
+                  "beam_memory_bytes": {
+                    "atom": 2480823,
+                    "atom_used": 2480823,
+                    "binary": 12673792,
+                    "code": 64225335,
+                    "ets": 6836832,
+                    "processes": 32727720,
+                    "processes_used": 32559776,
+                    "system": 189184056,
+                    "total": 221911776
+                  },
+                  "beam_process_count": 282,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 24,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.451
+                }
+              ],
+              "offered_concurrency": 1,
+              "pressure": {
+                "model_leases": {
+                  "count": 8,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "beam_process_count": {
+                  "count": 8,
+                  "max": 291,
+                  "min": 282,
+                  "p50": 289,
+                  "p95": 291,
+                  "p99": 291
+                },
+                "beam_run_queue": {
+                  "count": 8,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "runtime_supervised_process_count": {
+                  "count": 8,
+                  "max": 26,
+                  "min": 24,
+                  "p50": 25,
+                  "p95": 26,
+                  "p99": 26
+                },
+                "runtime_tree_read_errors": 0,
+                "sampling_ms": {
+                  "count": 8,
+                  "max": 76.092,
+                  "min": 7.846,
+                  "p50": 9.887,
+                  "p95": 76.092,
+                  "p99": 76.092
+                },
+                "sample_count": 8,
+                "os_live_descendant_count": {
+                  "count": 8,
+                  "max": 6,
+                  "min": 1,
+                  "p50": 1,
+                  "p95": 6,
+                  "p99": 6
+                },
+                "os_beam_rss_bytes": {
+                  "count": 8,
+                  "max": 660377600,
+                  "min": 651390976,
+                  "p50": 653033472,
+                  "p95": 660377600,
+                  "p99": 660377600
+                },
+                "beam_total_memory_bytes": {
+                  "count": 8,
+                  "max": 221911776,
+                  "min": 218733712,
+                  "p50": 220815616,
+                  "p95": 221911776,
+                  "p99": 221911776
+                },
+                "runtime_mailbox_total": {
+                  "count": 8,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "runtime_mailbox_max": {
+                  "count": 8,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "observer_mailbox": {
+                  "count": 8,
+                  "max": 3,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 3,
+                  "p99": 3
+                },
+                "process_leases": {
+                  "count": 8,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 1,
+                  "p99": 1
+                }
+              }
+            }
+          ],
+          "rounds": 1,
+          "offered_concurrency": 1,
+          "pressure": {
+            "model_leases": {
+              "count": 8,
+              "max": 1,
+              "min": 0,
+              "p50": 1,
+              "p95": 1,
+              "p99": 1
+            },
+            "beam_process_count": {
+              "count": 8,
+              "max": 291,
+              "min": 282,
+              "p50": 289,
+              "p95": 291,
+              "p99": 291
+            },
+            "beam_run_queue": {
+              "count": 8,
+              "max": 2,
+              "min": 0,
+              "p50": 1,
+              "p95": 2,
+              "p99": 2
+            },
+            "runtime_supervised_process_count": {
+              "count": 8,
+              "max": 26,
+              "min": 24,
+              "p50": 25,
+              "p95": 26,
+              "p99": 26
+            },
+            "runtime_tree_read_errors": 0,
+            "sampling_ms": {
+              "count": 8,
+              "max": 76.092,
+              "min": 7.846,
+              "p50": 9.887,
+              "p95": 76.092,
+              "p99": 76.092
+            },
+            "sample_count": 8,
+            "os_live_descendant_count": {
+              "count": 8,
+              "max": 6,
+              "min": 1,
+              "p50": 1,
+              "p95": 6,
+              "p99": 6
+            },
+            "os_beam_rss_bytes": {
+              "count": 8,
+              "max": 660377600,
+              "min": 651390976,
+              "p50": 653033472,
+              "p95": 660377600,
+              "p99": 660377600
+            },
+            "beam_total_memory_bytes": {
+              "count": 8,
+              "max": 221911776,
+              "min": 218733712,
+              "p50": 220815616,
+              "p95": 221911776,
+              "p99": 221911776
+            },
+            "runtime_mailbox_total": {
+              "count": 8,
+              "max": 2,
+              "min": 0,
+              "p50": 0,
+              "p95": 2,
+              "p99": 2
+            },
+            "runtime_mailbox_max": {
+              "count": 8,
+              "max": 2,
+              "min": 0,
+              "p50": 0,
+              "p95": 2,
+              "p99": 2
+            },
+            "observer_mailbox": {
+              "count": 8,
+              "max": 3,
+              "min": 0,
+              "p50": 0,
+              "p95": 3,
+              "p99": 3
+            },
+            "process_leases": {
+              "count": 8,
+              "max": 1,
+              "min": 0,
+              "p50": 0,
+              "p95": 1,
+              "p99": 1
+            }
+          },
+          "admission": {
+            "rejected": 0,
+            "completed": 1,
+            "queued": 0,
+            "offered": 1,
+            "model_capacity_rejections": 0,
+            "admitted": 1,
+            "failed_or_unobserved": 0
+          },
+          "latency_ms": {
+            "admitted_run": {
+              "count": 1,
+              "max": 295.91,
+              "min": 295.91,
+              "p50": 295.91,
+              "p95": 295.91,
+              "p99": 295.91
+            },
+            "completed_run": {
+              "count": 1,
+              "max": 295.91,
+              "min": 295.91,
+              "p50": 295.91,
+              "p95": 295.91,
+              "p99": 295.91
+            },
+            "admitted_call": {
+              "count": 1,
+              "max": 0.349,
+              "min": 0.349,
+              "p50": 0.349,
+              "p95": 0.349,
+              "p99": 0.349
+            },
+            "rejected_call": {
+              "count": 0,
+              "max": null,
+              "min": null,
+              "p50": null,
+              "p95": null,
+              "p99": null
+            },
+            "driver_dispatch": {
+              "count": 1,
+              "max": 0.039,
+              "min": 0.039,
+              "p50": 0.039,
+              "p95": 0.039,
+              "p99": 0.039
+            }
+          }
+        },
+        {
+          "errors": {},
+          "waves": [
+            {
+              "round": 1,
+              "elapsed_ms": 261.55,
+              "jobs": [
+                {
+                  "error": null,
+                  "status": "completed",
+                  "round": 1,
+                  "run_id": "01a13802-fdca-7c2a-83c8-ecf4cfdb51f6",
+                  "job_id": "p3-s1-g1",
+                  "offered_concurrency": 2,
+                  "admission": "admitted",
+                  "delay_observations": [
+                    {
+                      "step": "1",
+                      "kind": "model",
+                      "requested_ms": 10,
+                      "observed_ms": 10.828
+                    },
+                    {
+                      "step": "read",
+                      "kind": "tool_authorization",
+                      "requested_ms": 1,
+                      "observed_ms": 3.862
+                    },
+                    {
+                      "step": "2",
+                      "kind": "model",
+                      "requested_ms": 15,
+                      "observed_ms": 15.904
+                    },
+                    {
+                      "step": "edit",
+                      "kind": "tool_authorization",
+                      "requested_ms": 2,
+                      "observed_ms": 2.361
+                    },
+                    {
+                      "step": "3",
+                      "kind": "model",
+                      "requested_ms": 10,
+                      "observed_ms": 10.497
+                    },
+                    {
+                      "step": "exec",
+                      "kind": "tool_authorization",
+                      "requested_ms": 1,
+                      "observed_ms": 1.262
+                    },
+                    {
+                      "step": "4",
+                      "kind": "model",
+                      "requested_ms": 15,
+                      "observed_ms": 15.263
+                    }
+                  ],
+                  "unexpected_host_calls": [],
+                  "requested_process_ms": 20,
+                  "offered_at_ms": 398.343,
+                  "driver_dispatch_ms": 0.009,
+                  "admission_ms": 0.213,
+                  "run_latency_ms": 235.264,
+                  "checks": {
+                    "native_terminal_completed": true,
+                    "expected_native_answer": true,
+                    "native_model_turns": true,
+                    "native_tool_trace": true,
+                    "complete_effect_records": true,
+                    "read_exact": true,
+                    "guarded_write_observed": true,
+                    "write_exact": true,
+                    "shell_exit_zero": true,
+                    "shell_streams_exact": true,
+                    "shell_cleanup_confirmed": true,
+                    "child_cwd_scoped": true,
+                    "child_env_scoped": true,
+                    "shell_processed_written_file": true
+                  },
+                  "tool_evidence": {
+                    "completed_effect_count": 3,
+                    "read_snapshot_sha256": "8207d74e05702f0333b1a01c6e509c0ed605fca28df1067744486ab18f359d9f",
+                    "written_snapshot_sha256": "a80a8c4034a7fae014990b969b234b01645c9e3dd4670261e3a396035315baf1",
+                    "written_bytes": 24,
+                    "process_duration_ms": 115,
+                    "process_exit_status": 0,
+                    "process_status": "exited",
+                    "process_cleanup": "confirmed",
+                    "process_effect": "completed",
+                    "stdout_bytes": 24,
+                    "stderr_bytes": 15
+                  },
+                  "native_status": "completed"
+                },
+                {
+                  "error": {
+                    "code": "capacity",
+                    "resource": "model"
+                  },
+                  "status": "admission_rejected",
+                  "round": 1,
+                  "run_id": null,
+                  "job_id": "p3-s2-g0",
+                  "offered_concurrency": 2,
+                  "admission": "rejected",
+                  "delay_observations": [],
+                  "unexpected_host_calls": [],
+                  "requested_process_ms": 20,
+                  "offered_at_ms": 398.352,
+                  "driver_dispatch_ms": 0.018,
+                  "admission_ms": 0.119,
+                  "run_latency_ms": null,
+                  "checks": {},
+                  "tool_evidence": {},
+                  "native_status": null
+                }
+              ],
+              "samples": [
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 657305600,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 2,
+                  "mailboxes": {
+                    "observer": 3,
+                    "runtime_total": 1,
+                    "runtime_max": 1,
+                    "runtime_nonempty": 1,
+                    "observed_runtime_processes": 24,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 398.336,
+                  "beam_memory_bytes": {
+                    "atom": 2480997,
+                    "atom_used": 2480997,
+                    "binary": 12645400,
+                    "code": 64273607,
+                    "ets": 6772320,
+                    "processes": 31690256,
+                    "processes_used": 31522992,
+                    "system": 189107128,
+                    "total": 220797384
+                  },
+                  "beam_process_count": 286,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 24,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.904
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 658763776,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 2,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 25,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 433.96,
+                  "beam_memory_bytes": {
+                    "atom": 2481942,
+                    "atom_used": 2481942,
+                    "binary": 12677168,
+                    "code": 64381695,
+                    "ets": 6795208,
+                    "processes": 32484264,
+                    "processes_used": 32317832,
+                    "system": 189321424,
+                    "total": 221805688
+                  },
+                  "beam_process_count": 286,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 25,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 9.293
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 660832256,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 1,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 25,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 468.255,
+                  "beam_memory_bytes": {
+                    "atom": 2485764,
+                    "atom_used": 2485764,
+                    "binary": 12700568,
+                    "code": 64542423,
+                    "ets": 6811160,
+                    "processes": 32228408,
+                    "processes_used": 32060008,
+                    "system": 189631048,
+                    "total": 221859456
+                  },
+                  "beam_process_count": 286,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 25,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 11.339
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 661569536,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 26,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 505.03,
+                  "beam_memory_bytes": {
+                    "atom": 2488726,
+                    "atom_used": 2488726,
+                    "binary": 12667256,
+                    "code": 64645839,
+                    "ets": 6830376,
+                    "processes": 32996456,
+                    "processes_used": 32833224,
+                    "system": 189723976,
+                    "total": 222720432
+                  },
+                  "beam_process_count": 291,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 0,
+                  "runtime_supervised_process_count": 26,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 22.975
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 661229568,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 1,
+                    "model": 1,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 26,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 553.007,
+                  "beam_memory_bytes": {
+                    "atom": 2572976,
+                    "atom_used": 2572976,
+                    "binary": 12790112,
+                    "code": 64954367,
+                    "ets": 6849880,
+                    "processes": 33132928,
+                    "processes_used": 32969984,
+                    "system": 190629144,
+                    "total": 223762072
+                  },
+                  "beam_process_count": 291,
+                  "beam_port_count": 5,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 26,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 47.341
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 659865600,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 0,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 1,
+                  "mailboxes": {
+                    "observer": 3,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 25,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 625.349,
+                  "beam_memory_bytes": {
+                    "atom": 2576662,
+                    "atom_used": 2576662,
+                    "binary": 12745152,
+                    "code": 65188895,
+                    "ets": 6881720,
+                    "processes": 32383016,
+                    "processes_used": 32209520,
+                    "system": 190912344,
+                    "total": 223295360
+                  },
+                  "beam_process_count": 285,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 2,
+                  "runtime_supervised_process_count": 25,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 14.243
+                },
+                {
+                  "os": {
+                    "live_descendant_count": 1,
+                    "beam_rss_bytes": 659865600,
+                    "beam_rss_high_water_bytes": 794374144,
+                    "descendant_rss_sum_bytes": 1990656,
+                    "descendant_rss_unavailable_count": 0,
+                    "descendant_scan_read_errors": 0,
+                    "observed_zombie_descendant_count": 0
+                  },
+                  "session_coordinator_count": 3,
+                  "native_agent_supervisor_count": 4,
+                  "leases": {
+                    "process": 0,
+                    "model": 0,
+                    "subagent": 0
+                  },
+                  "in_flight_driver_attempts": 0,
+                  "mailboxes": {
+                    "observer": 0,
+                    "runtime_total": 0,
+                    "runtime_max": 0,
+                    "runtime_nonempty": 0,
+                    "observed_runtime_processes": 24,
+                    "vanished_runtime_processes": 0
+                  },
+                  "at_ms": 639.601,
+                  "beam_memory_bytes": {
+                    "atom": 2576662,
+                    "atom_used": 2576662,
+                    "binary": 12717952,
+                    "code": 65198239,
+                    "ets": 6941504,
+                    "processes": 31998264,
+                    "processes_used": 31821600,
+                    "system": 190959616,
+                    "total": 222957880
+                  },
+                  "beam_process_count": 282,
+                  "beam_port_count": 2,
+                  "beam_run_queue": 1,
+                  "runtime_supervised_process_count": 24,
+                  "runtime_tree_read_errors": 0,
+                  "sampling_ms": 20.155
+                }
+              ],
+              "offered_concurrency": 2,
+              "pressure": {
+                "model_leases": {
+                  "count": 7,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "beam_process_count": {
+                  "count": 7,
+                  "max": 291,
+                  "min": 282,
+                  "p50": 286,
+                  "p95": 291,
+                  "p99": 291
+                },
+                "beam_run_queue": {
+                  "count": 7,
+                  "max": 2,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 2,
+                  "p99": 2
+                },
+                "runtime_supervised_process_count": {
+                  "count": 7,
+                  "max": 26,
+                  "min": 24,
+                  "p50": 25,
+                  "p95": 26,
+                  "p99": 26
+                },
+                "runtime_tree_read_errors": 0,
+                "sampling_ms": {
+                  "count": 7,
+                  "max": 47.341,
+                  "min": 9.293,
+                  "p50": 14.243,
+                  "p95": 47.341,
+                  "p99": 47.341
+                },
+                "sample_count": 7,
+                "os_live_descendant_count": {
+                  "count": 7,
+                  "max": 1,
+                  "min": 1,
+                  "p50": 1,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "os_beam_rss_bytes": {
+                  "count": 7,
+                  "max": 661569536,
+                  "min": 657305600,
+                  "p50": 659865600,
+                  "p95": 661569536,
+                  "p99": 661569536
+                },
+                "beam_total_memory_bytes": {
+                  "count": 7,
+                  "max": 223762072,
+                  "min": 220797384,
+                  "p50": 222720432,
+                  "p95": 223762072,
+                  "p99": 223762072
+                },
+                "runtime_mailbox_total": {
+                  "count": 7,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "runtime_mailbox_max": {
+                  "count": 7,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 1,
+                  "p99": 1
+                },
+                "observer_mailbox": {
+                  "count": 7,
+                  "max": 3,
+                  "min": 0,
+                  "p50": 1,
+                  "p95": 3,
+                  "p99": 3
+                },
+                "process_leases": {
+                  "count": 7,
+                  "max": 1,
+                  "min": 0,
+                  "p50": 0,
+                  "p95": 1,
+                  "p99": 1
+                }
+              }
+            }
+          ],
+          "rounds": 1,
+          "offered_concurrency": 2,
+          "pressure": {
+            "model_leases": {
+              "count": 7,
+              "max": 1,
+              "min": 0,
+              "p50": 1,
+              "p95": 1,
+              "p99": 1
+            },
+            "beam_process_count": {
+              "count": 7,
+              "max": 291,
+              "min": 282,
+              "p50": 286,
+              "p95": 291,
+              "p99": 291
+            },
+            "beam_run_queue": {
+              "count": 7,
+              "max": 2,
+              "min": 0,
+              "p50": 1,
+              "p95": 2,
+              "p99": 2
+            },
+            "runtime_supervised_process_count": {
+              "count": 7,
+              "max": 26,
+              "min": 24,
+              "p50": 25,
+              "p95": 26,
+              "p99": 26
+            },
+            "runtime_tree_read_errors": 0,
+            "sampling_ms": {
+              "count": 7,
+              "max": 47.341,
+              "min": 9.293,
+              "p50": 14.243,
+              "p95": 47.341,
+              "p99": 47.341
+            },
+            "sample_count": 7,
+            "os_live_descendant_count": {
+              "count": 7,
+              "max": 1,
+              "min": 1,
+              "p50": 1,
+              "p95": 1,
+              "p99": 1
+            },
+            "os_beam_rss_bytes": {
+              "count": 7,
+              "max": 661569536,
+              "min": 657305600,
+              "p50": 659865600,
+              "p95": 661569536,
+              "p99": 661569536
+            },
+            "beam_total_memory_bytes": {
+              "count": 7,
+              "max": 223762072,
+              "min": 220797384,
+              "p50": 222720432,
+              "p95": 223762072,
+              "p99": 223762072
+            },
+            "runtime_mailbox_total": {
+              "count": 7,
+              "max": 1,
+              "min": 0,
+              "p50": 0,
+              "p95": 1,
+              "p99": 1
+            },
+            "runtime_mailbox_max": {
+              "count": 7,
+              "max": 1,
+              "min": 0,
+              "p50": 0,
+              "p95": 1,
+              "p99": 1
+            },
+            "observer_mailbox": {
+              "count": 7,
+              "max": 3,
+              "min": 0,
+              "p50": 1,
+              "p95": 3,
+              "p99": 3
+            },
+            "process_leases": {
+              "count": 7,
+              "max": 1,
+              "min": 0,
+              "p50": 0,
+              "p95": 1,
+              "p99": 1
+            }
+          },
+          "admission": {
+            "rejected": 1,
+            "completed": 1,
+            "queued": 0,
+            "offered": 2,
+            "model_capacity_rejections": 1,
+            "admitted": 1,
+            "failed_or_unobserved": 0
+          },
+          "latency_ms": {
+            "admitted_run": {
+              "count": 1,
+              "max": 235.264,
+              "min": 235.264,
+              "p50": 235.264,
+              "p95": 235.264,
+              "p99": 235.264
+            },
+            "completed_run": {
+              "count": 1,
+              "max": 235.264,
+              "min": 235.264,
+              "p50": 235.264,
+              "p95": 235.264,
+              "p99": 235.264
+            },
+            "admitted_call": {
+              "count": 1,
+              "max": 0.213,
+              "min": 0.213,
+              "p50": 0.213,
+              "p95": 0.213,
+              "p99": 0.213
+            },
+            "rejected_call": {
+              "count": 1,
+              "max": 0.119,
+              "min": 0.119,
+              "p50": 0.119,
+              "p95": 0.119,
+              "p99": 0.119
+            },
+            "driver_dispatch": {
+              "count": 2,
+              "max": 0.018,
+              "min": 0.009,
+              "p50": 0.009,
+              "p95": 0.018,
+              "p99": 0.018
+            }
+          }
+        }
+      ],
+      "idle": {
+        "sample": {
+          "os": {
+            "live_descendant_count": 1,
+            "beam_rss_bytes": 651485184,
+            "beam_rss_high_water_bytes": 794374144,
+            "descendant_rss_sum_bytes": 1990656,
+            "descendant_rss_unavailable_count": 0,
+            "descendant_scan_read_errors": 0,
+            "observed_zombie_descendant_count": 0
+          },
+          "session_coordinator_count": 3,
+          "native_agent_supervisor_count": 3,
+          "leases": {
+            "process": 0,
+            "model": 0,
+            "subagent": 0
+          },
+          "mailboxes": {
+            "observer": 0,
+            "runtime_total": 0,
+            "runtime_max": 0,
+            "runtime_nonempty": 0,
+            "observed_runtime_processes": 23,
+            "vanished_runtime_processes": 0
+          },
+          "at_ms": 16.124,
+          "beam_memory_bytes": {
+            "atom": 2441793,
+            "atom_used": 2441793,
+            "binary": 12359072,
+            "code": 62835255,
+            "ets": 6604312,
+            "processes": 31676720,
+            "processes_used": 31515288,
+            "system": 186657464,
+            "total": 218334184
+          },
+          "beam_process_count": 280,
+          "beam_port_count": 2,
+          "beam_run_queue": 0,
+          "runtime_supervised_process_count": 23,
+          "runtime_tree_read_errors": 0,
+          "sampling_ms": 67.819
+        },
+        "samples": [
+          {
+            "os": {
+              "live_descendant_count": 1,
+              "beam_rss_bytes": 651485184,
+              "beam_rss_high_water_bytes": 794374144,
+              "descendant_rss_sum_bytes": 1990656,
+              "descendant_rss_unavailable_count": 0,
+              "descendant_scan_read_errors": 0,
+              "observed_zombie_descendant_count": 0
+            },
+            "session_coordinator_count": 3,
+            "native_agent_supervisor_count": 3,
+            "leases": {
+              "process": 0,
+              "model": 0,
+              "subagent": 0
+            },
+            "mailboxes": {
+              "observer": 0,
+              "runtime_total": 0,
+              "runtime_max": 0,
+              "runtime_nonempty": 0,
+              "observed_runtime_processes": 23,
+              "vanished_runtime_processes": 0
+            },
+            "at_ms": 16.124,
+            "beam_memory_bytes": {
+              "atom": 2441793,
+              "atom_used": 2441793,
+              "binary": 12359072,
+              "code": 62835255,
+              "ets": 6604312,
+              "processes": 31676720,
+              "processes_used": 31515288,
+              "system": 186657464,
+              "total": 218334184
+            },
+            "beam_process_count": 280,
+            "beam_port_count": 2,
+            "beam_run_queue": 0,
+            "runtime_supervised_process_count": 23,
+            "runtime_tree_read_errors": 0,
+            "sampling_ms": 67.819
+          }
+        ],
+        "pressure": {
+          "model_leases": {
+            "count": 1,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "beam_process_count": {
+            "count": 1,
+            "max": 280,
+            "min": 280,
+            "p50": 280,
+            "p95": 280,
+            "p99": 280
+          },
+          "beam_run_queue": {
+            "count": 1,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "runtime_supervised_process_count": {
+            "count": 1,
+            "max": 23,
+            "min": 23,
+            "p50": 23,
+            "p95": 23,
+            "p99": 23
+          },
+          "runtime_tree_read_errors": 0,
+          "sampling_ms": {
+            "count": 1,
+            "max": 67.819,
+            "min": 67.819,
+            "p50": 67.819,
+            "p95": 67.819,
+            "p99": 67.819
+          },
+          "sample_count": 1,
+          "os_live_descendant_count": {
+            "count": 1,
+            "max": 1,
+            "min": 1,
+            "p50": 1,
+            "p95": 1,
+            "p99": 1
+          },
+          "os_beam_rss_bytes": {
+            "count": 1,
+            "max": 651485184,
+            "min": 651485184,
+            "p50": 651485184,
+            "p95": 651485184,
+            "p99": 651485184
+          },
+          "beam_total_memory_bytes": {
+            "count": 1,
+            "max": 218334184,
+            "min": 218334184,
+            "p50": 218334184,
+            "p95": 218334184,
+            "p99": 218334184
+          },
+          "runtime_mailbox_total": {
+            "count": 1,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "runtime_mailbox_max": {
+            "count": 1,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "observer_mailbox": {
+            "count": 1,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          },
+          "process_leases": {
+            "count": 1,
+            "max": 0,
+            "min": 0,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0
+          }
+        },
+        "invariant_passed": true,
+        "delta_from_empty_runtime": {
+          "beam_process_count": 9,
+          "runtime_supervised_process_count": 6,
+          "os_beam_rss_bytes": 933888,
+          "beam_total_bytes": -197672
+        }
+      },
+      "result": "passed",
+      "cleanup": {
+        "after_sessions": {
+          "os": {
+            "live_descendant_count": 1,
+            "beam_rss_bytes": 659865600,
+            "beam_rss_high_water_bytes": 794374144,
+            "descendant_rss_sum_bytes": 1990656,
+            "descendant_rss_unavailable_count": 0,
+            "descendant_scan_read_errors": 0,
+            "observed_zombie_descendant_count": 0
+          },
+          "session_coordinator_count": 0,
+          "native_agent_supervisor_count": 0,
+          "leases": {
+            "process": 0,
+            "model": 0,
+            "subagent": 0
+          },
+          "mailboxes": {
+            "observer": 0,
+            "runtime_total": 0,
+            "runtime_max": 0,
+            "runtime_nonempty": 0,
+            "observed_runtime_processes": 17,
+            "vanished_runtime_processes": 0
+          },
+          "at_ms": 668.449,
+          "beam_memory_bytes": {
+            "atom": 2576691,
+            "atom_used": 2576691,
+            "binary": 12702456,
+            "code": 65234855,
+            "ets": 6875248,
+            "processes": 31182208,
+            "processes_used": 31000736,
+            "system": 190923616,
+            "total": 222105824
+          },
+          "beam_process_count": 271,
+          "beam_port_count": 2,
+          "beam_run_queue": 0,
+          "runtime_supervised_process_count": 17,
+          "runtime_tree_read_errors": 0,
+          "sampling_ms": 11.585
+        },
+        "population_removed": true
+      },
+      "limits": {
+        "max_sessions": 3,
+        "storage": "dedicated Jido.Storage.ETS tables; checkpoints removed on session retirement",
+        "run_timeout_ms": 3000,
+        "tool_timeout_ms": 1000,
+        "max_active": 1,
+        "max_processes": 1,
+        "max_subagents": 1,
+        "max_jido_tasks": 1000,
+        "max_iterations": 8,
+        "event_limit": 64,
+        "subscriber_limit": 16,
+        "max_pending_questions": 1,
+        "question_timeout_ms": 1000,
+        "process_timeout_ms": 1000,
+        "max_output_bytes": 4096,
+        "max_file_bytes": 8192,
+        "max_read_bytes": 8192,
+        "context_policy": {
+          "max_bytes": 120000,
+          "max_messages": 80,
+          "keep_recent": 16
+        },
+        "max_runs_per_session": 16,
+        "max_effects_per_session": 32,
+        "eval_backends": [],
+        "max_resources_per_session": 16,
+        "max_secrets_per_session": 1
+      },
+      "elapsed_ms": 680.057,
+      "population": 3,
+      "baseline": {
+        "os": {
+          "live_descendant_count": 1,
+          "beam_rss_bytes": 650551296,
+          "beam_rss_high_water_bytes": 794374144,
+          "descendant_rss_sum_bytes": 1990656,
+          "descendant_rss_unavailable_count": 0,
+          "descendant_scan_read_errors": 0,
+          "observed_zombie_descendant_count": 0
+        },
+        "session_coordinator_count": 0,
+        "native_agent_supervisor_count": 0,
+        "leases": {
+          "process": 0,
+          "model": 0,
+          "subagent": 0
+        },
+        "mailboxes": {
+          "observer": 0,
+          "runtime_total": 0,
+          "runtime_max": 0,
+          "runtime_nonempty": 0,
+          "observed_runtime_processes": 17,
+          "vanished_runtime_processes": 0
+        },
+        "at_ms": 0.001,
+        "beam_memory_bytes": {
+          "atom": 2440564,
+          "atom_used": 2440564,
+          "binary": 12384392,
+          "code": 62751647,
+          "ets": 6652480,
+          "processes": 31265040,
+          "processes_used": 31113552,
+          "system": 187266816,
+          "total": 218531856
+        },
+        "beam_process_count": 271,
+        "beam_port_count": 2,
+        "beam_run_queue": 0,
+        "runtime_supervised_process_count": 17,
+        "runtime_tree_read_errors": 0,
+        "sampling_ms": 8.297
+      },
+      "saturation": {
+        "session_admission": {
+          "status": "capacity_rejected",
+          "latency_ms": 3.085,
+          "offered_sessions": 4,
+          "admitted_sessions": 3
+        },
+        "first_observed_model_rejection_concurrency": 2,
+        "max_sampled_model_leases": 1,
+        "model_limit_exercised": true,
+        "oversubscription_offered": true,
+        "admission_protocol_passed": true,
+        "resource_bounds_passed": true,
+        "queued_work_count": 0,
+        "capacity_mechanism": "immediate Task.Supervisor max_children rejection; no native admission queue"
+      }
+    }
+  ],
+  "recorded_at": "2026-10-14T01:24:42.860908Z",
+  "workload": {
+    "permissions": [
+      "read",
+      "edit",
+      "exec"
+    ],
+    "model_boundary": "installed Jido.AI.Test explicit ReAct script; no provider or network",
+    "request_transformer": "Elixir.OhMyJido.Bench.Density.Native.Transformer",
+    "model_latency": "simulated gateway sleep after successful Models.Transformer delegation, inside native runner",
+    "tool_latency": "bounded host authorization sleep plus actual filesystem and shell work",
+    "steps": [
+      "read input.txt",
+      "snapshot-guarded write output.txt",
+      "scoped shell verifies and processes output"
+    ],
+    "fresh_session_per_job": true,
+    "host_module": "Elixir.OhMyJido.Bench.Density.Native.Host",
+    "model_label": "anthropic:claude-sonnet-4-20250514",
+    "action_modules": [
+      "Elixir.OhMyJido.Tools.Read",
+      "Elixir.OhMyJido.Tools.Write",
+      "Elixir.OhMyJido.Tools.Shell"
+    ],
+    "history_policy": "fresh native session for every job; replacement is outside run latency",
+    "queue_policy": "no backlog; each wave immediately offers all calls; Task.Supervisor capacity is rejection, not queue",
+    "percentile_method": "nearest rank over observed values; null for an empty distribution",
+    "memory_scope": "OS VmRSS is BEAM resident memory; erlang.memory is VM-accounted allocated memory, not RSS",
+    "descendant_rss_scope": "sum of observed live descendant RSS; shared pages are not deduplicated",
+    "sampling_scope": "VM-wide counters and runtime supervisor-tree mailboxes; sampled peaks can miss transients",
+    "cleanup_deadline_ms": 15000
+  },
+  "elapsed_ms": 5051.45
+}

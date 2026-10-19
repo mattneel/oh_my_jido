@@ -1,0 +1,1419 @@
+defmodule ReqLLM.Providers.AmazonBedrock.Converse do
+  @moduledoc """
+  AWS Bedrock Converse API support for unified tool calling across models.
+
+  The Converse API provides a standardized interface for tool calling that works
+  across all Bedrock models (Anthropic, OpenAI, Meta, etc.) with consistent
+  request/response formats.
+
+  ## Advantages
+
+  - Unified tool calling across all Bedrock models
+  - Simpler, cleaner API compared to model-specific endpoints
+  - Better multi-turn conversation handling
+
+  ## Disadvantages
+
+  - May lag behind model-specific endpoints for cutting-edge features
+  - Adds small translation overhead (typically low milliseconds)
+
+  ## API Format
+
+  Request:
+  ```json
+  {
+    "messages": [
+      {"role": "user", "content": [{"text": "Hello"}]}
+    ],
+    "system": [{"text": "You are a helpful assistant"}],
+    "inferenceConfig": {
+      "maxTokens": 1000,
+      "temperature": 0.7
+    },
+    "toolConfig": {
+      "tools": [
+        {
+          "toolSpec": {
+            "name": "get_weather",
+            "description": "Get weather",
+            "inputSchema": {
+              "json": {
+                "type": "object",
+                "properties": {...},
+                "required": [...]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+  ```
+
+  Response:
+  ```json
+  {
+    "output": {
+      "message": {
+        "role": "assistant",
+        "content": [
+          {"text": "Let me check the weather"},
+          {
+            "toolUse": {
+              "toolUseId": "id123",
+              "name": "get_weather",
+              "input": {"location": "SF"}
+            }
+          }
+        ]
+      }
+    },
+    "stopReason": "tool_use",
+    "usage": {
+      "inputTokens": 100,
+      "outputTokens": 50,
+      "totalTokens": 150
+    }
+  }
+  ```
+
+  ## Prompt caching
+
+  `cachePoint` placement is handled by `ReqLLM.Providers.AmazonBedrock.PromptCache`;
+  see the Amazon Bedrock guide.
+  """
+
+  alias ReqLLM.Message
+  alias ReqLLM.Message.ContentPart
+  alias ReqLLM.Message.ReasoningDetails
+  alias ReqLLM.Providers.AmazonBedrock.PromptCache
+  alias ReqLLM.ToolCall
+
+  @reasoning_format "bedrock-converse-v1"
+  @replayable_reasoning_providers [:amazon_bedrock, :anthropic]
+
+  @image_formats ~w(png jpeg gif webp)
+  @video_formats ~w(mkv mov mp4 webm flv mpeg mpg wmv three_gp)
+  @format_aliases %{
+    "jpg" => "jpeg",
+    "quicktime" => "mov",
+    "x-matroska" => "mkv",
+    "matroska" => "mkv",
+    "x-flv" => "flv",
+    "x-ms-wmv" => "wmv",
+    "3gpp" => "three_gp",
+    "3gp" => "three_gp",
+    "plain" => "txt",
+    "markdown" => "md",
+    "htm" => "html",
+    "msword" => "doc",
+    "vnd.openxmlformats-officedocument.wordprocessingml.document" => "docx",
+    "vnd.ms-excel" => "xls",
+    "vnd.openxmlformats-officedocument.spreadsheetml.sheet" => "xlsx"
+  }
+
+  @doc """
+  Format a ReqLLM context into Bedrock Converse API format.
+
+  Converts ReqLLM messages and tools into the Converse API request structure.
+
+  For :object operations, creates a synthetic "structured_output" tool to
+  leverage unified tool calling for structured JSON output across all models.
+  """
+  def format_request(model_id, context, opts) do
+    operation = opts[:operation]
+
+    # For :object operation, inject the structured_output tool
+    {context, opts} =
+      if operation == :object do
+        prepare_structured_output_context(context, opts)
+      else
+        {context, opts}
+      end
+
+    context =
+      ReqLLM.ToolCallIdCompat.apply_context_with_policy(
+        context,
+        %{
+          mode: :sanitize,
+          invalid_chars_regex: ~r/[^A-Za-z0-9_-]/,
+          max_length: 64,
+          enforce_turn_boundary: true
+        },
+        opts
+      )
+
+    request = %{}
+
+    # Add messages
+    request = add_messages(request, keep_tool_errors(context.messages, model_id, opts))
+
+    # Add tools if present (tools are in opts, not context)
+    # Add tools from opts or persisted from context
+    request =
+      case opts[:tools] do
+        nil ->
+          # Use persisted tools from context if available
+          case Map.get(context, :tools) do
+            tools when is_list(tools) and tools != [] ->
+              add_tools(request, tools, opts[:formatter_module])
+
+            _ ->
+              # No tools
+              request
+          end
+
+        tools when is_list(tools) ->
+          add_tools(request, tools, opts[:formatter_module])
+      end
+
+    # Add tool choice if specified
+    # Note: Only some model families support toolChoice in Converse API
+    request =
+      if tool_choice = opts[:tool_choice] do
+        add_tool_choice(request, tool_choice, opts[:model_family], opts[:formatter_module])
+      else
+        request
+      end
+
+    request
+    |> add_inference_config(opts)
+    |> add_additional_fields(opts)
+    |> add_guardrail_config(opts)
+    |> PromptCache.apply_converse(PromptCache.resolve(opts), model_id)
+  end
+
+  # Create the synthetic structured_output tool for :object operations
+  defp prepare_structured_output_context(context, opts) do
+    compiled_schema = Keyword.fetch!(opts, :compiled_schema)
+
+    # Create the structured_output tool (same as native Anthropic provider)
+    structured_output_tool =
+      ReqLLM.Tool.new!(
+        name: "structured_output",
+        description: "Generate structured output matching the provided schema",
+        parameter_schema: compiled_schema.schema,
+        callback: fn _args -> {:ok, "structured output generated"} end
+      )
+
+    # Add tool to context - Context may or may not have a tools field
+    existing_tools = Map.get(context, :tools, [])
+    updated_context = Map.put(context, :tools, [structured_output_tool | existing_tools])
+
+    # Update opts to force tool choice
+    # Handle case where opts[:tools] is explicitly nil (Keyword.get returns nil, not default)
+    existing_tools = Keyword.get(opts, :tools) || []
+
+    updated_opts =
+      opts
+      |> Keyword.put(:tools, [structured_output_tool | existing_tools])
+      |> Keyword.put(:tool_choice, %{type: "tool", name: "structured_output"})
+
+    {updated_context, updated_opts}
+  end
+
+  @doc """
+  Parse a Converse API response into ReqLLM format.
+
+  Converts Converse API response structure back to ReqLLM.Response with
+  proper Message and ContentPart structures.
+
+  For :object operations, extracts the structured output from the tool call.
+  """
+  def parse_response(response_body, opts) do
+    message_data = get_in(response_body, ["output", "message"])
+    stop_reason = response_body["stopReason"]
+    usage = response_body["usage"]
+
+    # Parse message (includes reasoning content if present)
+    message = parse_message(message_data)
+
+    # Build initial response with minimal context
+    initial_response = %ReqLLM.Response{
+      id: get_in(response_body, ["output", "messageId"]) || "unknown",
+      model: opts[:model] || "bedrock-converse",
+      context: %ReqLLM.Context{messages: []},
+      message: message,
+      finish_reason: map_stop_reason(stop_reason),
+      usage: parse_usage(usage),
+      provider_meta:
+        response_body |> response_provider_meta() |> put_annotations(citations(message_data)),
+      stream?: false
+    }
+
+    # Merge with original context, persisting tools
+    original_context = opts[:context] || %ReqLLM.Context{messages: []}
+    merge_opts = [tools: opts[:tools]]
+    response = ReqLLM.Context.merge_response(original_context, initial_response, merge_opts)
+
+    # For :object operation, extract structured output from tool call
+    final_response =
+      if opts[:operation] == :object do
+        extract_and_set_object(response, opts)
+      else
+        response
+      end
+
+    {:ok, final_response}
+  end
+
+  # Extract structured output from tool call (same logic as native Anthropic provider)
+  defp extract_and_set_object(response, opts) do
+    extracted_object =
+      response
+      |> ReqLLM.Response.tool_calls()
+      |> ReqLLM.ToolCall.find_args("structured_output", opts)
+
+    %{response | object: extracted_object}
+  end
+
+  def init_stream_state,
+    do: %{reasoning_blocks: %{}, next_reasoning_index: 0, citation_blocks: %{}, text_offset: 0}
+
+  @doc "Emits reasoning details and citation ranges when their content block stops."
+  def decode_stream_event(event, nil), do: decode_stream_event(event, init_stream_state())
+
+  def decode_stream_event(%{"contentBlockDelta" => delta_data} = event, state) do
+    index = delta_data["contentBlockIndex"]
+
+    case get_in(delta_data, ["delta", "reasoningContent"]) do
+      %{"text" => text} when is_binary(text) ->
+        chunks = if text == "", do: [], else: [ReqLLM.StreamChunk.thinking(text)]
+        {chunks, append_reasoning(state, index, :text, text)}
+
+      %{"signature" => signature} when is_binary(signature) ->
+        {[], append_reasoning(state, index, :signature, signature)}
+
+      %{"redactedContent" => data} when is_binary(data) ->
+        {[], append_reasoning(state, index, :redacted, data)}
+
+      _ ->
+        decode_citation_event(event, state)
+    end
+  end
+
+  def decode_stream_event(%{"contentBlockStop" => %{"contentBlockIndex" => index}}, state) do
+    case Map.pop(state.reasoning_blocks, index) do
+      {nil, _blocks} ->
+        finish_citation_block(state, index)
+
+      {block, blocks} ->
+        detail = reasoning_detail(block, state.next_reasoning_index)
+
+        {[ReqLLM.StreamChunk.meta(%{reasoning_details: [detail]})],
+         %{state | reasoning_blocks: blocks, next_reasoning_index: state.next_reasoning_index + 1}}
+    end
+  end
+
+  def decode_stream_event(event, state), do: {stateless_chunks(event), state}
+
+  @doc "Emit reasoning details and citations for blocks that never stopped."
+  def flush_stream_state(nil), do: {[], init_stream_state()}
+
+  def flush_stream_state(state) do
+    {citation_chunks, state} =
+      state.citation_blocks
+      |> Map.keys()
+      |> Enum.sort()
+      |> Enum.flat_map_reduce(state, &finish_citation_block(&2, &1))
+
+    state.reasoning_blocks
+    |> Enum.sort_by(fn {index, _block} -> index end)
+    |> Enum.map_reduce(%{state | reasoning_blocks: %{}}, fn {_index, block}, acc ->
+      {reasoning_detail(block, acc.next_reasoning_index),
+       %{acc | next_reasoning_index: acc.next_reasoning_index + 1}}
+    end)
+    |> case do
+      {[], state} ->
+        {citation_chunks, state}
+
+      {details, state} ->
+        {[ReqLLM.StreamChunk.meta(%{reasoning_details: details}) | citation_chunks], state}
+    end
+  end
+
+  defp decode_citation_event(%{"contentBlockDelta" => data} = event, state) do
+    index = data["contentBlockIndex"]
+
+    block =
+      Map.get(state.citation_blocks, index, %{
+        start: state.text_offset,
+        end: state.text_offset,
+        citations: []
+      })
+
+    case data["delta"] do
+      %{"text" => text} when is_binary(text) ->
+        offset = state.text_offset + text_length(text)
+        block = %{block | end: offset}
+
+        {stateless_chunks(event),
+         %{
+           state
+           | text_offset: offset,
+             citation_blocks: Map.put(state.citation_blocks, index, block)
+         }}
+
+      %{"citation" => citation} ->
+        block = %{block | citations: [citation | block.citations]}
+        {[], %{state | citation_blocks: Map.put(state.citation_blocks, index, block)}}
+
+      _ ->
+        {stateless_chunks(event), state}
+    end
+  end
+
+  defp finish_citation_block(state, index) do
+    {block, blocks} = Map.pop(state.citation_blocks, index)
+    state = %{state | citation_blocks: blocks}
+
+    case block do
+      %{citations: [_ | _] = citations, start: start, end: stop} ->
+        annotations = citations |> Enum.reverse() |> citation_ranges(start, stop)
+        {[ReqLLM.StreamChunk.meta(%{annotations: annotations})], state}
+
+      _ ->
+        {[], state}
+    end
+  end
+
+  defp stateless_chunks(event) do
+    case parse_stream_chunk(event, %{}) do
+      {:ok, nil} -> []
+      {:ok, chunk} -> [chunk]
+      {:error, _} -> []
+    end
+  end
+
+  defp append_reasoning(state, index, key, value) do
+    block = Map.get(state.reasoning_blocks, index, %{text: "", signature: nil, redacted: nil})
+
+    block =
+      case key do
+        :text -> %{block | text: block.text <> value}
+        :signature -> %{block | signature: append_fragment(block.signature, value)}
+        :redacted -> %{block | redacted: append_redacted_fragment(block.redacted, value)}
+      end
+
+    %{state | reasoning_blocks: Map.put(state.reasoning_blocks, index, block)}
+  end
+
+  defp append_fragment(nil, value), do: value
+  defp append_fragment(existing, value), do: existing <> value
+
+  defp append_redacted_fragment(nil, value), do: value
+
+  defp append_redacted_fragment(existing, value) do
+    case {Base.decode64(existing), Base.decode64(value)} do
+      {{:ok, existing_bytes}, {:ok, value_bytes}} ->
+        Base.encode64(existing_bytes <> value_bytes)
+
+      _ ->
+        existing <> value
+    end
+  end
+
+  defp reasoning_detail(%{redacted: data}, index) when is_binary(data) do
+    %ReasoningDetails{
+      encrypted?: true,
+      provider: :amazon_bedrock,
+      format: @reasoning_format,
+      index: index,
+      provider_data: %{"redactedContent" => data}
+    }
+  end
+
+  defp reasoning_detail(%{text: text, signature: signature}, index) do
+    %ReasoningDetails{
+      text: text,
+      signature: signature,
+      encrypted?: signature != nil,
+      provider: :amazon_bedrock,
+      format: @reasoning_format,
+      index: index
+    }
+  end
+
+  @doc """
+  Parse a Converse API streaming chunk.
+
+  Handles different event types from the Converse stream.
+  Events are already decoded by AWSEventStream.parse_binary before reaching this function.
+  """
+  def parse_stream_chunk(chunk, _model_id) do
+    case chunk do
+      %{"contentBlockStart" => start_data} ->
+        # Start of a new content block
+        # For tool use blocks, emit tool_call chunk with empty arguments
+        if tool_use_start = get_in(start_data, ["start", "toolUse"]) do
+          tool_name = tool_use_start["name"]
+          tool_use_id = tool_use_start["toolUseId"]
+          content_block_index = start_data["contentBlockIndex"]
+
+          # Send empty tool_call that will be filled by deltas
+          {:ok,
+           ReqLLM.StreamChunk.tool_call(tool_name, %{}, %{
+             id: tool_use_id,
+             index: content_block_index,
+             start: true
+           })}
+        else
+          {:ok, nil}
+        end
+
+      %{"contentBlockDelta" => delta_data} ->
+        # Handle text, reasoning, and tool use deltas
+        cond do
+          delta = get_in(delta_data, ["delta", "text"]) ->
+            {:ok, ReqLLM.StreamChunk.text(delta)}
+
+          reasoning_delta = get_in(delta_data, ["delta", "reasoningContent"]) ->
+            # Claude extended thinking reasoning delta
+            # reasoningContent is a map with "text" key, extract it
+            case reasoning_delta["text"] do
+              text when is_binary(text) and text != "" ->
+                {:ok, ReqLLM.StreamChunk.thinking(text)}
+
+              _ ->
+                # Empty or missing text, skip this chunk
+                {:ok, nil}
+            end
+
+          tool_use_delta = get_in(delta_data, ["delta", "toolUse"]) ->
+            # Tool use delta for object generation
+            # The input field contains the streaming JSON fragment
+            if input = tool_use_delta["input"] do
+              content_block_index = delta_data["contentBlockIndex"]
+              # Emit metadata chunk with JSON fragment to be accumulated
+              {:ok,
+               ReqLLM.StreamChunk.meta(%{
+                 tool_call_args: %{index: content_block_index, fragment: input}
+               })}
+            else
+              {:ok, nil}
+            end
+
+          citation = get_in(delta_data, ["delta", "citation"]) ->
+            {:ok,
+             ReqLLM.StreamChunk.meta(%{
+               annotations: [
+                 Map.put(citation, "content_block_index", delta_data["contentBlockIndex"])
+               ]
+             })}
+
+          true ->
+            {:ok, nil}
+        end
+
+      %{"contentBlockStop" => _data} ->
+        # End of content block
+        {:ok, nil}
+
+      %{"messageStart" => _data} ->
+        # Start of message
+        {:ok, nil}
+
+      %{"messageStop" => stop_data} ->
+        # End of message with stop reason
+        stop_reason = stop_data["stopReason"]
+        {:ok, ReqLLM.StreamChunk.meta(%{finish_reason: map_stop_reason(stop_reason)})}
+
+      %{"metadata" => metadata} ->
+        provider_meta =
+          provider_meta(metadata["trace"], get_in(metadata, ["usage", "cacheDetails"]))
+
+        meta =
+          %{}
+          |> maybe_put_usage(metadata["usage"])
+          |> maybe_put_meta(
+            :provider_meta,
+            if(provider_meta == %{}, do: nil, else: provider_meta)
+          )
+
+        if meta == %{}, do: {:ok, nil}, else: {:ok, ReqLLM.StreamChunk.meta(meta)}
+
+      _ ->
+        {:error, :unknown_chunk_type}
+    end
+  end
+
+  # Private functions
+
+  defp response_provider_meta(response_body) do
+    provider_meta(response_body["trace"], get_in(response_body, ["usage", "cacheDetails"]))
+  end
+
+  defp provider_meta(trace, cache_details) do
+    %{}
+    |> maybe_put_meta(:trace, trace)
+    |> maybe_put_meta(:cache_details, cache_details)
+  end
+
+  defp maybe_put_meta(meta, _key, nil), do: meta
+  defp maybe_put_meta(meta, key, value), do: Map.put(meta, key, value)
+
+  defp citations(%{"content" => blocks}) when is_list(blocks) do
+    {annotations, _offset} =
+      Enum.map_reduce(blocks, 0, fn block, offset ->
+        case block do
+          %{"citationsContent" => cited} ->
+            stop = offset + text_length(citation_text(cited))
+            {citation_ranges(Map.get(cited, "citations", []), offset, stop), stop}
+
+          %{"text" => text} ->
+            {[], offset + text_length(text)}
+
+          _ ->
+            {[], offset}
+        end
+      end)
+
+    annotations |> List.flatten() |> Enum.uniq()
+  end
+
+  defp citations(_message_data), do: []
+
+  defp citation_ranges(citations, start, stop) do
+    Enum.map(citations, &Map.merge(&1, %{"start_index" => start, "end_index" => stop}))
+  end
+
+  defp text_length(text), do: text |> String.to_charlist() |> length()
+
+  defp citation_text(block), do: Enum.map_join(Map.get(block, "content", []), & &1["text"])
+
+  defp put_annotations(provider_meta, []), do: provider_meta
+
+  defp put_annotations(provider_meta, citations),
+    do: Map.put(provider_meta, "annotations", citations)
+
+  defp maybe_put_usage(meta, nil), do: meta
+  defp maybe_put_usage(meta, usage), do: Map.put(meta, :usage, parse_usage(usage))
+
+  defp add_messages(request, messages) do
+    {system_messages, non_system_messages} =
+      Enum.split_with(messages, fn %Message{role: role} -> role == :system end)
+
+    request =
+      case encode_system_messages(system_messages) do
+        [] ->
+          request
+
+        encoded_system ->
+          Map.put(request, "system", encoded_system)
+      end
+
+    encoded_messages =
+      non_system_messages
+      |> Enum.map(&encode_message/1)
+      |> Enum.reject(&is_nil/1)
+      |> merge_consecutive_tool_results()
+
+    Map.put(request, "messages", encoded_messages)
+  end
+
+  defp encode_system_messages(messages) do
+    messages
+    |> Enum.map(&encode_system_message/1)
+    |> Enum.reject(&(&1 == []))
+    |> Enum.intersperse([%{"text" => "\n\n"}])
+    |> List.flatten()
+  end
+
+  defp encode_system_message(%Message{content: content} = msg) when is_binary(content) do
+    content |> encode_content() |> with_message_checkpoint(msg)
+  end
+
+  defp encode_system_message(%Message{content: content} = msg) when is_list(content) do
+    content |> encode_system_content() |> with_message_checkpoint(msg)
+  end
+
+  defp encode_system_message(_message), do: []
+
+  defp merge_consecutive_tool_results(messages) do
+    messages
+    |> Enum.reduce([], fn msg, acc ->
+      case {acc, msg} do
+        {[%{"role" => "user", "content" => prev_content} = prev | rest],
+         %{"role" => "user", "content" => curr_content}}
+        when is_list(prev_content) and is_list(curr_content) ->
+          if all_tool_results?(prev_content) and all_tool_results?(curr_content) do
+            [%{prev | "content" => prev_content ++ curr_content} | rest]
+          else
+            [msg | acc]
+          end
+
+        _ ->
+          [msg | acc]
+      end
+    end)
+    |> Enum.reverse()
+  end
+
+  defp all_tool_results?(content) when is_list(content) do
+    Enum.all?(content, fn
+      %{"toolResult" => _} -> true
+      %{"cachePoint" => _} -> true
+      _ -> false
+    end)
+  end
+
+  defp add_tools(request, [], _formatter_module), do: request
+
+  defp add_tools(request, tools, formatter_module) when is_list(tools) do
+    tool_specs =
+      tools
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(fn tool ->
+        bedrock_tool = ReqLLM.Schema.to_bedrock_converse_format(tool)
+
+        # Some model families need to normalize tool schemas
+        # Check if formatter module provides normalization
+        if formatter_module && Code.ensure_loaded?(formatter_module) &&
+             function_exported?(formatter_module, :normalize_tool_schema, 1) do
+          # Normalize the inputSchema.json field
+          update_in(
+            bedrock_tool,
+            ["toolSpec", "inputSchema", "json"],
+            &formatter_module.normalize_tool_schema/1
+          )
+        else
+          bedrock_tool
+        end
+      end)
+
+    Map.put(request, "toolConfig", %{
+      "tools" => tool_specs
+    })
+  end
+
+  # Add tool choice configuration to force specific tool usage
+  # Only supported by some model families - check with the formatter module
+  defp add_tool_choice(
+         %{"toolConfig" => %{"tools" => [_ | _]} = tool_config} = request,
+         tool_choice,
+         _model_family,
+         formatter_module
+       ) do
+    # Ask the model family formatter if it supports toolChoice in Converse API
+    supports_tool_choice =
+      formatter_module && Code.ensure_loaded?(formatter_module) &&
+        function_exported?(formatter_module, :supports_converse_tool_choice?, 0) &&
+        formatter_module.supports_converse_tool_choice?()
+
+    if supports_tool_choice do
+      choice = converse_tool_choice(tool_choice)
+      Map.put(request, "toolConfig", Map.put(tool_config, "toolChoice", choice))
+    else
+      # For non-Anthropic models, skip toolChoice entirely
+      request
+    end
+  end
+
+  defp add_tool_choice(request, _tool_choice, _model_family, _formatter_module), do: request
+
+  defp converse_tool_choice(choice) when choice in [:auto, "auto"], do: %{"auto" => %{}}
+  defp converse_tool_choice(choice) when choice in [:required, "required"], do: %{"any" => %{}}
+  defp converse_tool_choice(%{type: "tool", name: name}), do: %{"tool" => %{"name" => name}}
+
+  defp converse_tool_choice(%{"type" => "tool", "name" => name}),
+    do: %{"tool" => %{"name" => name}}
+
+  defp converse_tool_choice(%{type: "any"}), do: %{"any" => %{}}
+  defp converse_tool_choice(%{"type" => "any"}), do: %{"any" => %{}}
+  defp converse_tool_choice(%{type: "auto"}), do: %{"auto" => %{}}
+  defp converse_tool_choice(%{"type" => "auto"}), do: %{"auto" => %{}}
+
+  defp converse_tool_choice(choice) do
+    invalid_part(
+      "Converse supports tool_choice :auto, :required or %{type: \"tool\", name: name}, " <>
+        "got #{inspect(choice)}; use_converse: false keeps the InvokeModel behavior"
+    )
+  end
+
+  defp add_inference_config(request, opts) do
+    config = %{}
+
+    config =
+      if max_tokens = opts[:max_tokens] do
+        Map.put(config, "maxTokens", max_tokens)
+      else
+        config
+      end
+
+    config =
+      if temperature = opts[:temperature] do
+        Map.put(config, "temperature", temperature)
+      else
+        config
+      end
+
+    config =
+      if top_p = opts[:top_p] do
+        Map.put(config, "topP", top_p)
+      else
+        config
+      end
+
+    config =
+      if stop_sequences = opts[:stop_sequences] do
+        Map.put(config, "stopSequences", stop_sequences)
+      else
+        config
+      end
+
+    if config == %{} do
+      request
+    else
+      Map.put(request, "inferenceConfig", config)
+    end
+  end
+
+  defp add_additional_fields(request, opts) do
+    case Map.merge(anthropic_fields(opts), caller_fields(opts)) do
+      fields when map_size(fields) == 0 -> request
+      fields -> Map.put(request, "additionalModelRequestFields", fields)
+    end
+  end
+
+  defp caller_fields(opts) do
+    fields =
+      get_in(opts, [:provider_options, :additional_model_request_fields]) ||
+        opts[:additional_model_request_fields] || %{}
+
+    Map.new(fields, fn {key, value} -> {to_string(key), value} end)
+  end
+
+  defp anthropic_fields(opts) do
+    if opts[:formatter_module] == ReqLLM.Providers.AmazonBedrock.Anthropic do
+      %{}
+      |> put_option("top_k", opts[:top_k])
+      |> put_option("anthropic_beta", get_in(opts, [:provider_options, :anthropic_beta]))
+    else
+      %{}
+    end
+  end
+
+  defp add_guardrail_config(request, opts) do
+    opts = Keyword.merge(opts, opts[:provider_options] || [])
+
+    case opts[:guardrail_identifier] do
+      nil ->
+        request
+
+      identifier ->
+        version =
+          opts[:guardrail_version] ||
+            raise ArgumentError, "guardrail_version is required when guardrail_identifier is set"
+
+        config = %{"guardrailIdentifier" => identifier, "guardrailVersion" => version}
+
+        config =
+          case opts[:guardrail_trace] do
+            nil -> config
+            trace -> Map.put(config, "trace", trace)
+          end
+
+        Map.put(request, "guardrailConfig", config)
+    end
+  end
+
+  # Assistant message with tool calls (new ToolCall pattern)
+  defp encode_message(%Message{role: :assistant, tool_calls: tool_calls, content: content} = msg)
+       when is_list(tool_calls) and tool_calls != [] do
+    tool_blocks = Enum.map(tool_calls, &encode_tool_call_to_tool_use/1)
+
+    %{
+      "role" => "assistant",
+      "content" =>
+        with_message_checkpoint(
+          encode_reasoning_details(msg) ++ encode_content(content) ++ tool_blocks,
+          msg
+        )
+    }
+  end
+
+  # Tool result message (new ToolCall pattern)
+  defp encode_message(%Message{role: :tool, tool_call_id: id} = msg) do
+    tool_result = %{
+      "toolResult" =>
+        put_error_status(
+          %{"toolUseId" => id, "content" => encode_tool_result_content(msg)},
+          msg.metadata
+        )
+    }
+
+    checkpoint = PromptCache.explicit_checkpoint(msg) || last_part_checkpoint(msg)
+
+    %{"role" => "user", "content" => [tool_result | List.wrap(checkpoint)]}
+  end
+
+  # Regular message (user, assistant, system) — returns nil if content is
+  # empty after filtering, so the caller can reject it like empty ContentParts.
+  defp encode_message(%Message{role: role, content: content} = msg) do
+    case encode_reasoning_details(msg) ++ encode_content(content) do
+      [] ->
+        nil
+
+      encoded ->
+        %{"role" => Atom.to_string(role), "content" => with_message_checkpoint(encoded, msg)}
+    end
+  end
+
+  defp put_error_status(block, %{is_error: true}), do: Map.put(block, "status", "error")
+  defp put_error_status(block, %{"is_error" => true}), do: Map.put(block, "status", "error")
+  defp put_error_status(block, _metadata), do: block
+
+  defp keep_tool_errors(messages, model_id, opts) do
+    if opts[:formatter_module] == ReqLLM.Providers.AmazonBedrock.Anthropic or
+         model_id =~ ~r{(^|[./])amazon\.},
+       do: messages,
+       else: Enum.map(messages, &drop_tool_error/1)
+  end
+
+  defp drop_tool_error(%Message{role: :tool, metadata: metadata} = msg) when is_map(metadata),
+    do: %{msg | metadata: Map.drop(metadata, [:is_error, "is_error"])}
+
+  defp drop_tool_error(msg), do: msg
+
+  defp with_message_checkpoint([], _msg), do: []
+
+  defp with_message_checkpoint(blocks, msg) do
+    if PromptCache.checkpoint?(List.last(blocks)),
+      do: blocks,
+      else: blocks ++ List.wrap(PromptCache.explicit_checkpoint(msg))
+  end
+
+  defp last_part_checkpoint(%Message{content: content}) when is_list(content) do
+    content |> Enum.reverse() |> Enum.find_value(&PromptCache.explicit_checkpoint/1)
+  end
+
+  defp last_part_checkpoint(_msg), do: nil
+
+  defp encode_reasoning_details(%Message{role: :assistant, reasoning_details: details})
+       when is_list(details) do
+    details
+    |> Enum.filter(&(&1.provider in @replayable_reasoning_providers))
+    |> Enum.sort_by(& &1.index)
+    |> Enum.flat_map(&encode_reasoning_detail/1)
+  end
+
+  defp encode_reasoning_details(_msg), do: []
+
+  defp encode_reasoning_detail(%{provider_data: %{"redactedContent" => data}})
+       when is_binary(data),
+       do: [%{"reasoningContent" => %{"redactedContent" => data}}]
+
+  defp encode_reasoning_detail(%{text: text, signature: signature})
+       when is_binary(text) and is_binary(signature),
+       do: [
+         %{
+           "reasoningContent" => %{"reasoningText" => %{"text" => text, "signature" => signature}}
+         }
+       ]
+
+  defp encode_reasoning_detail(_detail), do: []
+
+  defp encode_content(content) when is_binary(content) do
+    [%{"text" => content}]
+  end
+
+  defp encode_content(content) when is_list(content) do
+    content
+    |> encode_content_parts()
+    |> validate_document_prompt()
+  end
+
+  defp encode_system_content(content) do
+    content
+    |> encode_content_parts()
+    |> validate_system_content()
+  end
+
+  defp encode_content_parts(content) do
+    Enum.flat_map(content, fn part ->
+      case encode_guardable_content_part(part) do
+        nil -> []
+        block -> [block | List.wrap(PromptCache.explicit_checkpoint(part))]
+      end
+    end)
+  end
+
+  defp validate_document_prompt(content) do
+    if Enum.any?(content, &document_block?/1) and not Enum.any?(content, &text_block?/1) do
+      invalid_part("Converse document blocks need a related text prompt in the same message")
+    else
+      content
+    end
+  end
+
+  defp validate_system_content(content) do
+    if Enum.all?(content, &system_content_block?/1) do
+      content
+    else
+      invalid_part("Converse system prompts support text and guarded content only")
+    end
+  end
+
+  defp document_block?(%{"document" => _document}), do: true
+  defp document_block?(_block), do: false
+
+  defp text_block?(%{"text" => text}) when is_binary(text) and text != "", do: true
+  defp text_block?(_block), do: false
+
+  defp system_content_block?(%{"text" => _text}), do: true
+  defp system_content_block?(%{"guardContent" => _guard_content}), do: true
+  defp system_content_block?(%{"cachePoint" => _cache_point}), do: true
+  defp system_content_block?(_block), do: false
+
+  defp encode_guardable_content_part(%ContentPart{type: type, metadata: metadata} = part)
+       when type not in [:text, :image] do
+    case metadata_value(metadata, :guard_content) do
+      hint when hint in [nil, false] -> encode_content_part(part)
+      _hint -> invalid_guard_content("guard_content needs a non-empty text or image part")
+    end
+  end
+
+  defp encode_guardable_content_part(%ContentPart{metadata: metadata} = part) do
+    case {metadata_value(metadata, :guard_content), encode_content_part(part)} do
+      {hint, block} when hint in [nil, false] ->
+        block
+
+      {_hint, nil} ->
+        invalid_guard_content("guard_content needs a non-empty text or image part")
+
+      {true, block} ->
+        guard_content(part, block, [])
+
+      {%{} = opts, block} ->
+        guard_content(part, block, qualifiers(metadata_value(opts, :qualifiers)))
+
+      {_hint, _block} ->
+        invalid_guard_content("guard_content must be a boolean or an options map")
+    end
+  end
+
+  defp encode_unguarded_content_part(%ContentPart{metadata: metadata} = part) do
+    case metadata_value(metadata, :guard_content) do
+      hint when hint in [nil, false] -> encode_content_part(part)
+      _hint -> invalid_guard_content("guard_content is not supported inside tool results")
+    end
+  end
+
+  defp guard_content(%ContentPart{type: :text}, %{"text" => text}, []),
+    do: %{"guardContent" => %{"text" => %{"text" => text}}}
+
+  defp guard_content(%ContentPart{type: :text}, %{"text" => text}, qualifiers),
+    do: %{"guardContent" => %{"text" => %{"text" => text, "qualifiers" => qualifiers}}}
+
+  defp guard_content(%ContentPart{type: :image, media_type: media_type}, block, [])
+       when media_type in ["image/png", "image/jpeg", "image/jpg"],
+       do: %{"guardContent" => block}
+
+  defp guard_content(%ContentPart{type: :image}, _block, _qualifiers),
+    do: invalid_guard_content("guard_content images must be png or jpeg and take no qualifiers")
+
+  defp guard_content(%ContentPart{}, _block, _qualifiers),
+    do: invalid_guard_content("guard_content needs a non-empty text or image part")
+
+  defp qualifiers(nil), do: []
+  defp qualifiers(values) when is_list(values), do: Enum.map(values, &qualifier/1)
+  defp qualifiers(_values), do: invalid_guard_content("guard_content qualifiers must be a list")
+
+  defp qualifier(value) when is_atom(value), do: Atom.to_string(value)
+  defp qualifier(value) when is_binary(value), do: value
+
+  defp qualifier(_value),
+    do: invalid_guard_content("guard_content qualifiers must be atoms or strings")
+
+  defp metadata_value(metadata, key) when is_map(metadata),
+    do: Map.get(metadata, key, Map.get(metadata, Atom.to_string(key)))
+
+  defp invalid_guard_content(parameter),
+    do: raise(ReqLLM.Error.Invalid.Parameter.exception(parameter: parameter))
+
+  defp encode_content_part(%ContentPart{type: :text, text: ""}), do: nil
+
+  defp encode_content_part(%ContentPart{type: :text, text: text}) do
+    %{"text" => text}
+  end
+
+  defp encode_content_part(%ContentPart{type: :thinking}), do: nil
+
+  defp encode_content_part(%ContentPart{} = part) do
+    format = media_format(part)
+    block = block_type(format)
+    %{block => media_block(block, part, format)}
+  end
+
+  defp block_type(format) when format in @image_formats, do: "image"
+  defp block_type(format) when format in @video_formats, do: "video"
+  defp block_type(_format), do: "document"
+
+  defp media_block("document", part, format) do
+    source = encode_source(part)
+
+    %{"name" => document_name(part), "format" => format, "source" => source}
+    |> put_document_options(part)
+  end
+
+  defp media_block(_block, part, format),
+    do: %{"format" => format, "source" => encode_source(part)}
+
+  defp media_format(%ContentPart{media_type: media_type, filename: filename, url: url})
+       when media_type in [nil, "application/octet-stream"] do
+    (filename || url || "")
+    |> Path.extname()
+    |> String.trim_leading(".")
+    |> String.downcase()
+    |> canonical_format()
+  end
+
+  defp media_format(%ContentPart{media_type: media_type}) do
+    [mime | _params] = String.split(media_type, ";")
+    [_type, subtype] = mime |> String.trim() |> String.split("/", parts: 2)
+    canonical_format(subtype)
+  end
+
+  defp canonical_format(format), do: Map.get(@format_aliases, format, format)
+
+  defp encode_source(%ContentPart{data: data}) when is_binary(data),
+    do: %{"bytes" => Base.encode64(data)}
+
+  defp encode_source(%ContentPart{url: "s3://" <> _ = uri, metadata: metadata}) do
+    case metadata_value(metadata, :bucket_owner) do
+      nil -> %{"s3Location" => %{"uri" => uri}}
+      owner -> %{"s3Location" => %{"uri" => uri, "bucketOwner" => owner}}
+    end
+  end
+
+  defp encode_source(%ContentPart{url: url}) when is_binary(url),
+    do: invalid_part("Converse reads s3:// URLs only, got #{url}")
+
+  defp encode_source(%ContentPart{file_id: file_id}) when is_binary(file_id),
+    do: invalid_part("Converse cannot read provider file ids")
+
+  defp document_name(%ContentPart{filename: filename, metadata: metadata}) do
+    (metadata_value(metadata, :title) || filename_stem(filename))
+    |> String.replace(~r/[^A-Za-z0-9 \-()\[\]]+/, " ")
+    |> String.replace(~r/ +/, " ")
+    |> String.slice(0, 200)
+    |> String.trim()
+    |> case do
+      "" -> "Document"
+      name -> name
+    end
+  end
+
+  defp filename_stem(nil), do: ""
+  defp filename_stem(filename), do: filename |> Path.basename() |> Path.rootname()
+
+  defp put_document_options(block, %ContentPart{metadata: metadata}) do
+    block
+    |> put_option("context", metadata_value(metadata, :context))
+    |> put_option("citations", citations_config(metadata_value(metadata, :citations)))
+  end
+
+  defp put_option(block, _key, nil), do: block
+  defp put_option(block, key, value), do: Map.put(block, key, value)
+
+  defp citations_config(nil), do: nil
+  defp citations_config(enabled) when is_boolean(enabled), do: %{"enabled" => enabled}
+
+  defp citations_config(value),
+    do: invalid_part("citations must be a boolean, got #{inspect(value)}")
+
+  defp invalid_part(parameter), do: raise(ReqLLM.Error.Invalid.Parameter, parameter: parameter)
+
+  # Helper to encode ToolCall struct to Converse API toolUse format
+  defp encode_tool_call_to_tool_use(%ToolCall{id: id, function: %{name: name, arguments: args}}) do
+    %{
+      "toolUse" => %{
+        "toolUseId" => id,
+        "name" => name,
+        "input" => Jason.decode!(args)
+      }
+    }
+  end
+
+  defp encode_tool_call_to_tool_use(%{id: id, name: name, arguments: args}) do
+    %{
+      "toolUse" => %{
+        "toolUseId" => id,
+        "name" => name,
+        "input" => decode_tool_arguments(args)
+      }
+    }
+  end
+
+  defp encode_tool_call_to_tool_use(%{"id" => id, "name" => name, "arguments" => args}) do
+    %{
+      "toolUse" => %{
+        "toolUseId" => id,
+        "name" => name,
+        "input" => decode_tool_arguments(args)
+      }
+    }
+  end
+
+  defp decode_tool_arguments(args) when is_binary(args), do: Jason.decode!(args)
+  defp decode_tool_arguments(args) when is_map(args), do: args
+  defp decode_tool_arguments(nil), do: %{}
+
+  # Helper to extract text content from content parts
+  defp extract_text_content(content) when is_binary(content), do: content
+
+  defp extract_text_content(content) when is_list(content) do
+    content
+    |> Enum.find_value(fn
+      %ContentPart{type: :text, text: text} -> text
+      _ -> nil
+    end)
+    |> case do
+      nil -> ""
+      text -> text
+    end
+  end
+
+  defp extract_text_content(_), do: ""
+
+  defp encode_tool_result_content(%Message{content: content})
+       when is_list(content) and content != [] do
+    Enum.map(content, &encode_unguarded_content_part/1)
+  end
+
+  defp encode_tool_result_content(%Message{} = msg) do
+    text = extract_tool_result_text(msg)
+    [%{"text" => text}]
+  end
+
+  defp extract_tool_result_text(%Message{content: content} = msg) do
+    text = extract_text_content(content)
+    output = ReqLLM.ToolResult.output_from_message(msg)
+
+    cond do
+      text != "" -> text
+      output == nil -> ""
+      true -> encode_tool_output(output)
+    end
+  end
+
+  defp encode_tool_output(output) when is_binary(output), do: output
+
+  defp encode_tool_output(output) when is_map(output) or is_list(output),
+    do: Jason.encode!(output)
+
+  defp encode_tool_output(output), do: to_string(output)
+
+  defp parse_message(nil), do: nil
+
+  defp parse_message(message_data) do
+    role = parse_role(message_data["role"])
+    content_blocks = message_data["content"] || []
+
+    # Separate tool calls from regular content
+    {tool_calls, content_parts} = parse_content_with_tool_calls(content_blocks)
+
+    message = %Message{
+      role: role,
+      content: content_parts,
+      reasoning_details: parse_reasoning_details(content_blocks)
+    }
+
+    if tool_calls == [] do
+      message
+    else
+      %{message | tool_calls: tool_calls}
+    end
+  end
+
+  defp parse_reasoning_details(content_blocks) do
+    content_blocks
+    |> Enum.flat_map(fn
+      %{"reasoningContent" => %{"reasoningText" => %{"text" => text} = reasoning}} ->
+        [%{text: text, signature: reasoning["signature"], redacted: nil}]
+
+      %{"reasoningContent" => %{"redactedContent" => data}} ->
+        [%{text: nil, signature: nil, redacted: data}]
+
+      _ ->
+        []
+    end)
+    |> Enum.with_index(&reasoning_detail/2)
+    |> case do
+      [] -> nil
+      details -> details
+    end
+  end
+
+  defp parse_role("user"), do: :user
+  defp parse_role("assistant"), do: :assistant
+  defp parse_role("system"), do: :system
+  defp parse_role("tool"), do: :tool
+  defp parse_role(_), do: :assistant
+
+  # Parse content and separate tool calls from regular content
+  defp parse_content_with_tool_calls(content_blocks) when is_list(content_blocks) do
+    Enum.reduce(content_blocks, {[], []}, fn block, {tool_calls, content_parts} ->
+      case block do
+        %{"toolUse" => tool_use} ->
+          # Convert to ToolCall struct
+          tool_call =
+            ToolCall.new(
+              tool_use["toolUseId"],
+              tool_use["name"],
+              Jason.encode!(tool_use["input"])
+            )
+
+          {[tool_call | tool_calls], content_parts}
+
+        _ ->
+          # Parse as regular content part
+          if part = parse_content_block(block) do
+            {tool_calls, [part | content_parts]}
+          else
+            {tool_calls, content_parts}
+          end
+      end
+    end)
+    |> then(fn {tool_calls, content_parts} ->
+      # Deduplicate tool calls by (name, arguments) pair
+      #
+      # WORKAROUND: Meta Llama models on AWS Bedrock return duplicate tool calls
+      # with identical parameters but different toolUseIds. This is a known issue
+      # with Meta Llama tool calling behavior across multiple platforms.
+      #
+      # References:
+      # - https://stackoverflow.com/questions/79247654/inconsistent-tool-calling-behavior-with-llama-3-1-70b-model-on-aws-bedrock
+      # - https://github.com/meta-llama/llama-models/issues/229
+      #
+      # This deduplication keeps the first occurrence of each unique (name, arguments)
+      # pair and discards duplicates. If this workaround becomes unnecessary, it can
+      # be safely removed without affecting other models.
+      deduplicated_tool_calls =
+        tool_calls
+        |> Enum.reverse()
+        |> Enum.uniq_by(fn tool_call ->
+          {tool_call.function.name, tool_call.function.arguments}
+        end)
+
+      # Log warning if duplicates were removed
+      duplicates_removed = length(tool_calls) - length(deduplicated_tool_calls)
+
+      if duplicates_removed > 0 do
+        require Logger
+
+        Logger.warning(
+          "[ReqLLM] Removed #{duplicates_removed} duplicate tool call(s). " <>
+            "This is a known issue with Meta Llama models on AWS Bedrock. " <>
+            "See: https://github.com/meta-llama/llama-models/issues/229"
+        )
+      end
+
+      {deduplicated_tool_calls, Enum.reverse(content_parts)}
+    end)
+  end
+
+  defp parse_content_with_tool_calls(_), do: {[], []}
+
+  # Parse individual content blocks (excluding tool calls which are handled separately)
+  defp parse_content_block(%{"text" => text}) do
+    # WORKAROUND: Meta Llama models output malformed JSON when confused about tool usage
+    # Strip patterns like {"name": null, "parameters": null}
+    #
+    # Instead of generating proper text responses, Meta Llama models sometimes output
+    # malformed JSON structures with null values when tools are available but shouldn't
+    # be used. This is part of broader tool calling issues with Meta Llama models.
+    #
+    # References:
+    # - https://github.com/ggml-org/llama.cpp/issues/14697 (tool calls as JSON strings)
+    # - Multiple reports of Llama 3/4 returning null/malformed JSON in tool contexts
+    #
+    # This workaround strips the malformed JSON. If this becomes unnecessary, it can
+    # be safely removed without affecting other models.
+    cleaned_text = strip_malformed_tool_json(text)
+
+    if cleaned_text != "" do
+      ContentPart.text(cleaned_text)
+    end
+  end
+
+  defp parse_content_block(%{"reasoningContent" => %{"reasoningText" => %{"text" => text}}}) do
+    ContentPart.thinking(text)
+  end
+
+  defp parse_content_block(%{"reasoningContent" => _redacted}), do: nil
+
+  defp parse_content_block(%{"citationsContent" => block}) do
+    case citation_text(block) do
+      "" -> nil
+      text -> ContentPart.text(text)
+    end
+  end
+
+  defp parse_content_block(%{"image" => _image}) do
+    # Image in response - for now skip
+    nil
+  end
+
+  defp parse_content_block(_), do: nil
+
+  # Strip malformed tool call JSON that some models output when confused about tool usage
+  defp strip_malformed_tool_json(text) when is_binary(text) do
+    trimmed = String.trim(text)
+
+    case trimmed do
+      # Match {"name": null, "parameters": null} or similar variations
+      "{\"name\":" <> rest ->
+        if String.contains?(rest, "null") and String.contains?(rest, "}") do
+          require Logger
+
+          Logger.warning(
+            "[ReqLLM] Stripped malformed tool JSON from response: #{inspect(trimmed)}. " <>
+              "This is a known issue with Meta Llama models outputting null JSON when confused about tool usage. " <>
+              "See: https://github.com/ggml-org/llama.cpp/issues/14697"
+          )
+
+          ""
+        else
+          text
+        end
+
+      _ ->
+        text
+    end
+  end
+
+  defp strip_malformed_tool_json(text), do: text
+
+  defp parse_usage(nil), do: nil
+
+  defp parse_usage(usage) do
+    input = usage["inputTokens"] || 0
+    output = usage["outputTokens"] || 0
+    cache_read = usage["cacheReadInputTokens"] || 0
+    cache_write = usage["cacheWriteInputTokens"] || 0
+
+    %{
+      input_tokens: input,
+      output_tokens: output,
+      total_tokens: input + output,
+      cache_read_tokens: cache_read,
+      cache_write_tokens: cache_write,
+      cached_tokens: cache_read,
+      cache_creation_tokens: cache_write,
+      reasoning_tokens: 0,
+      input_includes_cached: false
+    }
+  end
+
+  defp map_stop_reason("end_turn"), do: :stop
+  defp map_stop_reason("tool_use"), do: :tool_calls
+  defp map_stop_reason("max_tokens"), do: :length
+  defp map_stop_reason("model_context_window_exceeded"), do: :length
+  defp map_stop_reason("stop_sequence"), do: :stop
+  defp map_stop_reason("content_filtered"), do: :content_filter
+  defp map_stop_reason("guardrail_intervened"), do: :content_filter
+  defp map_stop_reason("malformed_model_output"), do: :error
+  defp map_stop_reason("malformed_tool_use"), do: :error
+  defp map_stop_reason(_), do: :unknown
+end

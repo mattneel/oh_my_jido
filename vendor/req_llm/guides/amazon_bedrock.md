@@ -1,0 +1,291 @@
+# Amazon Bedrock
+
+Access AWS Bedrock's unified API for multiple AI model families including Anthropic Claude, Cohere Command R, OpenAI OSS, and Meta Llama.
+
+## Configuration
+
+AWS Bedrock supports two authentication methods: **API Keys** (introduced July 2025) for simplified development, and traditional **IAM credentials** with AWS Signature V4.
+
+### API Keys (Simplest)
+
+Generate short-term (up to 12 hours) or long-term API keys from the Bedrock console.
+
+**Environment Variable:**
+
+```bash
+AWS_BEARER_TOKEN_BEDROCK=your-api-key
+AWS_REGION=us-east-1
+```
+
+## Model Specs
+
+For the full model-spec workflow, see [Model Specs](model-specs.md).
+
+Use exact Bedrock IDs from [LLM Catalog](https://llmcatalog.dev) when possible. The canonical ReqLLM provider prefix is `amazon_bedrock:`. For inference profiles, custom deployments, or new Bedrock model IDs, use a full explicit model spec when the registry has not caught up yet.
+
+An [application inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-create.html) is addressed by its ARN. Name the model it serves and pass the ARN as a provider option, so the request goes through the profile while capabilities and pricing come from the model:
+
+```elixir
+ReqLLM.generate_text(
+  "amazon_bedrock:anthropic.claude-sonnet-4-5-20250929-v1:0",
+  "Hello",
+  provider_options: [inference_profile_arn: "arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/abcdef123456"]
+)
+```
+
+Declare the model the profile actually serves. On the Invoke API, Bedrock rejects a request body built for another model family, but not one built for a sibling model; pricing follows the declaration.
+
+The ARN also works as the model id itself (`amazon_bedrock:arn:aws:bedrock:…`); it then names no model family, so requests go through the Converse API and no pricing is known.
+
+**Provider Options:**
+
+```elixir
+ReqLLM.generate_text(
+  "amazon_bedrock:anthropic.claude-3-sonnet-20240229-v1:0",
+  "Hello",
+  provider_options: [api_key: "your-api-key", region: "us-east-1"]
+)
+```
+
+**Limitations**: Cannot be used with InvokeModelWithBidirectionalStream, Agents, or Data Automation operations.
+
+**Recommendation**: Use short-term keys for production, long-term keys for exploration only.
+
+### IAM Credentials
+
+Traditional AWS authentication using IAM access keys with Signature V4.
+
+#### Option 1: Environment Variables
+
+```bash
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_REGION=us-east-1
+```
+
+#### Option 2: ReqLLM Keys (Composite Key)
+
+```elixir
+ReqLLM.put_key(:aws_bedrock, %{
+  access_key_id: "AKIA...",
+  secret_access_key: "...",
+  region: "us-east-1"
+})
+```
+
+#### Option 3: Provider Options
+
+```elixir
+ReqLLM.generate_text(
+  "amazon_bedrock:anthropic.claude-3-sonnet-20240229-v1:0",
+  "Hello",
+  provider_options: [
+    region: "us-east-1",
+    access_key_id: "AKIA...",
+    secret_access_key: "..."
+  ]
+)
+```
+
+#### Temporary Credentials (STS AssumeRole)
+
+Session tokens from AWS Security Token Service (STS) for temporary access:
+
+```elixir
+provider_options: [
+  access_key_id: "ASIA...",
+  secret_access_key: "...",
+  session_token: "FwoGZXIv...",  # From STS AssumeRole
+  region: "us-east-1"
+]
+```
+
+## Provider Options
+
+Passed via `:provider_options` keyword:
+
+### `api_key`
+
+- **Type**: String
+- **Purpose**: Bedrock API key for simplified authentication
+- **Fallback**: `AWS_BEARER_TOKEN_BEDROCK` env var
+- **Example**: `provider_options: [api_key: "your-api-key"]`
+- **Note**: Alternative to IAM credentials (access_key_id/secret_access_key)
+
+### `region`
+
+- **Type**: String
+- **Default**: `"us-east-1"`
+- **Purpose**: AWS region where Bedrock is available
+- **Example**: `provider_options: [region: "us-west-2"]`
+
+### `access_key_id`
+
+- **Type**: String
+- **Purpose**: AWS Access Key ID
+- **Fallback**: `AWS_ACCESS_KEY_ID` env var
+- **Example**: `provider_options: [access_key_id: "AKIA..."]`
+
+### `secret_access_key`
+
+- **Type**: String
+- **Purpose**: AWS Secret Access Key
+- **Fallback**: `AWS_SECRET_ACCESS_KEY` env var
+- **Example**: `provider_options: [secret_access_key: "..."]`
+
+### `session_token`
+
+- **Type**: String
+- **Purpose**: AWS Session Token for temporary credentials
+- **Example**: `provider_options: [session_token: "..."]`
+
+### `use_converse`
+
+- **Type**: Boolean
+- **Purpose**: Force use of Bedrock Converse API
+- **Default**: Auto-detect based on tools presence
+- **Example**: `provider_options: [use_converse: true]`
+
+### `endpoint`
+
+- **Type**: `:runtime` | `:mantle`
+- **Purpose**: Bedrock endpoint the request goes to
+- **Default**: `:runtime`
+- **Example**: `provider_options: [endpoint: :mantle]`
+
+### `project`
+
+- **Type**: String
+- **Purpose**: bedrock-mantle project the request is attributed to
+- **Example**: `provider_options: [endpoint: :mantle, project: "proj_5d5ykleja6cwpirysbb7"]`
+
+### `mantle_base_path`
+
+- **Type**: `"/v1"` | `"/openai/v1"`
+- **Purpose**: Base path of the Chat Completions route on bedrock-mantle; each [model card](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) states it
+- **Default**: `/openai/v1` for `openai.gpt-5*`, `google.gemma-4*` and `xai.*` models, `/v1` for every other family
+- **Example**: `provider_options: [endpoint: :mantle, mantle_base_path: "/openai/v1"]` for a model not covered by the default
+
+### `additional_model_request_fields`
+
+- **Type**: Map
+- **Purpose**: Additional model-specific request fields
+- **Example**: `provider_options: [additional_model_request_fields: %{thinking: %{type: "enabled", budget_tokens: 4096}}]`
+- **Use Case**: Claude extended thinking configuration
+
+### `guardrail_identifier`
+
+- **Type**: String
+- **Purpose**: [Amazon Bedrock Guardrail](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html) ID or ARN applied to the request (bedrock-runtime only)
+- **Example**: `provider_options: [guardrail_identifier: "abc123def456", guardrail_version: "1"]`
+
+### `guardrail_version`
+
+- **Type**: String
+- **Purpose**: Guardrail version, `"DRAFT"` or a published number. Required with `guardrail_identifier`
+- **Example**: `provider_options: [guardrail_identifier: "abc123def456", guardrail_version: "DRAFT"]`
+
+### `guardrail_trace`
+
+- **Type**: `"enabled"` | `"disabled"` | `"enabled_full"`
+- **Purpose**: How much guardrail assessment detail Bedrock returns
+- **Example**: `provider_options: [guardrail_identifier: "abc123def456", guardrail_version: "1", guardrail_trace: "enabled"]`
+
+### `service_tier`
+
+- **Type**: `"priority"` | `"default"` | `"flex"` | `"reserved"`
+- **Purpose**: [Service tier](https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html) the request runs on; omitted when `"default"`
+- **Example**: `provider_options: [service_tier: "flex"]`
+
+### Prompt Caching
+
+ReqLLM emits `cachePoint` blocks on Converse and `cache_control` on InvokeModel and the Mantle Messages API. On Converse, `cache_control` metadata on a content part or a message adds an explicit checkpoint without enabling automatic caching, and a hint on a tool result lands after the enclosing result. Automatic tools checkpoints are skipped for `amazon.*` model ids. Caching does not change routing. Cache reads appear in `usage.cached_tokens`, writes in `usage.cache_creation_tokens`, and AWS's `cacheDetails` under `provider_meta.cache_details`. The `anthropic_*` names remain aliases. Model support, limits and TTLs are in [AWS prompt caching](https://docs.aws.amazon.com/bedrock/latest/userguide/prompt-caching.html).
+
+- `prompt_cache`: enable automatic checkpoints after the tools and the system prompt.
+- `prompt_cache_ttl`: `"5m"` or `"1h"` for automatic checkpoints; omitted when unset.
+- `cache_messages`: also mark a message; `true` or `-1` the last, `0` the first.
+
+```elixir
+ReqLLM.generate_text(model, context,
+  provider_options: [use_converse: true, prompt_cache: true, prompt_cache_ttl: "1h", cache_messages: true]
+)
+```
+
+## Attachments
+
+On the Converse API, `file`, `image`, `image_url` and `video_url` parts are sent as [document, image and video blocks](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html#converse-messages) according to their media type. A message with a document must also have a related text prompt. Attachments are not supported in system prompts. A document is named after its `title` metadata or its filename. If that name is empty after cleanup, ReqLLM uses `Document`. Sources are inline bytes or an `s3://` URL, with `bucket_owner` metadata when another account owns the bucket. `citations: true` metadata enables document citations, returned through `ReqLLM.Response.annotations/1`. Each citation includes `"start_index"` (inclusive) and `"end_index"` (exclusive) in the generated text returned by `ReqLLM.Response.text/1`. These zero-based offsets count Unicode code points. The original `"location"` still refers to the source document. Streamed citations are emitted when the cited text block ends, so their ranges are complete.
+
+## Guarding content parts
+
+On the Converse API, `guard_content` metadata on a content part wraps it in a `guardContent` block. Which policies then skip the unmarked parts is up to the guardrail, see [selective guarding](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails-use-converse-api.html#guardrails-use-converse-api-call-message).
+
+```elixir
+ReqLLM.generate_text(
+  model,
+  ReqLLM.Context.user([
+    ReqLLM.Message.ContentPart.text("London is the capital of UK. Tokyo is the capital of Japan.",
+      %{guard_content: %{qualifiers: [:grounding_source]}}
+    ),
+    ReqLLM.Message.ContentPart.text("What is the capital of Japan?", %{guard_content: %{qualifiers: [:query]}})
+  ]),
+  provider_options: [use_converse: true, guardrail_identifier: "abc123def456", guardrail_version: "1"]
+)
+```
+
+Text and PNG or JPEG image parts, in messages and system prompts. InvokeModel has no equivalent, so the hint is ignored there.
+
+## Supported Model Families
+
+### Anthropic Claude
+
+- **All capabilities**: Tool calling, streaming with tools, attachments, reasoning, prompt caching
+- **Inference profiles**: Supports region-specific routing (`global.`, `us.`, `eu.`)
+- **Models**: Claude 3.x, 4.x (Sonnet, Opus, Haiku)
+- **Example**: `amazon_bedrock:global.anthropic.claude-sonnet-4-6`
+
+### Cohere Command R/R+
+
+- **Tool calling**: Full support including streaming with tools
+- **RAG-optimized**: Excellent for production RAG workloads with citations
+- **Works with Converse API** directly without custom formatter
+- **Example**: `amazon_bedrock:cohere.command-r-plus-v1:0`
+
+### OpenAI OSS
+
+- **Smart routing**: Native `/invoke` for simple requests, `/converse` when tools present
+- **Tool calling**: Full support in non-streaming mode
+- **Models**: gpt-oss-20b, gpt-oss-120b
+- **Example**: `amazon_bedrock:openai.gpt-oss-120b-1:0`
+
+### Meta Llama
+
+- **Inference profiles only**: us.meta.llama3-2-3b-instruct-v1:0
+- **No tool calling**: Basic text generation only
+- **Example**: `amazon_bedrock:us.meta.llama3-2-3b-instruct-v1:0`
+
+## Wire Format Notes
+
+- **Streaming**: AWS Event Stream format (binary framed, not SSE)
+- **Auth**: AWS Signature V4 with **5-minute signature expiry**
+- **Endpoints**: Model-specific paths (`/model/{model_id}/invoke` or `/converse`)
+- **API Routing**: Auto-detects between native and Converse API based on tools
+
+All differences handled automatically by ReqLLM.
+
+### AWS Signature V4 Limitations
+
+AWS Signature V4 has a **hardcoded 5-minute expiry** that cannot be extended:
+
+- AWS validates signatures when **responding**, not when receiving requests
+- Requests taking >5 minutes fail with **HTTP 403 "Signature expired"**
+- **Real-world impact**: Slow models with large outputs can timeout
+  - Example: Claude Opus 4.1 with extended thinking + high token limits
+  - Recording `token_limit.json` fixture took >6 minutes → 403 error
+
+**Workaround**: Use faster model variants or lower token limits for time-critical applications.
+
+## Resources
+
+- [AWS Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)
+- [Bedrock Runtime API](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Welcome.html)
+- [AWS Signature V4 Documentation](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_aws-signing.html)

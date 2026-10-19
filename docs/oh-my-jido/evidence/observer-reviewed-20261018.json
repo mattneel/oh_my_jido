@@ -1,0 +1,15 @@
+{
+  "recorded_date": "2026-10-18",
+  "scope": "Reviewed native headless Observer verification, with passing final library integration gates",
+  "behavior_tests": {"observer_passed": 11, "combined_live_tools_passed": 25, "strict_credo_issues": 0, "evidence": "artifact://496"},
+  "process_iterator_smoke": {"fixture_processes": 5000, "observed_total": 5218, "requested_limit": 1, "returned": 1, "truncated": true, "native_otp_iterator": true},
+  "native_failure_regression": {
+    "before": "Disposable VM application_controller suspension caused snapshot caller timeout exit",
+    "after": "Same native controller suspension returns {:error, :observer_timeout} without exiting caller",
+    "evidence": ["failed-before native smoke bg_54", "post-fix native smoke bg_60"]
+  },
+  "registered_action_smoke": {"verified": true, "evidence": "artifact://496", "inventory_limit_and_count": 3, "private_state_and_table_contents_excluded": true, "permission_denied_without_observe": true, "gui_started": false},
+  "separate_node_smoke": {"verified": true, "evidence": "artifact://500", "current_source_compiled_and_loaded_on_target": true, "actual_started_application": true, "transport": "fixed native erpc collector", "distinct_target_vm": true, "target_state_unchanged": true, "private_state_and_table_contents_excluded": true, "target_exit_reported": true, "owned_peer_client_and_loopback_epmd_stopped": true},
+  "final_integration": {"full_quality_gate": "artifact://546", "tests_passed": 462, "density_and_schema": "library-acceptance-20261019.json"},
+  "limitations": ["Live snapshots are non-atomic", "Process inventory requires OTP28+ iterator support; no whole-table fallback", "No arbitrary RPC/evaluator or implicit distribution/cookie changes are supplied by the adapter"]
+}

@@ -1,0 +1,1085 @@
+defmodule ReqLLM.Images.OpenAICompatible do
+  @moduledoc """
+  Shared codec for providers that speak the OpenAI Images wire format.
+
+  Currently used by `ReqLLM.Providers.OpenAI` (via
+  `ReqLLM.Providers.OpenAI.ImagesAPI`) and `ReqLLM.Providers.Azure`. It owns the
+  encoding rules — option translation, body/multipart construction, and response
+  decoding — so no provider has to restate them.
+
+  ## Option pipeline
+
+  Options flow through two steps in a fixed order, and each step has exactly one
+  job:
+
+      1. validate_options/1   reject what no translation can express
+      2. translate_options/2  resolve, drop, and warn on validated input
+
+  `validate_options/1` runs *before* `ReqLLM.Provider.Options.process/4`, so
+  `translate_options/2` — which `process/4` invokes through the provider's
+  `c:ReqLLM.Provider.translate_options/3` callback — only ever sees input it can
+  express. That ordering is why `translate_options/2` may return `{opts,
+  warnings}` and never an error: everything unrepresentable was already
+  rejected, and everything else is a lossy-but-valid transformation reported as
+  a warning through `:on_unsupported`.
+
+  `translate_options/2` also scopes the model-specific fields: the gpt-image-only
+  `:background`, `:moderation`, `:output_compression`, and `:input_fidelity`, and
+  the DALL-E-only `response_format: :url`, are dropped with a warning when the
+  target model or endpoint has no field for them.
+
+  ## Wire format
+
+  Generation is a JSON POST to `path(:generation)`; editing is a multipart POST
+  to `path(:edit)`, signalled by a non-nil `:source_image`.
+
+  Streaming generation is the same POST with `"stream": true` and an optional
+  `"partial_images"` count, answered as SSE. Each `data:` line is a JSON object:
+  `image_generation.partial_image` events carry a preview frame
+  (`b64_json`, `partial_image_index`, and the echoed `size`, `quality`,
+  `background`, `output_format`), and the terminal `image_generation.completed`
+  event carries the final image plus `usage`. Preview frames are opaque even
+  when `background` is `transparent`. `decode_stream_event/2` turns those
+  events into `ReqLLM.StreamChunk`s.
+  """
+
+  alias ReqLLM.Context
+  alias ReqLLM.Message
+  alias ReqLLM.Message.ContentPart
+  alias ReqLLM.Response
+  alias ReqLLM.StreamChunk
+
+  # The Images API exposes orientation through a fixed set of sizes rather than a
+  # free-form aspect ratio, so a requested ratio is resolved to the nearest size
+  # the model family actually offers.
+  @sizes_by_family %{
+    "gpt-image" => ["1024x1024", "1536x1024", "1024x1536"],
+    "dall-e-3" => ["1024x1024", "1792x1024", "1024x1792"],
+    "dall-e-2" => ["256x256", "512x512", "1024x1024"]
+  }
+
+  # Generic image options with no Images API equivalent. Sending them anyway
+  # makes the API reject the whole request with `unknown_parameter`, so they are
+  # dropped up front with a warning that says what to do instead.
+  @unsupported_options [
+    seed: "the Images API does not accept a random seed",
+    negative_prompt:
+      "the Images API has no negative prompt - describe what to avoid in the prompt itself"
+  ]
+
+  # Fields only the gpt-image family accepts; DALL-E rejects the whole request
+  # when they are present.
+  @gpt_image_only_options [
+    background: "only gpt-image models accept a background",
+    moderation: "only gpt-image models accept a moderation level",
+    output_compression: "only gpt-image models accept output compression",
+    input_fidelity: "only gpt-image models accept input fidelity"
+  ]
+
+  # Image parameters that can reach the wire, listed explicitly rather than
+  # derived by subtracting plumbing keys from the schema. A denylist would make
+  # any new plumbing option added to ReqLLM.Images silently become a request
+  # option; an allowlist keeps that decision deliberate.
+  @wire_option_keys [
+    :n,
+    :size,
+    :aspect_ratio,
+    :output_format,
+    :response_format,
+    :quality,
+    :style,
+    :background,
+    :moderation,
+    :output_compression,
+    :input_fidelity,
+    :seed,
+    :negative_prompt,
+    :source_image,
+    :source_image_media_type,
+    :mask,
+    :mask_media_type,
+    :user,
+    :stream,
+    :partial_images
+  ]
+
+  @plumbing_option_keys [
+    :provider_options,
+    :req_http_options,
+    :telemetry,
+    :receive_timeout,
+    :total_timeout,
+    :stream_idle_timeout,
+    :max_retries,
+    :on_unsupported,
+    :fixture
+  ]
+
+  @image_schema_keys ReqLLM.Images.schema().schema |> Keyword.keys()
+  @unknown_option_keys (@wire_option_keys ++ @plumbing_option_keys) -- @image_schema_keys
+  @unclassified_option_keys @image_schema_keys -- (@wire_option_keys ++ @plumbing_option_keys)
+
+  case {@unknown_option_keys, @unclassified_option_keys} do
+    {[], []} ->
+      :ok
+
+    {unknown, unclassified} ->
+      raise CompileError,
+        description:
+          "#{inspect(__MODULE__)} image option classification is out of date; " <>
+            "unknown: #{inspect(unknown)}, unclassified: #{inspect(unclassified)}"
+  end
+
+  # :prompt is derived from the context rather than passed as an option, so it
+  # is not in the Images schema but still has to be registered on the request.
+  @request_option_keys [:prompt | @wire_option_keys]
+
+  @doc """
+  Endpoint path for an image `:generation` or `:edit`.
+
+  Providers that mount the Images API under a different prefix (Azure's
+  deployment-scoped routes) build on top of these suffixes.
+  """
+  @spec path(:generation | :edit) :: String.t()
+  def path(:generation), do: "/images/generations"
+  def path(:edit), do: "/images/edits"
+
+  @doc """
+  Image option keys providers should register on the Req request.
+
+  Covers every option that can reach the wire, plus `:prompt`. Plumbing options
+  (`:provider_options`, `:receive_timeout`, …) are deliberately excluded —
+  request-building layers register and merge those themselves.
+  """
+  @spec request_option_keys() :: [atom()]
+  def request_option_keys, do: @request_option_keys
+
+  @doc """
+  Rejects image options the Images API cannot express under any translation.
+
+  Run this *before* `ReqLLM.Provider.Options.process/4`, so that
+  `translate_options/2` receives only representable input. Rejects a malformed
+  `:aspect_ratio`, a `:mask` without a `:source_image`, and a `:transparent`
+  background with `:jpeg` output (JPEG has no alpha channel); a well-formed
+  `:aspect_ratio` is left for `translate_options/2` to resolve.
+  """
+  @spec validate_options(keyword()) :: :ok | {:error, Exception.t()}
+  def validate_options(opts) when is_list(opts) do
+    with :ok <- validate_mask(opts),
+         :ok <- validate_background(opts) do
+      validate_aspect_ratio(opts)
+    end
+  end
+
+  @doc """
+  Rejects image options the streaming generations endpoint cannot serve.
+
+  Streaming is generation-only (`:source_image` selects the multipart edits
+  endpoint, which has no SSE form) and single-image (`:n` must be 1 when set).
+  `ReqLLM.Images.stream_image/3` runs this before starting the stream, and the
+  OpenAI and Azure `attach_stream/4` image paths run it again so a direct
+  `ReqLLM.Streaming.start_stream/4` caller gets the same guarantees.
+  """
+  @spec validate_stream_options(keyword()) :: :ok | {:error, Exception.t()}
+  def validate_stream_options(opts) when is_list(opts) do
+    cond do
+      image_edit?(opts) ->
+        {:error,
+         ReqLLM.Error.Invalid.Parameter.exception(
+           parameter:
+             "source_image: streaming image edits are not supported; use generate_image/3"
+         )}
+
+      Keyword.get(opts, :n) not in [nil, 1] ->
+        {:error,
+         ReqLLM.Error.Invalid.Parameter.exception(
+           parameter:
+             "n: streaming generates a single image, got #{inspect(Keyword.get(opts, :n))}"
+         )}
+
+      true ->
+        :ok
+    end
+  end
+
+  @doc """
+  Whether a model id (or `LLMDB.Model`) is in the gpt-image family, the only
+  Images API models that serve streaming generations.
+
+  Matches by catalog family metadata or by the `gpt-image` id prefix, on the
+  provider model id when set. Used both to gate `ReqLLM.Images.stream_image/3`
+  and to route provider `decode_stream_event/3` callbacks to
+  `decode_stream_event/2`.
+  """
+  @spec gpt_image_model?(LLMDB.Model.t() | String.t() | nil) :: boolean()
+  def gpt_image_model?(%LLMDB.Model{} = model) do
+    match?(%{family: "gpt-image"}, model.extra) or
+      gpt_image_model?(model.provider_model_id || model.id)
+  end
+
+  def gpt_image_model?(model_id) when is_binary(model_id),
+    do: String.starts_with?(model_id, "gpt-image")
+
+  def gpt_image_model?(_), do: false
+
+  defp validate_background(opts) do
+    background = Keyword.get(opts, :background)
+    output_format = Keyword.get(opts, :output_format)
+
+    if background in [:transparent, "transparent"] and output_format in [:jpeg, "jpeg"] do
+      {:error,
+       ReqLLM.Error.Invalid.Parameter.exception(
+         parameter:
+           "background: :transparent requires output_format :png or :webp, got #{inspect(output_format)}"
+       )}
+    else
+      :ok
+    end
+  end
+
+  defp validate_mask(opts) do
+    if not is_nil(Keyword.get(opts, :mask)) and is_nil(Keyword.get(opts, :source_image)) do
+      {:error,
+       ReqLLM.Error.Invalid.Parameter.exception(
+         parameter: "mask: :mask requires a :source_image to edit"
+       )}
+    else
+      :ok
+    end
+  end
+
+  defp validate_aspect_ratio(opts) do
+    case Keyword.get(opts, :aspect_ratio) do
+      nil ->
+        :ok
+
+      ratio ->
+        case parse_aspect_ratio(ratio) do
+          {:ok, _dimensions} ->
+            :ok
+
+          :error ->
+            {:error,
+             ReqLLM.Error.Invalid.Parameter.exception(
+               parameter:
+                 "aspect_ratio: expected a ratio like \"16:9\" or \"1:1\", got #{inspect(ratio)}"
+             )}
+        end
+    end
+  end
+
+  @doc """
+  Translates generic image options into what the Images API accepts.
+
+  Returns `{opts, warnings}` in the shape the `c:ReqLLM.Provider.translate_options/3`
+  callback expects, so providers sharing this codec route through it and the
+  transformations surface through `:on_unsupported`.
+
+  Drops options the API has no field for (`:seed`, `:negative_prompt`, and
+  `:style` outside DALL-E 3), maps the DALL-E quality names (`:standard`/`:hd`)
+  onto the gpt-image ones, and resolves `:aspect_ratio` into the nearest `:size`
+  the model offers — the only place that resolution happens.
+
+  The gpt-image-only fields are scoped the same way: `:background`,
+  `:moderation`, `:output_compression`, and `:input_fidelity` are dropped for
+  DALL-E; `:output_compression` is dropped for `:png` output; `:moderation` is
+  dropped for edits (the edits endpoint has no such field); `:input_fidelity` is
+  dropped for generations and for gpt-image-1-mini (gpt-image-2 accepts and
+  ignores it); `response_format: :url` is dropped for gpt-image, which only ever
+  returns image bytes.
+
+  Assumes `validate_options/1` has already run: a malformed `:aspect_ratio` is
+  left untouched rather than raising, since it should never get this far.
+
+  `model_id` must be the catalog model id, since the accepted fields and sizes
+  differ between the gpt-image and DALL-E families.
+  """
+  @spec translate_options(keyword(), String.t() | nil) :: {keyword(), [String.t()]}
+  def translate_options(opts, model_id) when is_list(opts) do
+    {opts, []}
+    |> drop_unsupported_options()
+    |> translate_quality(model_id)
+    |> drop_unsupported_style(model_id)
+    |> translate_aspect_ratio(model_id)
+    |> drop_gpt_image_only_options(model_id)
+    |> drop_output_compression_for_png()
+    |> drop_generation_only_options()
+    |> drop_edit_only_options(model_id)
+    |> drop_url_response_format(model_id)
+  end
+
+  defp drop_unsupported_options({opts, warnings}) do
+    drop_with_reasons({opts, warnings}, @unsupported_options)
+  end
+
+  defp drop_gpt_image_only_options({opts, warnings}, model_id) do
+    if model_family(model_id) == "gpt-image" do
+      {opts, warnings}
+    else
+      drop_with_reasons({opts, warnings}, @gpt_image_only_options)
+    end
+  end
+
+  defp drop_output_compression_for_png({opts, warnings}) do
+    compression = Keyword.get(opts, :output_compression)
+    output_format = Keyword.get(opts, :output_format)
+
+    if is_nil(compression) or output_format in [:jpeg, "jpeg", :webp, "webp"] do
+      {opts, warnings}
+    else
+      {Keyword.delete(opts, :output_compression),
+       warnings ++
+         [
+           ":output_compression dropped - only :jpeg and :webp output is compressed; pass output_format: :jpeg or :webp"
+         ]}
+    end
+  end
+
+  defp drop_generation_only_options({opts, warnings}) do
+    if image_edit?(opts) and not is_nil(Keyword.get(opts, :moderation)) do
+      {Keyword.delete(opts, :moderation),
+       warnings ++ [":moderation dropped - the Images edits endpoint has no moderation field"]}
+    else
+      {opts, warnings}
+    end
+  end
+
+  defp drop_edit_only_options({opts, warnings}, model_id) do
+    cond do
+      is_nil(Keyword.get(opts, :input_fidelity)) ->
+        {opts, warnings}
+
+      not image_edit?(opts) ->
+        {Keyword.delete(opts, :input_fidelity),
+         warnings ++
+           [":input_fidelity dropped - it only applies to image edits (pass :source_image)"]}
+
+      mini_model?(model_id) ->
+        {Keyword.delete(opts, :input_fidelity),
+         warnings ++ [":input_fidelity dropped - gpt-image-1-mini does not support it"]}
+
+      true ->
+        {opts, warnings}
+    end
+  end
+
+  defp drop_url_response_format({opts, warnings}, model_id) do
+    if Keyword.get(opts, :response_format) in [:url, "url"] and
+         not supports_response_format?(model_id) do
+      {Keyword.delete(opts, :response_format),
+       warnings ++
+         [
+           ":response_format :url dropped - only DALL-E models return URLs; gpt-image models always return image bytes"
+         ]}
+    else
+      {opts, warnings}
+    end
+  end
+
+  defp mini_model?(model_id) when is_binary(model_id), do: String.contains?(model_id, "mini")
+  defp mini_model?(_model_id), do: false
+
+  defp drop_with_reasons({opts, warnings}, reasons) do
+    Enum.reduce(reasons, {opts, warnings}, fn {key, reason}, {opts, warnings} ->
+      if is_nil(Keyword.get(opts, key)) do
+        {opts, warnings}
+      else
+        {Keyword.delete(opts, key), warnings ++ [":#{key} dropped - #{reason}"]}
+      end
+    end)
+  end
+
+  # gpt-image models take auto/low/medium/high (gpt-image-2.5 adds xhigh/max),
+  # not the DALL-E standard/hd names the generic schema also allows; map those
+  # the same way the usage decoder does.
+  defp translate_quality({opts, warnings}, model_id) do
+    quality = Keyword.get(opts, :quality)
+    mapped = dall_e_quality_to_gpt_image(quality)
+
+    if model_family(model_id) == "gpt-image" and not is_nil(mapped) do
+      {Keyword.put(opts, :quality, mapped),
+       warnings ++
+         [
+           ":quality #{inspect(quality)} translated to #{inspect(mapped)} - gpt-image models take :low/:medium/:high"
+         ]}
+    else
+      {opts, warnings}
+    end
+  end
+
+  defp dall_e_quality_to_gpt_image(quality) when quality in [:standard, "standard"], do: "medium"
+  defp dall_e_quality_to_gpt_image(quality) when quality in [:hd, "hd"], do: "high"
+  defp dall_e_quality_to_gpt_image(_quality), do: nil
+
+  defp drop_unsupported_style({opts, warnings}, model_id) do
+    if is_nil(Keyword.get(opts, :style)) or model_family(model_id) == "dall-e-3" do
+      {opts, warnings}
+    else
+      {Keyword.delete(opts, :style),
+       warnings ++ [":style dropped - only DALL-E 3 models accept a style"]}
+    end
+  end
+
+  defp translate_aspect_ratio({opts, warnings}, model_id) do
+    case {Keyword.get(opts, :aspect_ratio), Keyword.get(opts, :size)} do
+      {nil, _size} ->
+        {opts, warnings}
+
+      {ratio, nil} ->
+        case nearest_size(ratio, model_id) do
+          {:ok, size, size_warnings} ->
+            {opts |> Keyword.delete(:aspect_ratio) |> Keyword.put(:size, size),
+             warnings ++ size_warnings}
+
+          :error ->
+            {opts, warnings}
+        end
+
+      {_ratio, _size} ->
+        {Keyword.delete(opts, :aspect_ratio), warnings}
+    end
+  end
+
+  # Nearest offered size by aspect ratio (log-scale so 4:3 and 3:4 are equally
+  # far from square), preferring the larger size on ties. Warns when the family
+  # cannot match the requested orientation at all (DALL-E 2 only offers squares).
+  defp nearest_size(ratio, model_id) do
+    with {:ok, {width, height}} <- parse_aspect_ratio(ratio) do
+      family = model_family(model_id)
+      offered = Map.fetch!(@sizes_by_family, family) |> Enum.map(&{&1, parse_size(&1)})
+      requested = :math.log(width / height)
+
+      {size, {w, h}} =
+        Enum.min_by(offered, fn {_size, {w, h}} ->
+          {abs(requested - :math.log(w / h)), -(w * h)}
+        end)
+
+      wanted = orientation(width, height)
+
+      warnings =
+        cond do
+          orientation(w, h) == wanted ->
+            []
+
+          Enum.any?(offered, fn {_size, {w, h}} -> orientation(w, h) == wanted end) ->
+            [
+              "aspect_ratio #{inspect(ratio)} resolved to #{size}, the nearest size " <>
+                "#{family} offers - pass :size directly for an exact shape"
+            ]
+
+          true ->
+            [
+              "#{family} models offer no #{wanted} size - " <>
+                "using #{size} for aspect_ratio #{inspect(ratio)}"
+            ]
+        end
+
+      {:ok, size, warnings}
+    end
+  end
+
+  defp orientation(width, height) do
+    cond do
+      width == height -> :square
+      width > height -> :landscape
+      true -> :portrait
+    end
+  end
+
+  defp parse_size(size) do
+    [width, height] = String.split(size, "x")
+    {String.to_integer(width), String.to_integer(height)}
+  end
+
+  defp parse_aspect_ratio(ratio) when is_binary(ratio) do
+    with [width, height] <- String.split(ratio, ":", parts: 2),
+         {width, ""} <- Integer.parse(String.trim(width)),
+         {height, ""} <- Integer.parse(String.trim(height)),
+         true <- width > 0 and height > 0 do
+      {:ok, {width, height}}
+    else
+      _ -> :error
+    end
+  end
+
+  defp parse_aspect_ratio(_ratio), do: :error
+
+  # Unknown ids fall back to the gpt-image family: new image models join it,
+  # and the DALL-E ones are frozen.
+  defp model_family(model_id) when is_binary(model_id) do
+    Enum.find(Map.keys(@sizes_by_family), "gpt-image", &String.starts_with?(model_id, &1))
+  end
+
+  defp model_family(_model_id), do: "gpt-image"
+
+  @doc """
+  Returns true when the options describe an image *edit* rather than a generation.
+
+  An edit is signalled by a non-nil `:source_image`. An explicitly nil
+  `:source_image` is treated as a generation, since a multipart edit request
+  cannot be built without image bytes.
+  """
+  @spec image_edit?(keyword() | map()) :: boolean()
+  def image_edit?(opts) when is_list(opts), do: Keyword.get(opts, :source_image) != nil
+  def image_edit?(opts) when is_map(opts), do: Map.get(opts, :source_image) != nil
+
+  @doc """
+  Normalizes image generation input into a `{:ok, context, prompt}` tuple.
+
+  Uses an existing `:context` option when present, otherwise normalizes the
+  prompt/messages input. The prompt is the text content of the last user
+  message; an empty prompt is an error.
+  """
+  @spec image_context(term(), keyword()) ::
+          {:ok, Context.t(), String.t()} | {:error, term()}
+  def image_context(prompt_or_messages, opts) do
+    context_result =
+      case Keyword.get(opts, :context) do
+        %Context{} = context -> {:ok, context}
+        _ -> Context.normalize(prompt_or_messages, opts)
+      end
+
+    with {:ok, context} <- context_result,
+         {:ok, prompt} <- prompt_from_context(context) do
+      {:ok, context, prompt}
+    end
+  end
+
+  @doc false
+  @spec prompt_from_context(Context.t()) :: {:ok, String.t()} | {:error, Exception.t()}
+  def prompt_from_context(%Context{messages: messages}) do
+    last_user =
+      messages
+      |> Enum.reverse()
+      |> Enum.find(&(&1.role == :user))
+
+    prompt =
+      case last_user do
+        nil ->
+          ""
+
+        %Message{content: content} when is_list(content) ->
+          content
+          |> Enum.filter(&(&1.type == :text))
+          |> Enum.map_join("", & &1.text)
+
+        %Message{content: content} when is_binary(content) ->
+          content
+
+        _ ->
+          ""
+      end
+      |> String.trim()
+
+    if prompt == "" do
+      {:error,
+       ReqLLM.Error.Invalid.Parameter.exception(
+         parameter: "image generation requires a non-empty user text prompt"
+       )}
+    else
+      {:ok, prompt}
+    end
+  end
+
+  @doc """
+  Builds the JSON body map for the generations endpoint.
+
+  Accepts a map or keyword list with `:model`, `:prompt`, and the optional
+  image generation options (`:n`, `:size`, `:quality`, `:style`, `:user`,
+  `:output_format`, `:response_format`, `:background`, `:moderation`,
+  `:output_compression`).
+
+  Expects options that have already been through `translate_options/2`, which
+  resolves `:aspect_ratio` into `:size` and drops options the Images API has no
+  field for.
+
+  `:model` must be the catalog model id rather than a provider-side alias: it
+  decides whether `response_format` is a legal field for the target model.
+  Callers that send a different identifier on the wire (e.g. an Azure
+  deployment name) should replace `"model"` in the returned map afterwards.
+  """
+  @spec build_generation_body(keyword() | map()) :: map()
+  def build_generation_body(opts) when is_list(opts), do: build_generation_body(Map.new(opts))
+
+  def build_generation_body(opts) when is_map(opts) do
+    %{
+      "model" => opts[:model],
+      "prompt" => opts[:prompt],
+      "n" => opts[:n] || 1
+    }
+    |> maybe_put_response_format(opts[:model], opts[:response_format])
+    |> maybe_put_size(opts[:size])
+    |> maybe_put_string("quality", opts[:quality])
+    |> maybe_put_string("style", opts[:style])
+    |> maybe_put_string("user", opts[:user])
+    |> maybe_put_output_format(opts[:output_format])
+    |> maybe_put_string("background", opts[:background])
+    |> maybe_put_string("moderation", opts[:moderation])
+    |> maybe_put_integer("output_compression", opts[:output_compression])
+    |> maybe_put_stream(opts[:stream], opts[:partial_images])
+  end
+
+  defp maybe_put_stream(body, true, partial_images) do
+    body
+    |> Map.put("stream", true)
+    |> maybe_put_integer("partial_images", partial_images)
+  end
+
+  defp maybe_put_stream(body, _stream, _partial_images), do: body
+
+  @doc """
+  Builds the Req `:form_multipart` keyword list for the edits endpoint.
+
+  Required keys in `opts`: `:model`, `:prompt`, `:source_image`. Optional keys
+  (`:mask`, `:n`, `:size`, `:quality`, `:output_format`, `:user`, `:background`,
+  `:input_fidelity`, `:output_compression`, and the `*_media_type` companions)
+  are added only when present.
+  """
+  @spec edit_image_form_multipart(keyword()) :: keyword()
+  def edit_image_form_multipart(opts) do
+    model = Keyword.fetch!(opts, :model)
+    prompt = Keyword.fetch!(opts, :prompt)
+    source_image = Keyword.fetch!(opts, :source_image)
+    source_image_media_type = Keyword.get(opts, :source_image_media_type, "image/png")
+    mask_media_type = Keyword.get(opts, :mask_media_type, "image/png")
+
+    [
+      model: model,
+      prompt: prompt,
+      image:
+        {source_image,
+         filename: image_filename("source_image", source_image_media_type),
+         content_type: source_image_media_type}
+    ]
+    |> maybe_add_file_part(:mask, Keyword.get(opts, :mask), "mask", mask_media_type)
+    |> maybe_add_form_part(:n, Keyword.get(opts, :n))
+    |> maybe_add_form_part(:size, Keyword.get(opts, :size))
+    |> maybe_add_form_part(:quality, Keyword.get(opts, :quality))
+    |> maybe_add_form_part(:output_format, Keyword.get(opts, :output_format))
+    |> maybe_add_form_part(:user, Keyword.get(opts, :user))
+    |> maybe_add_form_part(:background, Keyword.get(opts, :background))
+    |> maybe_add_form_part(:input_fidelity, Keyword.get(opts, :input_fidelity))
+    |> maybe_add_form_part(:output_compression, Keyword.get(opts, :output_compression))
+  end
+
+  @doc """
+  Decodes an Images API response into a canonical `ReqLLM.Response`.
+
+  Non-2xx statuses are returned as a `ReqLLM.Error.API.Response` for the caller
+  to surface; providers with their own error extraction should route those
+  through it before reaching here.
+  """
+  @spec decode_response({Req.Request.t(), Req.Response.t()}) ::
+          {Req.Request.t(), Req.Response.t() | Exception.t()}
+  def decode_response({req, resp}) do
+    case resp.status do
+      status when status in 200..299 ->
+        body = ReqLLM.Provider.Utils.ensure_parsed_body(resp.body)
+        merged_response = decode_images_response(req, body)
+        {req, %{resp | body: merged_response}}
+
+      status ->
+        err =
+          ReqLLM.Error.API.Response.exception(
+            reason: "Images API error",
+            status: status,
+            response_body: resp.body
+          )
+
+        {req, err}
+    end
+  end
+
+  @doc """
+  Decodes one streaming generations SSE event into `ReqLLM.StreamChunk`s.
+
+  `image_generation.partial_image` becomes a `:content_part` chunk carrying the
+  preview frame. The part's metadata says `partial?: true` with its
+  `partial_image_index`; the chunk's metadata says `stream_only?: true` so the
+  frame reaches live consumers but not the assembled response.
+  `image_generation.completed` becomes the final `:content_part` (part metadata
+  `partial?: false`) followed by a terminal `:meta` chunk with usage and
+  provider metadata, which ends the stream. Error events, and image events whose
+  `b64_json` is missing or not valid base64, become a terminal error meta so the
+  stream fails fast instead of waiting for the receive timeout; anything else
+  decodes to nothing.
+  """
+  @spec decode_stream_event(map(), LLMDB.Model.t()) :: [StreamChunk.t()]
+  def decode_stream_event(
+        %{data: %{"type" => "image_generation.partial_image"} = data},
+        _model
+      ) do
+    case decode_image_bytes(data) do
+      {:ok, bytes} ->
+        part =
+          stream_image_part(data, bytes, %{
+            partial?: true,
+            partial_image_index: Map.get(data, "partial_image_index")
+          })
+
+        [StreamChunk.content_part(part, %{stream_only?: true})]
+
+      :error ->
+        [stream_error_meta(undecodable_image_message("image_generation.partial_image"))]
+    end
+  end
+
+  def decode_stream_event(%{data: %{"type" => "image_generation.completed"} = data}, model) do
+    case decode_image_bytes(data) do
+      {:ok, bytes} ->
+        part = stream_image_part(data, bytes, %{partial?: false})
+        size_class = image_size_class(echoed_option(data, "size"), echoed_option(data, "quality"))
+        usage = image_response_usage(data, ReqLLM.Usage.Image.build_generated(1, size_class))
+
+        meta = %{
+          terminal?: true,
+          finish_reason: :stop,
+          usage: usage,
+          provider_meta: %{provider_key(model) => Map.delete(data, "b64_json")}
+        }
+
+        [StreamChunk.content_part(part), StreamChunk.meta(meta)]
+
+      :error ->
+        [stream_error_meta(undecodable_image_message("image_generation.completed"))]
+    end
+  end
+
+  def decode_stream_event(%{data: %{"type" => "error"} = data}, _model) do
+    [stream_error_meta(stream_error_message(data))]
+  end
+
+  def decode_stream_event(%{data: %{"error" => %{"message" => message}}}, _model)
+      when is_binary(message) do
+    [stream_error_meta(message)]
+  end
+
+  def decode_stream_event(_event, _model), do: []
+
+  defp decode_image_bytes(%{"b64_json" => b64}) when is_binary(b64), do: Base.decode64(b64)
+  defp decode_image_bytes(_data), do: :error
+
+  defp undecodable_image_message(event_type) do
+    "#{event_type} event carried no decodable b64_json image data"
+  end
+
+  defp stream_image_part(data, bytes, flags) do
+    echoed =
+      ~w(size quality background output_format)
+      |> Enum.reduce(%{}, fn key, acc ->
+        case Map.get(data, key) do
+          value when is_binary(value) -> Map.put(acc, String.to_atom(key), value)
+          _ -> acc
+        end
+      end)
+
+    %ContentPart{
+      type: :image,
+      data: bytes,
+      media_type: media_type_for_output_format(Map.get(data, "output_format")),
+      metadata: Map.merge(echoed, flags)
+    }
+  end
+
+  defp stream_error_message(%{"error" => %{"message" => message}}) when is_binary(message),
+    do: message
+
+  defp stream_error_message(%{"message" => message}) when is_binary(message), do: message
+  defp stream_error_message(%{"code" => code}) when is_binary(code), do: code
+  defp stream_error_message(_data), do: "image stream error"
+
+  defp stream_error_meta(message) do
+    StreamChunk.meta(%{terminal?: true, finish_reason: :error, error: message})
+  end
+
+  @doc """
+  Headers for a streaming generations request: the provider's auth headers,
+  JSON content type, SSE accept, and any custom headers from `:req_http_options`.
+  """
+  @spec stream_request_headers([{String.t(), String.t()}], keyword()) ::
+          [{String.t(), String.t()}]
+  def stream_request_headers(auth_headers, opts) do
+    auth_headers ++
+      [{"content-type", "application/json"}, {"accept", "text/event-stream"}] ++
+      ReqLLM.Provider.Utils.extract_custom_headers(opts[:req_http_options])
+  end
+
+  @doc """
+  JSON body for a streaming generations request.
+
+  Same as `build_generation_body/1` with the prompt, model id, and `"stream": true`
+  applied on top of the processed options.
+  """
+  @spec stream_generation_body(keyword(), String.t(), String.t()) :: map()
+  def stream_generation_body(opts, prompt, model_id) do
+    opts
+    |> Keyword.merge(prompt: prompt, model: model_id, stream: true)
+    |> build_generation_body()
+  end
+
+  defp provider_meta_key(req), do: provider_key(req.private[:model])
+
+  # This codec is shared with providers that reuse the OpenAI Images wire
+  # format, so provider_meta is keyed by whichever provider actually served the
+  # request (e.g. "azure") instead of always "openai".
+  defp provider_key(%LLMDB.Model{provider: provider})
+       when is_atom(provider) and not is_nil(provider),
+       do: Atom.to_string(provider)
+
+  defp provider_key(_model), do: "openai"
+
+  defp decode_images_response(req, %{} = body) do
+    data = Map.get(body, "data", [])
+
+    media_type =
+      media_type_for_output_format(
+        echoed_option(body, "output_format") || req.options[:output_format]
+      )
+
+    parts =
+      data
+      |> Enum.map(&decode_image_item(&1, media_type))
+      |> Enum.reject(&is_nil/1)
+
+    message = %Message{role: :assistant, content: parts}
+
+    size_class =
+      image_size_class(
+        echoed_option(body, "size") || req.options[:size],
+        echoed_option(body, "quality") || req.options[:quality]
+      )
+
+    image_usage = ReqLLM.Usage.Image.build_generated(length(parts), size_class)
+    usage = image_response_usage(body, image_usage)
+
+    base_response = %Response{
+      id: image_response_id(),
+      model: req.options[:model] || "unknown",
+      context: req.options[:context] || %Context{messages: []},
+      message: message,
+      object: nil,
+      stream?: false,
+      stream: nil,
+      usage: usage,
+      finish_reason: :stop,
+      provider_meta: %{provider_meta_key(req) => Map.delete(body, "data")},
+      error: nil
+    }
+
+    Context.merge_response(base_response.context, base_response)
+  end
+
+  # gpt-image models report token usage in the response body, and providers do
+  # not agree on how images are priced: some bill per generated image (keyed by
+  # size class), others - Azure among them - bill the underlying tokens. Report
+  # both so cost calculation can use whichever the model's pricing defines.
+  #
+  # This relies on no catalog model carrying both token and image pricing
+  # components - one that did would be billed on both by ReqLLM.Billing.
+  defp image_response_usage(body, image_usage) do
+    usage = body |> Map.get("usage") |> image_token_usage()
+
+    usage =
+      if map_size(image_usage) > 0 do
+        Map.put(usage, :image_usage, image_usage)
+      else
+        usage
+      end
+
+    if map_size(usage) > 0, do: usage
+  end
+
+  defp image_token_usage(%{} = usage) do
+    details = Map.take(usage, ["input_tokens_details", "output_tokens_details"])
+
+    %{input_tokens: "input_tokens", output_tokens: "output_tokens", total_tokens: "total_tokens"}
+    |> Enum.reduce(details, fn {key, wire_key}, acc ->
+      case Map.get(usage, wire_key) do
+        count when is_integer(count) -> Map.put(acc, key, count)
+        _ -> acc
+      end
+    end)
+  end
+
+  defp image_token_usage(_), do: %{}
+
+  defp decode_image_item(%{"b64_json" => b64} = item, media_type) when is_binary(b64) do
+    revised_prompt = Map.get(item, "revised_prompt")
+    metadata = if is_binary(revised_prompt), do: %{revised_prompt: revised_prompt}, else: %{}
+
+    %ContentPart{
+      type: :image,
+      data: Base.decode64!(b64),
+      media_type: media_type,
+      metadata: metadata
+    }
+  end
+
+  defp decode_image_item(%{"url" => url} = item, _media_type) when is_binary(url) do
+    revised_prompt = Map.get(item, "revised_prompt")
+    metadata = if is_binary(revised_prompt), do: %{revised_prompt: revised_prompt}, else: %{}
+    %ContentPart{type: :image_url, url: url, metadata: metadata}
+  end
+
+  defp decode_image_item(_, _media_type), do: nil
+
+  defp response_format_value(:url), do: "url"
+  defp response_format_value(:binary), do: "b64_json"
+  defp response_format_value(other) when is_binary(other), do: other
+  defp response_format_value(_), do: "b64_json"
+
+  defp maybe_put_response_format(body, model, response_format) do
+    if supports_response_format?(model) do
+      Map.put(body, "response_format", response_format_value(response_format || :binary))
+    else
+      body
+    end
+  end
+
+  defp supports_response_format?(model) when is_binary(model) do
+    String.starts_with?(model, "dall-e-")
+  end
+
+  defp supports_response_format?(_), do: false
+
+  defp maybe_put_size(body, nil), do: body
+
+  defp maybe_put_size(body, {w, h}) when is_integer(w) and is_integer(h) do
+    Map.put(body, "size", "#{w}x#{h}")
+  end
+
+  defp maybe_put_size(body, size) when is_binary(size) do
+    Map.put(body, "size", size)
+  end
+
+  defp maybe_put_size(body, _), do: body
+
+  defp maybe_put_string(body, _key, nil), do: body
+
+  defp maybe_put_string(body, key, value) when is_atom(value) do
+    Map.put(body, key, Atom.to_string(value))
+  end
+
+  defp maybe_put_string(body, key, value) when is_binary(value) do
+    Map.put(body, key, value)
+  end
+
+  defp maybe_put_string(body, _key, _), do: body
+
+  defp maybe_put_integer(body, key, value) when is_integer(value), do: Map.put(body, key, value)
+  defp maybe_put_integer(body, _key, _), do: body
+
+  @doc """
+  MIME type for an image `output_format` given as an atom or wire string.
+
+  Defaults to `"image/png"`, the format every Images API model emits unless told
+  otherwise.
+  """
+  @spec media_type_for_output_format(atom() | String.t() | nil) :: String.t()
+  def media_type_for_output_format(format) when format in [:jpeg, "jpeg"], do: "image/jpeg"
+  def media_type_for_output_format(format) when format in [:webp, "webp"], do: "image/webp"
+  def media_type_for_output_format(_format), do: "image/png"
+
+  defp maybe_put_output_format(body, nil), do: body
+  defp maybe_put_output_format(body, :png), do: Map.put(body, "output_format", "png")
+  defp maybe_put_output_format(body, :jpeg), do: Map.put(body, "output_format", "jpeg")
+  defp maybe_put_output_format(body, :webp), do: Map.put(body, "output_format", "webp")
+
+  defp maybe_put_output_format(body, other) when is_binary(other),
+    do: Map.put(body, "output_format", other)
+
+  defp maybe_put_output_format(body, _), do: body
+
+  defp maybe_add_file_part(parts, _key, nil, _filename_root, _media_type), do: parts
+
+  defp maybe_add_file_part(parts, key, data, filename_root, media_type) when is_binary(data) do
+    parts ++
+      [
+        {key,
+         {data, filename: image_filename(filename_root, media_type), content_type: media_type}}
+      ]
+  end
+
+  defp maybe_add_form_part(parts, _key, nil), do: parts
+
+  defp maybe_add_form_part(parts, key, value) do
+    parts ++ [{key, form_part_value(value)}]
+  end
+
+  defp form_part_value({w, h}) when is_integer(w) and is_integer(h), do: "#{w}x#{h}"
+  defp form_part_value(value) when is_atom(value), do: Atom.to_string(value)
+  defp form_part_value(value) when is_integer(value), do: Integer.to_string(value)
+  defp form_part_value(value), do: value
+
+  defp image_filename(root, media_type) do
+    extension = image_extension(media_type)
+    "#{root}.#{extension}"
+  end
+
+  defp image_extension("image/jpeg"), do: "jpg"
+  defp image_extension("image/jpg"), do: "jpg"
+  defp image_extension("image/webp"), do: "webp"
+  defp image_extension(_), do: "png"
+
+  defp image_size_class(size, quality) do
+    "#{normalize_image_size(size)}:#{normalize_image_quality(quality)}"
+  end
+
+  # Image-priced models bill per `image.<size>.<quality>` component, and the
+  # rendered dimensions need not match what was asked for: `size: "auto"` (or no
+  # size at all) resolves server-side. The response echoes what was actually
+  # produced, so bill from that and fall back to the request only when the body
+  # is silent or still says "auto".
+  defp echoed_option(body, key) do
+    case Map.get(body, key) do
+      value when is_binary(value) -> reject_auto(value)
+      _ -> nil
+    end
+  end
+
+  defp reject_auto(value) do
+    case value |> String.trim() |> String.downcase() do
+      "auto" -> nil
+      "" -> nil
+      resolved -> resolved
+    end
+  end
+
+  defp normalize_image_size(nil), do: "1024x1024"
+  defp normalize_image_size("auto"), do: "1024x1024"
+
+  defp normalize_image_size({w, h}) when is_integer(w) and is_integer(h) do
+    "#{w}x#{h}"
+  end
+
+  defp normalize_image_size(size) when is_binary(size) do
+    size
+    |> String.trim()
+    |> String.downcase()
+  end
+
+  defp normalize_image_size(_), do: "1024x1024"
+
+  defp normalize_image_quality(nil), do: "medium"
+
+  defp normalize_image_quality(quality) when is_atom(quality) do
+    quality |> Atom.to_string() |> normalize_image_quality()
+  end
+
+  defp normalize_image_quality(quality) when is_binary(quality) do
+    case String.downcase(quality) do
+      "low" -> "low"
+      "medium" -> "medium"
+      "standard" -> "medium"
+      "high" -> "high"
+      "hd" -> "high"
+      _ -> "medium"
+    end
+  end
+
+  defp normalize_image_quality(_), do: "medium"
+
+  defp image_response_id do
+    "img_" <> (:crypto.strong_rand_bytes(12) |> Base.url_encode64(padding: false))
+  end
+end

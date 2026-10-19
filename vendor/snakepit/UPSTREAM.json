@@ -1,0 +1,1318 @@
+{
+  "package": "snakepit",
+  "version": "0.14.0",
+  "source": "https://github.com/nshkrdotcom/snakepit",
+  "license": "MIT",
+  "originalCopyright": "Copyright (c) 2025 NSHkr",
+  "purpose": "Narrow opt-in native private diagnostics for exclusively leased Python Eval workers; no replacement process manager or transport",
+  "source_archive": {
+    "url": "https://repo.hex.pm/tarballs/snakepit-0.14.0.tar",
+    "sha256": "4f9e37ca5f6442e75a8bbdbb4112f46583a91d8509759cd4117d024583a75bf2",
+    "hex_inner_checksum": "2a2ced3bddba47cc1b23ceae7054ed3660e86d227171e123c24fc2d3afb87110",
+    "contents_tar_gz_sha256": "8cd0f379f1cb8b930a42261a90871f0e79cc732cfd29d86ee3d180eca3ebbec8"
+  },
+  "snapshot_contents": "All 245 regular files from the pristine published Hex contents.tar.gz, plus its unmodified outer metadata.config copied as hex_metadata.config. No package members are omitted. Installed-only .hex, Python bytecode/caches, and priv/data are not source package members and are not included.",
+  "snapshot_sha256": "aaa434dfb28d83f97b84606d9f0632a4a963fc42a11cdbe20f88227be82c0bf0",
+  "snapshot_digest_algorithm": "SHA-256 over UTF-8 lines <lowercase per-file SHA-256><two spaces><relative POSIX path><LF>, sorted lexicographically by path; files contains the complete pristine inventory, including hex_metadata.config.",
+  "patched_snapshot_sha256": "f7cf833ff819d3159679e509f34e14706546395280af8ba9eade3ae9dfd12a14",
+  "patched_digest_algorithm": "Same line algorithm over the pristine inventory with modified-file digests replaced and local additions included; UPSTREAM.json itself is excluded to avoid a self-reference.",
+  "privacy_boundary_updates": {
+    "date": "2026-10-17",
+    "contributors": "Oh-My-Jido contributors",
+    "marker": "Snakepit.GRPCWorker.private_diagnostics_version/0 returns 1",
+    "opt_in": "Trusted native worker_config %{private_diagnostics: true}; request arguments, streaming options, and ambient application logging configuration cannot opt in or out.",
+    "trusted_vm_boundary": "Supported SDK requests and asynchronous completions use opaque native envelopes, and private callback states remain opaque in OTP sys-debug history. Arbitrary direct raw BEAM/GenServer messages from trusted VM code can be recorded by OTP before callbacks run; initializer-environment introspection is trusted VM access, not credential isolation.",
+    "modified_upstream_files": [
+      {
+        "path": "lib/snakepit/grpc/client_impl.ex",
+        "change": "Formats private worker RPC error logs as type/count metadata instead of remote error text; native RPC status mapping and nonprivate logging remain unchanged.",
+        "pristine_sha256": "d988c3cb3f3a11714077b5ea6f1a84aa37325a9798594b44ff815c308f42429b",
+        "patched_sha256": "e7c497c68ea6592b5b46e851810b423d7eb5dc2e0796d3fcd2a7dfd0ac32a5bf",
+        "patched_bytes": 13926
+      },
+      {
+        "path": "lib/snakepit/grpc_worker.ex",
+        "change": "Adds the trusted private_diagnostics marker, metadata-only OTP status/crash diagnostics, guarded native callbacks, and opaque private SDK request/completion and callback-state initializers so raw sys-debug history does not retain inspectable private configuration or RPC values. Default workers retain native diagnostic payloads and lifecycle; the explicit nonprivate cast default matches Elixir without deprecated super.",
+        "pristine_sha256": "a48f42e96d0486c5146d868e9a1b25c80f14be1b51f5535674fd057385aa4303",
+        "patched_sha256": "66afa1aa040f21cdf771a7c778e4a3bdf2520e29e6d4e51ee84fb07b0de32393",
+        "patched_bytes": 47816
+      },
+      {
+        "path": "lib/snakepit/grpc_worker/bootstrap.ex",
+        "change": "Routes private native startup failure diagnostics through the worker-local metadata formatter without changing startup prerequisites, handshakes, or process ownership.",
+        "pristine_sha256": "b09749f8f76dfe329dcc192624faf2dd5b3d4f3efe745dbb635c62f7c70be111",
+        "patched_sha256": "08c7e81e37df881c0f4152013f6de01edd2cb2e72763bfbbada3b331f8456c0c",
+        "patched_bytes": 15291
+      },
+      {
+        "path": "lib/snakepit/grpc_worker/instrumentation.ex",
+        "change": "Uses generated diagnostic correlation and native session identity for private spans, excluding request-derived values and normalizing exceptions/errors inside the telemetry boundary; default instrumentation is unchanged.",
+        "pristine_sha256": "7c7525561b92c402d88e4417339272d996ea719c27c1ff47492b4fd349e8bae6",
+        "patched_sha256": "1a4e77550b0522cc61f5f01ff220f758d1f42c5dafaa925cd9b71502a48021cd",
+        "patched_bytes": 6974
+      },
+      {
+        "path": "lib/snakepit/pool/worker_starter.ex",
+        "change": "Retains exact private native worker restart/init arguments in opaque anonymous initializers so OTP supervisor offender MFAs cannot print worker configuration or environment; restart policies and native supervision remain unchanged.",
+        "pristine_sha256": "baebd6fed572ec77deacbb87134bbeaafb9e69c4dbb39a143fb7c3d7ad0eaa5a",
+        "patched_sha256": "b9eab83c6554ee33c0f6d3f8a23488696304b909359f914427d1fa6bd257ec6b",
+        "patched_bytes": 8398
+      },
+      {
+        "path": "lib/snakepit/worker/configuration.ex",
+        "change": "Logs private launch identity and argument/environment counts instead of private executable argument values; spawn configuration and nonprivate diagnostics remain unchanged.",
+        "pristine_sha256": "4581bace2bef5f6297696c74f4b519797d49678caa0a4bb5964714796e05deba",
+        "patched_sha256": "bb4acb9f1a2f0e240e22daa34c22cb58faf300040b3ed147d4a4ea58de01945a",
+        "patched_bytes": 9462
+      },
+      {
+        "path": "lib/snakepit/worker/process_manager.ex",
+        "change": "Keeps private Python startup output and cleanup reasons metadata-only without changing native port spawning, readiness, termination, or process cleanup.",
+        "pristine_sha256": "b6df3fff638cd1d3cd3e0d53857736d02600afa0a9c2a0c1ec4f6e5037002519",
+        "patched_sha256": "63ab20416e7e68bd9118519080d73bd35d92eb0c86bac649930b4029ed19504a",
+        "patched_bytes": 10617
+      }
+    ],
+    "modified_local_additions": [
+      {
+        "path": "lib/snakepit/grpc_worker/private_diagnostics.ex",
+        "change": "Native GRPCWorker-only trusted opt-in diagnostic formatting, opaque state/request/completion representation, callback-result validation, and RPC failure normalization; no process, transport, credential service, or global Logger filter.",
+        "sha256": "78c360f8a2d25f2a7c6f3b2df7b255145ff0f300a85602ab3419aa8344f6fa01",
+        "bytes": 10810
+      }
+    ],
+    "inventory_note": "files and snapshot_sha256 retain the original pristine upstream bytes and source digest, not modified runtime hashes. Every modified upstream file and local addition carries a dated MIT/provenance notice. The original MIT LICENSE is unchanged."
+  },
+  "files": [
+    {
+      "path": ".formatter.exs",
+      "sha256": "a46ecd2cb12fd54c0cf0928c72fb10bef329b3f72b49df9bef621c3370734bc5",
+      "bytes": 97
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "248cb497fe83833ac4846d438f6c40788718d30a19e70e6f58ab213aaa64d948",
+      "bytes": 120858
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "b8562570252dc24db5734c0def800ff5f5ac8b3f80a5b607f13b970ccd44b74d",
+      "bytes": 1061
+    },
+    {
+      "path": "README.md",
+      "sha256": "a602a37545d14166dd969ff4525c324af6a112a488338ea40e9db36eb7ae773c",
+      "bytes": 27983
+    },
+    {
+      "path": "assets/snakepit-icon.svg",
+      "sha256": "39705bd6b5d64685ec3e7d7deca6cedaaf86f5988c7c4673510511137eda79be",
+      "bytes": 2392
+    },
+    {
+      "path": "assets/snakepit-logo.svg",
+      "sha256": "247a3a12a9713fa2c68c8239d903ae5c4d626342f794353bd7dd85169e97d8b0",
+      "bytes": 15027
+    },
+    {
+      "path": "examples/README.md",
+      "sha256": "244bda8ac07e91ce13de32d7f2bbcfaac3141e3bc8f5720aad2c19c3a0bfe633",
+      "bytes": 17220
+    },
+    {
+      "path": "examples/bidirectional_tools_demo.exs",
+      "sha256": "e34a272d4bc0d6d6dd5cfc9624a2f4114bf1665849e36ed33210a9fc4b6f4d1d",
+      "bytes": 8153
+    },
+    {
+      "path": "examples/bidirectional_tools_demo_auto.exs",
+      "sha256": "e87a5b81ea4508b4d2407ce088c619275a8ffc3a7f59cce090f3fa9f099f257a",
+      "bytes": 5834
+    },
+    {
+      "path": "examples/crash_recovery.exs",
+      "sha256": "c0dea7d18227253298218906bd53f5e37e81f2893fb15f28b9989da5e1e5549e",
+      "bytes": 8914
+    },
+    {
+      "path": "examples/dual_mode/gil_aware_selection.exs",
+      "sha256": "43fcb5a4dd19d87d3eb4b622c65f78f7812dcb620d89e0dfe288bd7d87d0f139",
+      "bytes": 11134
+    },
+    {
+      "path": "examples/dual_mode/hybrid_pools.exs",
+      "sha256": "2440d6930107137e4a5ee36654f5be1312c185899b866ebcb927dce742b1b50e",
+      "bytes": 9528
+    },
+    {
+      "path": "examples/dual_mode/process_vs_thread_comparison.exs",
+      "sha256": "bcd50a54e2fc331af29d0795d543f215306707f3711c069a9bb5762e574e5b74",
+      "bytes": 7398
+    },
+    {
+      "path": "examples/execute_streaming_tool_demo.exs",
+      "sha256": "011c66b98ff86553a6e109ea253bf7af63adc0b1dc0f91415e035200108b6fc9",
+      "bytes": 3746
+    },
+    {
+      "path": "examples/graceful_serialization.exs",
+      "sha256": "be4438feed53e541917e6716db9fc6bfd27a5b717d9a09a536c8dcde229a400b",
+      "bytes": 8754
+    },
+    {
+      "path": "examples/grpc_advanced.exs",
+      "sha256": "2f9689b3fa3475d0f3bf9d10b937022a3f0ee68ed3b884de414dade77ffb0533",
+      "bytes": 5097
+    },
+    {
+      "path": "examples/grpc_basic.exs",
+      "sha256": "b29e906cdd24d4e66b85a6c39af587b7ee32dc2c9c043cbe2ee5096b386026d1",
+      "bytes": 2639
+    },
+    {
+      "path": "examples/grpc_concurrent.exs",
+      "sha256": "58547670d037c4e38d34a5185e1c35662aa281bc9798272fa753f8da76a8e8e8",
+      "bytes": 7452
+    },
+    {
+      "path": "examples/grpc_session_affinity_modes.exs",
+      "sha256": "718b11d52aefd383e6a6db3643c92f390eadc8cbf8d154b8025690c035a94fdf",
+      "bytes": 3805
+    },
+    {
+      "path": "examples/grpc_sessions.exs",
+      "sha256": "6088ad354ab10fa650987ac388bb30fd5e822ce26d10c7b1acdc912444347de0",
+      "bytes": 4994
+    },
+    {
+      "path": "examples/grpc_streaming.exs",
+      "sha256": "cb01927deac0d6802d88c7365a192e32fa2ea60499d7be2cec0cb8a232d0b35d",
+      "bytes": 3780
+    },
+    {
+      "path": "examples/grpc_streaming_demo.exs",
+      "sha256": "42da7bbe3ed23ea7b491ddaa98628d3fe17c3cc41e62693d8fd32a95e267e2ce",
+      "bytes": 2867
+    },
+    {
+      "path": "examples/hardware_detection.exs",
+      "sha256": "26942c8eb0a18a7724309dcecde502734b5997994bdfea5df8344e847a492df6",
+      "bytes": 6807
+    },
+    {
+      "path": "examples/lifecycle/ttl_recycling_demo.exs",
+      "sha256": "2645a17c1595355de730b3accf929bfc636806dd97c5c6fdfecd966331f81214",
+      "bytes": 6532
+    },
+    {
+      "path": "examples/mix_bootstrap.exs",
+      "sha256": "7c7d61e0b7cdcfb3c2333334d22846e4329b17970a298fc553616eb0badffa58",
+      "bytes": 4790
+    },
+    {
+      "path": "examples/ml_errors.exs",
+      "sha256": "5474b84454f58eb6f9b52faf7f6b18a60d347538b5b982bc96203684dcbc6b42",
+      "bytes": 8650
+    },
+    {
+      "path": "examples/ml_telemetry.exs",
+      "sha256": "b623f8400abceebcb688b72cea764e765dd68d823c3132759ffd97d5caa95da8",
+      "bytes": 9970
+    },
+    {
+      "path": "examples/monitoring/telemetry_integration.exs",
+      "sha256": "30d4e303a191d1d6ebf93e49b84fefcc4629ab8af2fb6f76324964bda4cf3c80",
+      "bytes": 10294
+    },
+    {
+      "path": "examples/python_elixir_tools_demo.py",
+      "sha256": "4195b1bcff6c6987ab28ce2d03410c32f039e05bf06d5e253fe2923b4a9088e7",
+      "bytes": 8952
+    },
+    {
+      "path": "examples/run_all.sh",
+      "sha256": "e5cc2e43fabeda6ba1498b0fba8e006ce2542a775a83523bf7fa8a28f6788904",
+      "bytes": 8060
+    },
+    {
+      "path": "examples/run_examples.exs",
+      "sha256": "660779bb1954cd7ea1def4692f8889a4a2113f597535ad4c84568a7252d67589",
+      "bytes": 13576
+    },
+    {
+      "path": "examples/snakepit_loadtest/README.md",
+      "sha256": "bb5e4810d9dea458bdb18f91195dddf3a70d65818fc6192b02963a8be9705eb3",
+      "bytes": 4812
+    },
+    {
+      "path": "examples/snakepit_loadtest/config/config.exs",
+      "sha256": "c45f63b4a390646aafc5ea8e0276fbd75df4bff4bfb945c4da8f99df7c7d5843",
+      "bytes": 1251
+    },
+    {
+      "path": "examples/snakepit_loadtest/config/dev.exs",
+      "sha256": "9206f9fa61728b27711949df277dbd7b36b54499a98859ec0d7367426a4b3544",
+      "bytes": 72
+    },
+    {
+      "path": "examples/snakepit_loadtest/config/runtime.exs",
+      "sha256": "938ab3030e41e1448ba573c059c733400b442168bc5b9bef5f572db69d254fee",
+      "bytes": 138
+    },
+    {
+      "path": "examples/snakepit_loadtest/config/small_pool.exs",
+      "sha256": "55436d24a0160b5b20af2e354b3ff45ba04310c077b060f6d0f19c81bdf1f502",
+      "bytes": 144
+    },
+    {
+      "path": "examples/snakepit_loadtest/config/test.exs",
+      "sha256": "da5a535d294309ac86910ae570827e1f4d7e7235bb5e6a2182add2b4047a1e26",
+      "bytes": 146
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/mix/tasks/demo.basic.ex",
+      "sha256": "631cf31d0ccfe21ca2a162c61c2e93b8f459a410e5e035e5f4a33c7d067bb455",
+      "bytes": 870
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/snakepit_loadtest.ex",
+      "sha256": "c0a5505a232c15825b6e2777b28fae46fd06d5924c189aa8514063aceb03cdfc",
+      "bytes": 3346
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/snakepit_loadtest/application.ex",
+      "sha256": "c99f6831e85705ab2ed3e8e872bc2654b56f4454cd167024d4c515c2a45305f0",
+      "bytes": 769
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/snakepit_loadtest/demos/basic_load_demo.ex",
+      "sha256": "2bc2996615a8b054cfe7575521e665512fc15a47d1ed775749bdfaca66253481",
+      "bytes": 4783
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/snakepit_loadtest/demos/burst_load_demo.ex",
+      "sha256": "bd2bae2f43716811c994ece0a6ac9d4e3335c65d7dcc252025156d393fbf5155",
+      "bytes": 8859
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/snakepit_loadtest/demos/stress_test_demo.ex",
+      "sha256": "49cf43ab4247fbb563ef51869aa806d53de33571640151f818af23457cc0288f",
+      "bytes": 6720
+    },
+    {
+      "path": "examples/snakepit_loadtest/lib/snakepit_loadtest/demos/sustained_load_demo.ex",
+      "sha256": "938fd778ecc8c54aeb2b9faf69f5e95a0003f5446b89d42cfced66f27ebf65bf",
+      "bytes": 9906
+    },
+    {
+      "path": "examples/snakepit_loadtest/mix.exs",
+      "sha256": "6a7d4a64e7a858559deaefb1e44bfd1250ae36bf13a4ad72e391d3215bcfb302",
+      "bytes": 2373
+    },
+    {
+      "path": "examples/snakepit_loadtest/mix.lock",
+      "sha256": "dc2ab08847f9de8c71d2055bbf0ea446d57cf3f5da772efe29f21fc452a23cfe",
+      "bytes": 11569
+    },
+    {
+      "path": "examples/snakepit_showcase/.formatter.exs",
+      "sha256": "b41e87c7acb41c62a9619134621844270b6957e78af62a5aaf666214a30b9c1c",
+      "bytes": 110
+    },
+    {
+      "path": "examples/snakepit_showcase/.gitignore",
+      "sha256": "66bff29be69630a0e5bc1091168f25afe0b5436f62dc6869e4195313d96e6f38",
+      "bytes": 1007
+    },
+    {
+      "path": "examples/snakepit_showcase/README.md",
+      "sha256": "cdc79257cec193aef638757a81da623a674e652f7af506bd1fc4019428d9bd0c",
+      "bytes": 5910
+    },
+    {
+      "path": "examples/snakepit_showcase/config/config.exs",
+      "sha256": "2cf59c0d3a9e83f122d98a22c3d57c7514d136c014abff25e68065a2aaee87c0",
+      "bytes": 1066
+    },
+    {
+      "path": "examples/snakepit_showcase/config/dev.exs",
+      "sha256": "899fd29a10825ca2620d1094a5d492e386af1cb39695d15df9fa409a4abb404a",
+      "bytes": 527
+    },
+    {
+      "path": "examples/snakepit_showcase/config/runtime.exs",
+      "sha256": "10a3415f2aff7adafbe37baa74f9370aef88c34f0c349d6bcb2844b1ef102f18",
+      "bytes": 148
+    },
+    {
+      "path": "examples/snakepit_showcase/config/test.exs",
+      "sha256": "50b96955166de168f23dc96da3c7b54ff38e3c0cbb737c5f2d3dbece32d06120",
+      "bytes": 167
+    },
+    {
+      "path": "examples/snakepit_showcase/docs/showcase-improvements-technical-spec.md",
+      "sha256": "499d3498fb7da7549c62e071dbf07ef36c22697acc214a951f06b9f43ec99a46",
+      "bytes": 20240
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase.ex",
+      "sha256": "995be69bd144d1ddf8061e41e9621408f558aa8af6b093404dfcc71e6bef1d72",
+      "bytes": 326
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/application.ex",
+      "sha256": "659704f3ed1e56b104e5d43d03770d151ce1979bc20494d54c6f0f7a28d4ebbf",
+      "bytes": 380
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demo.ex",
+      "sha256": "280c182ae7bc872576c6b48f7b5605e2604f65023949b40d33819a8e3951561a",
+      "bytes": 2029
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demo/resource_tracker.ex",
+      "sha256": "f3d4c52bb6971cef75bf94588b97e66a9bac20715a661623ecc4829e7601675f",
+      "bytes": 1072
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demo/runner.ex",
+      "sha256": "c28aa485732f48715da0a7cc9a6739a939af2ca9a2c26bd7bb19b5f412307bc1",
+      "bytes": 4838
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demo_runner.ex",
+      "sha256": "9d5c315455f808206dde6cb0c2500855b9b250193df20039ad5fd5b619c57043",
+      "bytes": 2125
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/basic_demo.ex",
+      "sha256": "5c8e32287f4a5d02712e3a4b1e2028ac20be96fb3f77ada625229d569d8c5bab",
+      "bytes": 2752
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/binary_demo.ex",
+      "sha256": "8c6ee7ee6963266e1023264c99e9b3de291c7a7e886843c1b3cdcffc36ee9f4b",
+      "bytes": 4119
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/concurrent_demo.ex",
+      "sha256": "14b62e21c459f33a6c0c826b09aa05dfa5f3f72b524bc546447c94118ec1425f",
+      "bytes": 7505
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/execution_modes_demo.ex",
+      "sha256": "0241bd10c8b04c726760ed87b74db2b15a2224cd7156181375bc16b44f152501",
+      "bytes": 8154
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/grpc_tools_demo.ex",
+      "sha256": "bb519094b172a77c64f53508519fe0e2bba4cf811bbfbbf05bc5c8f1a8a3fd55",
+      "bytes": 4381
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/ml_workflow_demo.ex",
+      "sha256": "9af307629c7c4c160d659a84f4174f1b7f045c3242095f74caae019438c05544",
+      "bytes": 6199
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/session_demo.ex",
+      "sha256": "b3c7d168d55898abe36501d4d78900011ee39fd9f86e0a40a04e818fe790494c",
+      "bytes": 2967
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/demos/streaming_demo.ex",
+      "sha256": "aa5d12c6e0d826a907b6da1e07f7b78b7006295768ecf01844323739645d49c4",
+      "bytes": 2564
+    },
+    {
+      "path": "examples/snakepit_showcase/lib/snakepit_showcase/run_showcase.ex",
+      "sha256": "2175b822b0a3caa5f2966f95f0fd533858bca4915dac36b25a1c10d78d812d5c",
+      "bytes": 1570
+    },
+    {
+      "path": "examples/snakepit_showcase/mix.exs",
+      "sha256": "6cbfe5cd8c8a21f912ca127ce79ad1ebf5f601bce0fe1fb9cf598401df88e165",
+      "bytes": 2742
+    },
+    {
+      "path": "examples/snakepit_showcase/mix.lock",
+      "sha256": "e0e13f47e7d9d557f26a96c67d0ceb45be4f9169379eef98129ddfda1cfe97d5",
+      "bytes": 12019
+    },
+    {
+      "path": "examples/snakepit_showcase/requirements.txt",
+      "sha256": "364448fb461c52172042dd9d622940854f7022d4f363b50ef326ccaa6a04953b",
+      "bytes": 26
+    },
+    {
+      "path": "examples/snakepit_showcase/test/snakepit_showcase_test.exs",
+      "sha256": "e818d314579db130a7bcef8d8ae6986e8d694478ffa4bfb57d6bc09c4809d1e2",
+      "bytes": 164
+    },
+    {
+      "path": "examples/snakepit_showcase/test/test_helper.exs",
+      "sha256": "7c66674db33f80de6cfcd270824d97f8d7c56f4a28fa927fe27bdbd15fb9691f",
+      "bytes": 14
+    },
+    {
+      "path": "examples/stream_progress_demo.exs",
+      "sha256": "1ad704d90f56fa81b5221a271112a3dda57534881a60644fb5861185cb827b1d",
+      "bytes": 1350
+    },
+    {
+      "path": "examples/structured_errors.exs",
+      "sha256": "5fbfae17fc057b4be3feeac991678ea9d493ee6a8c5c780c1a31a184d91c46ae",
+      "bytes": 7425
+    },
+    {
+      "path": "examples/telemetry_advanced.exs",
+      "sha256": "5bf0ae3c2683d4881e923ee087484f6bece1ad8efb56a9541923bcce20fb0902",
+      "bytes": 8945
+    },
+    {
+      "path": "examples/telemetry_basic.exs",
+      "sha256": "6e8742a637a8f0524150ddde0f1a1f3d7935d7a7a6a369fbf3766fcfd75576c7",
+      "bytes": 6184
+    },
+    {
+      "path": "examples/telemetry_metrics_integration.exs",
+      "sha256": "74c01c79cd61589f4cbcf0cecbb2f963b5e927f86a2f03b7c86588c24c39f6eb",
+      "bytes": 19192
+    },
+    {
+      "path": "examples/telemetry_monitoring.exs",
+      "sha256": "a39af746f6ff5f6923cd5efeb830217a7ef03e4b406adf1398378fd7374789de",
+      "bytes": 11488
+    },
+    {
+      "path": "examples/threaded_profile_demo.exs",
+      "sha256": "f9348ddccaecf04cf08c2f5dd0a297c43739e032bef7d971901d0ac06cefae95",
+      "bytes": 6155
+    },
+    {
+      "path": "examples/variable_usage.py",
+      "sha256": "3da64e5014b2d12b55e4a135ed5e7de1550e0f95c2980d9bdf6491df5b982482",
+      "bytes": 6371
+    },
+    {
+      "path": "guides/configuration.md",
+      "sha256": "ab97dc7a4fd51eb680517a8fcad74f6b6277b6f7d2fe1aad5f93a9b2c00c87db",
+      "bytes": 18705
+    },
+    {
+      "path": "guides/fault-tolerance.md",
+      "sha256": "92f65c48c562fd926c490ab6f4ac1320b7a1d6846acf83ecce6c858a3aefbbf9",
+      "bytes": 8449
+    },
+    {
+      "path": "guides/getting-started.md",
+      "sha256": "65f39029f167b8415543aacde466c6b2b526ef5bcb79a0f0b235968769ac04b7",
+      "bytes": 10888
+    },
+    {
+      "path": "guides/graceful-serialization.md",
+      "sha256": "085056430881377b2519a879273c7c93d6d6f5ba8756b198c651a44f5d36ac7d",
+      "bytes": 9617
+    },
+    {
+      "path": "guides/hardware-detection.md",
+      "sha256": "6edeb424f4dfc47ff5a9cedc67c108266bd9a33c3c53144823cdc2a54c0c64d7",
+      "bytes": 4225
+    },
+    {
+      "path": "guides/observability.md",
+      "sha256": "fcf7fb984141cbaf575d2d4f72d1b1f9750527a42570532f08e059c8653cccd2",
+      "bytes": 9250
+    },
+    {
+      "path": "guides/production.md",
+      "sha256": "a141a95bdef77af47ff9228412029d453138de1a64dbacc010b2a943d29502c9",
+      "bytes": 8065
+    },
+    {
+      "path": "guides/python-adapters.md",
+      "sha256": "9b632103c3e27ff99b4da91a67208376d835b9f23b13b7d6e57309638fd1bd0e",
+      "bytes": 11486
+    },
+    {
+      "path": "guides/session-scoping-rules.md",
+      "sha256": "f08589ac8b696ededc79dd403968373a05190a2bd01e0e9e78f1174bfff703f9",
+      "bytes": 9626
+    },
+    {
+      "path": "guides/streaming.md",
+      "sha256": "62bcde90e59df91f834047bec37de418fd7c71a696d8792570678fb70d4c33b8",
+      "bytes": 7818
+    },
+    {
+      "path": "guides/timeout-configuration-guide.md",
+      "sha256": "551ef6c68c66a2d546cecac1b923aaa6eea523abca753b81b7367ad43cb57592",
+      "bytes": 16333
+    },
+    {
+      "path": "guides/worker-profiles.md",
+      "sha256": "6b3b44827cd32575ac3c605733b45a812663d44b14edf54b170fa9e1e5640064",
+      "bytes": 11682
+    },
+    {
+      "path": "hex_metadata.config",
+      "sha256": "eedb5543651065e4e5c26013f13389fba9fa0183146dcbef9a701946039f629a",
+      "bytes": 15480
+    },
+    {
+      "path": "lib/mix/tasks/snakepit.doctor.ex",
+      "sha256": "51b6c294b4f97d1c5a0341650f05c905126d2e205d01d3f7ebdb0191fba176ae",
+      "bytes": 1139
+    },
+    {
+      "path": "lib/mix/tasks/snakepit.gen.adapter.ex",
+      "sha256": "c272449cf9af74d3ddb6b00fda9d6b27420bef66f6210acf6f74110464f6e57d",
+      "bytes": 1626
+    },
+    {
+      "path": "lib/mix/tasks/snakepit.python_test.ex",
+      "sha256": "b849a2b8d6d4e8f8d793bb9f4c83da778b1aaf3b1a638eb5e78c7c9d5ee6184a",
+      "bytes": 1710
+    },
+    {
+      "path": "lib/mix/tasks/snakepit.setup.ex",
+      "sha256": "c11157a59eb5e556fd535fdacfd8f18a6d111b3cb437352021869c62b0020c52",
+      "bytes": 509
+    },
+    {
+      "path": "lib/mix/tasks/snakepit.status.ex",
+      "sha256": "a898bb7cf1c8eee240a27f5ab81a92b0b9036020cfabd3663ecda65a7c80b6d1",
+      "bytes": 2011
+    },
+    {
+      "path": "lib/snakepit.ex",
+      "sha256": "afafb8cc2a376fc15a7ae8b9387fdacf23a22dfb98d34206fdddd3ab32f9df09",
+      "bytes": 15151
+    },
+    {
+      "path": "lib/snakepit/adapter.ex",
+      "sha256": "79bcd238edcff8b0af253552d05aaa865e37351824da7d3f93c0aaeeda8904d5",
+      "bytes": 1976
+    },
+    {
+      "path": "lib/snakepit/adapters/grpc_python.ex",
+      "sha256": "945190b24de680c68c1ff7f4f0e327fff7e9c1ac13ce50432c296f0f2554b440",
+      "bytes": 9812
+    },
+    {
+      "path": "lib/snakepit/application.ex",
+      "sha256": "6f76e13d7fa5f1fe9b9ed132a30c3732ab6b1bd18359c4321d91d90fc2642d01",
+      "bytes": 10081
+    },
+    {
+      "path": "lib/snakepit/bootstrap.ex",
+      "sha256": "ff4340db5548bee8f1bc09a23c0e2e3fd8697548d485193be03ba67018af7d91",
+      "bytes": 7451
+    },
+    {
+      "path": "lib/snakepit/bridge/session.ex",
+      "sha256": "80d26c393ae9279129eaf143c381711e671dfa005b1d0e1b509370abf1abe4f3",
+      "bytes": 7203
+    },
+    {
+      "path": "lib/snakepit/bridge/session_store.ex",
+      "sha256": "6c09750051bc555957fe514eaf1be7000870b71106baa8f5400183d385a3f293",
+      "bytes": 18647
+    },
+    {
+      "path": "lib/snakepit/bridge/tool_registry.ex",
+      "sha256": "b801a33eba1c428cd051ba15012acd5632e3b6f28ef35313859a76c7a0f53619",
+      "bytes": 10578
+    },
+    {
+      "path": "lib/snakepit/circuit_breaker.ex",
+      "sha256": "d0f94145a679713247fdb133c43bc787396d0f4f47a7226de9549222a2bab4bc",
+      "bytes": 7892
+    },
+    {
+      "path": "lib/snakepit/compatibility.ex",
+      "sha256": "bed447fc2253fce1063fbb27eb39a17813143bac4dff036ada73500106dc85ed",
+      "bytes": 6473
+    },
+    {
+      "path": "lib/snakepit/config.ex",
+      "sha256": "41615601d6595c5593ac6cf55ccb44512844d05fed342466f9eb091f899aaaab",
+      "bytes": 38518
+    },
+    {
+      "path": "lib/snakepit/crash_barrier.ex",
+      "sha256": "c9e92477461766203831c0b82d6aa81dd79ffd54a6d4f53a82f824078b02d345",
+      "bytes": 7430
+    },
+    {
+      "path": "lib/snakepit/defaults.ex",
+      "sha256": "eb3a12a63030b4f7bf39e7d87771e6ad4673ea64e35a233e97e20db9b3740df7",
+      "bytes": 41561
+    },
+    {
+      "path": "lib/snakepit/env_doctor.ex",
+      "sha256": "7bef298b1e12ae14770f4e99142b61c417ddf4b2cf9a432405736e3fe81d9888",
+      "bytes": 14673
+    },
+    {
+      "path": "lib/snakepit/error.ex",
+      "sha256": "b53c9d54fc49f382b24f686428ed2774326510dc1fb4a2229d6142035e164767",
+      "bytes": 9043
+    },
+    {
+      "path": "lib/snakepit/error/device.ex",
+      "sha256": "6db9813ede00520b5b48bfe042fd97bffd37bb3762d19380950b432906d62023",
+      "bytes": 5897
+    },
+    {
+      "path": "lib/snakepit/error/parser.ex",
+      "sha256": "931e0139d4bbcdcc7fd05a3847e26bf1e9a7a0264527b70ff3bb5e7e304ee910",
+      "bytes": 8472
+    },
+    {
+      "path": "lib/snakepit/error/python_exceptions.ex",
+      "sha256": "2722a9cf0b8ff32cd17c2b81f486bb6bf98800875b27fb42e9eb323919e3608c",
+      "bytes": 1617
+    },
+    {
+      "path": "lib/snakepit/error/python_translation.ex",
+      "sha256": "73afb7853ca7a149b85df8924b24e1444c94376fe1b6b13b35c0b3e25918d8e0",
+      "bytes": 2508
+    },
+    {
+      "path": "lib/snakepit/error/shape.ex",
+      "sha256": "1f3bacbcd93e0d17be5072d4f04460919cb7b05ceb51f1689f54c170992aa78f",
+      "bytes": 4524
+    },
+    {
+      "path": "lib/snakepit/ets_owner.ex",
+      "sha256": "ce3e39bb608923cb7645913eb9403ed4a331ac1a89e01afaf4dcd4dfe30bab6a",
+      "bytes": 4608
+    },
+    {
+      "path": "lib/snakepit/executor.ex",
+      "sha256": "a0c14d2031b6f5bb7c32553abe6e98c71ba8a48fca8e27731dc90ae747fa0aab",
+      "bytes": 6154
+    },
+    {
+      "path": "lib/snakepit/grpc/bridge_server.ex",
+      "sha256": "0e8e00823706ca0dff344cd6a6413dcced24e3c989e6d63e27d3ca44c4040abc",
+      "bytes": 30950
+    },
+    {
+      "path": "lib/snakepit/grpc/client.ex",
+      "sha256": "340fe5863615d4d26d48360c36d7e32dc3d1949ebac632c29fbbdb4d0b9baa71",
+      "bytes": 2967
+    },
+    {
+      "path": "lib/snakepit/grpc/client_impl.ex",
+      "sha256": "d988c3cb3f3a11714077b5ea6f1a84aa37325a9798594b44ff815c308f42429b",
+      "bytes": 13696
+    },
+    {
+      "path": "lib/snakepit/grpc/client_mock.ex",
+      "sha256": "bcb77a6a1d38ab3079bb43467a77b1f453a3bccb5d38a9820043eb39489caaf5",
+      "bytes": 2273
+    },
+    {
+      "path": "lib/snakepit/grpc/client_supervisor.ex",
+      "sha256": "74ddca6af79882eba2d4fb33ecee5608e30344491ac230c8f2c2445adf424bfb",
+      "bytes": 1217
+    },
+    {
+      "path": "lib/snakepit/grpc/endpoint.ex",
+      "sha256": "d6d11695e95ed143546f3442ec3764ecdb6794bbb8b8adf6d6d4b727df33ce83",
+      "bytes": 341
+    },
+    {
+      "path": "lib/snakepit/grpc/endpoint_registry.ex",
+      "sha256": "5128457f916344522f74f6832984752cda43a514ed5ba35a77b882521e56e235",
+      "bytes": 2388
+    },
+    {
+      "path": "lib/snakepit/grpc/generated/snakepit_bridge.pb.ex",
+      "sha256": "959c1056872d3bdb73759406b21aa049834385afed514cca673e0e7c5bd4c03f",
+      "bytes": 16108
+    },
+    {
+      "path": "lib/snakepit/grpc/interceptors/server_logger.ex",
+      "sha256": "ebda83516a14c596ce8d4d09b9645a4d1c9ea44efb997bc1e05449e30cf4f689",
+      "bytes": 1329
+    },
+    {
+      "path": "lib/snakepit/grpc/listener.ex",
+      "sha256": "36549f439d3ba3fd50105a690bf9933ff736258acf658c2253f4eaa0585f9cdf",
+      "bytes": 15951
+    },
+    {
+      "path": "lib/snakepit/grpc_worker.ex",
+      "sha256": "a48f42e96d0486c5146d868e9a1b25c80f14be1b51f5535674fd057385aa4303",
+      "bytes": 41965
+    },
+    {
+      "path": "lib/snakepit/grpc_worker/bootstrap.ex",
+      "sha256": "b09749f8f76dfe329dcc192624faf2dd5b3d4f3efe745dbb635c62f7c70be111",
+      "bytes": 14846
+    },
+    {
+      "path": "lib/snakepit/grpc_worker/instrumentation.ex",
+      "sha256": "7c7525561b92c402d88e4417339272d996ea719c27c1ff47492b4fd349e8bae6",
+      "bytes": 6336
+    },
+    {
+      "path": "lib/snakepit/hardware.ex",
+      "sha256": "860fadb59729d69a50d4421c99d971d266c2652b3163348037dbb7b9dcef007e",
+      "bytes": 6361
+    },
+    {
+      "path": "lib/snakepit/hardware/cpu_detector.ex",
+      "sha256": "7cd6b70e3fb0f4014f59635ef3bdb6d1b4162eeb040d017fdf58cee58a732599",
+      "bytes": 6225
+    },
+    {
+      "path": "lib/snakepit/hardware/cuda_detector.ex",
+      "sha256": "3de957f95288347cbe51c375049146a5833a87ca5a405f190baf206f2a568011",
+      "bytes": 4833
+    },
+    {
+      "path": "lib/snakepit/hardware/detector.ex",
+      "sha256": "33665779d4835a0d153b3488fab19b8f6d5715319df899198830a52d80d957a5",
+      "bytes": 4605
+    },
+    {
+      "path": "lib/snakepit/hardware/mps_detector.ex",
+      "sha256": "08df65caf3ae6579a98604db13649de278bb719851e6694293d10c40c2350ee4",
+      "bytes": 3900
+    },
+    {
+      "path": "lib/snakepit/hardware/rocm_detector.ex",
+      "sha256": "28373192ba09949a71fe0602925452450adae73e45c6133d5f6e7ad912710d7e",
+      "bytes": 2750
+    },
+    {
+      "path": "lib/snakepit/hardware/selector.ex",
+      "sha256": "7f8f25534ae85787561ddf55078caf3bea1cd13d6184536bcf8c29692661a5aa",
+      "bytes": 5853
+    },
+    {
+      "path": "lib/snakepit/health_monitor.ex",
+      "sha256": "576403871891826c85d6a05a79451ffe721f7a772d32d0e98fd8d977d359cdf5",
+      "bytes": 7688
+    },
+    {
+      "path": "lib/snakepit/heartbeat_monitor.ex",
+      "sha256": "8bbac96ed0ff03c2747f6c9841cc920e4e20cf73c7346306749e15eb7d5fe893",
+      "bytes": 13233
+    },
+    {
+      "path": "lib/snakepit/internal/async_fallback.ex",
+      "sha256": "37db23e99e2cac689457d3990d900708e6f7fc55e221852bbf281915959bd92f",
+      "bytes": 2801
+    },
+    {
+      "path": "lib/snakepit/internal/deprecation.ex",
+      "sha256": "f6837b596de4b3dbe181160c4ab9d62040b781e4992f042de46d12ca572c09ff",
+      "bytes": 1549
+    },
+    {
+      "path": "lib/snakepit/internal/timeout_runner.ex",
+      "sha256": "0fd7f5f85b9f4c0bb22d35de9fc707f521faea4a7e2864adc78db5c29621ac5a",
+      "bytes": 2040
+    },
+    {
+      "path": "lib/snakepit/logger.ex",
+      "sha256": "22f92b4ae3c9e7bb4a4b4afa614c6ac02728d1f6f394d4eb84e45b920ad23f3b",
+      "bytes": 8198
+    },
+    {
+      "path": "lib/snakepit/logger/redaction.ex",
+      "sha256": "65ae36619443ab285eb2023d5af7dae7e325d9e8413c340137ec644d0a18901c",
+      "bytes": 2711
+    },
+    {
+      "path": "lib/snakepit/package_error.ex",
+      "sha256": "075370255f6fc12bd3aa18ae4dfab9d260573a72ded08ea717d720145852666a",
+      "bytes": 762
+    },
+    {
+      "path": "lib/snakepit/pool/application_cleanup.ex",
+      "sha256": "99c670d841bf384f0212fd02480b3538b3decb6a560dedbdb7d7515ffc18cbf7",
+      "bytes": 8158
+    },
+    {
+      "path": "lib/snakepit/pool/client_reply.ex",
+      "sha256": "9cd11c5c54c4887bc363e6763afce83c97623782725e4376510a651bf3e83d7b",
+      "bytes": 1351
+    },
+    {
+      "path": "lib/snakepit/pool/dispatcher.ex",
+      "sha256": "63a803efeaebe4e70272773bc8432988c7c551af98fa5c4cf386a3e58a086fc3",
+      "bytes": 6809
+    },
+    {
+      "path": "lib/snakepit/pool/event_handler.ex",
+      "sha256": "5f077858be9d0be6cbd006eb9a1a461ab59f29038f5719533ee0f8dec2da97f2",
+      "bytes": 10366
+    },
+    {
+      "path": "lib/snakepit/pool/initializer.ex",
+      "sha256": "892b6c18b462b01a509f2c21bba4bc0bad279c9e085606bdaf510298ebd87de2",
+      "bytes": 12025
+    },
+    {
+      "path": "lib/snakepit/pool/pool.ex",
+      "sha256": "c5d3443aaa18a793e38c56c696c0466769d00d0dd8a40e79a3d402113fbc3776",
+      "bytes": 59931
+    },
+    {
+      "path": "lib/snakepit/pool/process_registry.ex",
+      "sha256": "c905b761c4da71712bdd41e1d06e26b8a18c7f56ff68dc557ad836de3cb9f562",
+      "bytes": 47665
+    },
+    {
+      "path": "lib/snakepit/pool/queue.ex",
+      "sha256": "34c4cbb95fb883f3d6087d06c2bcb7cfcec74d13ed6a1074bcd6a34be0321cf1",
+      "bytes": 5614
+    },
+    {
+      "path": "lib/snakepit/pool/registry.ex",
+      "sha256": "e56ffc6bbfef07d9419be0cdb2a7f48899e00adf9029dd67a3f1262d23ee6388",
+      "bytes": 4962
+    },
+    {
+      "path": "lib/snakepit/pool/runtime_supervisor.ex",
+      "sha256": "89563414bea54a09160e2be0720d77cb177d956cd485783ed8840d6a1a3d4aa7",
+      "bytes": 691
+    },
+    {
+      "path": "lib/snakepit/pool/scheduler.ex",
+      "sha256": "b9436ac4a92896d0267ff9bb63de8edca810c1a41558b1f53fc49ef0d03bc95e",
+      "bytes": 2068
+    },
+    {
+      "path": "lib/snakepit/pool/state.ex",
+      "sha256": "fb8e2c7522e2f6d70be61987246c3723b7e23415e71539acac731c453c8bca69",
+      "bytes": 6202
+    },
+    {
+      "path": "lib/snakepit/pool/worker_starter.ex",
+      "sha256": "baebd6fed572ec77deacbb87134bbeaafb9e69c4dbb39a143fb7c3d7ad0eaa5a",
+      "bytes": 7034
+    },
+    {
+      "path": "lib/snakepit/pool/worker_starter_registry.ex",
+      "sha256": "d4c19a5fd746d085bd435bc07ff67f20be580395744a6557ebd5e8428e96bef9",
+      "bytes": 1725
+    },
+    {
+      "path": "lib/snakepit/pool/worker_supervisor.ex",
+      "sha256": "882600d6261896280ebddd09175b700d95235ca069c5942a536dd72f6b87bba6",
+      "bytes": 13213
+    },
+    {
+      "path": "lib/snakepit/process_killer.ex",
+      "sha256": "49289aae065b067db59ca420160c349a0c627680ae51ba64dc7d63fd3b5d76e4",
+      "bytes": 21256
+    },
+    {
+      "path": "lib/snakepit/python_packages.ex",
+      "sha256": "bcb3edbbe3a114958665d75006e2ed3150f2c2e245bc94fdf79e2f5d25f52de1",
+      "bytes": 15068
+    },
+    {
+      "path": "lib/snakepit/python_runtime.ex",
+      "sha256": "1260068020b18b2c63c9b495b0da35f18ae3dbd14dbd90c978f340fb6be53c79",
+      "bytes": 10433
+    },
+    {
+      "path": "lib/snakepit/python_thread_limits.ex",
+      "sha256": "bcc6261cbd7edfe1e3f24257efc556b0e3955ab2cb63435599516c90be471fbe",
+      "bytes": 2225
+    },
+    {
+      "path": "lib/snakepit/python_version.ex",
+      "sha256": "cf3d00fdc9b31c9043ceccfd0a9a96d8322db4bcda717ca168c994ef6db38d90",
+      "bytes": 3039
+    },
+    {
+      "path": "lib/snakepit/retry_policy.ex",
+      "sha256": "090342ad754ba1a845a7f6863fcfebdc33eae6c9c10b8bb7fe53b09a87b39118",
+      "bytes": 3999
+    },
+    {
+      "path": "lib/snakepit/run_id.ex",
+      "sha256": "91101b8e2696cf9054d7da14eea2aec091f72ec5cf7d02dbd9755c70d299c4da",
+      "bytes": 2032
+    },
+    {
+      "path": "lib/snakepit/runtime_cleanup.ex",
+      "sha256": "6af68000bc3d119de55e1810217efa0411a5ed7be81ef9de2180a799ff3eaf8e",
+      "bytes": 5065
+    },
+    {
+      "path": "lib/snakepit/script_exit.ex",
+      "sha256": "33702eb02a1cb31cda1387057f2ea038fc802fb957679595834c04f9445b2027",
+      "bytes": 3907
+    },
+    {
+      "path": "lib/snakepit/script_stop.ex",
+      "sha256": "23c78457d15c9416e58fbfc934a8f0a7dd506c716c0c839ca9ee4895bdc20bc5",
+      "bytes": 841
+    },
+    {
+      "path": "lib/snakepit/serialization.ex",
+      "sha256": "64da1e72333913b310d77475062a158aab9c7d74510d8caa54edf2e3f1dcb78b",
+      "bytes": 4859
+    },
+    {
+      "path": "lib/snakepit/shutdown.ex",
+      "sha256": "fecaf92524992fe513f19eb9b930cb3b00c869b5ac0f95da86bc38f055fde9a5",
+      "bytes": 8702
+    },
+    {
+      "path": "lib/snakepit/supervisor_tree.md",
+      "sha256": "f43bc9a96e584fb2ab6fc9a9db742433188e673e5832bad13786693626df4180",
+      "bytes": 3190
+    },
+    {
+      "path": "lib/snakepit/telemetry.ex",
+      "sha256": "4c3f82b4d8fb34998f67dac148c3a4f45cfc5909e4f5f48872aead1867cecce8",
+      "bytes": 10503
+    },
+    {
+      "path": "lib/snakepit/telemetry/config_coercion.ex",
+      "sha256": "6b63a7db799cbbe38dd28cafa267be207de72fbac16066a4b934840df512c02f",
+      "bytes": 1815
+    },
+    {
+      "path": "lib/snakepit/telemetry/control.ex",
+      "sha256": "d513c3c500970c833669e7ddd3b9084afb5135d7476b3623e10bdefcad7ee984",
+      "bytes": 2933
+    },
+    {
+      "path": "lib/snakepit/telemetry/correlation.ex",
+      "sha256": "86555097cdcf5082af6ab4617d66375387a25f31713456ee5cd1e724e6ada84d",
+      "bytes": 653
+    },
+    {
+      "path": "lib/snakepit/telemetry/events.ex",
+      "sha256": "00b3b8456d276913e9aca59c6416a67c3f4247b83586c23b2d005abc20024f56",
+      "bytes": 7582
+    },
+    {
+      "path": "lib/snakepit/telemetry/gpu_profiler.ex",
+      "sha256": "b4e6037bb87d5255d5694a0a64fa28ba9337b425bfc05c0443e5d2b141ef1875",
+      "bytes": 11481
+    },
+    {
+      "path": "lib/snakepit/telemetry/grpc_stream.ex",
+      "sha256": "293fce6f0a53c82836acdde9551f223a42e8cccc8b76dee202fc565aef85d5dd",
+      "bytes": 24876
+    },
+    {
+      "path": "lib/snakepit/telemetry/handlers/logger.ex",
+      "sha256": "f830861581c2eb74b13551e2eac489411e54237726eb88418923b8342178e937",
+      "bytes": 5959
+    },
+    {
+      "path": "lib/snakepit/telemetry/handlers/metrics.ex",
+      "sha256": "56a8d08fbc6f9ce47b956ccb6a3a584cb4eb82d3c276386d05b77675f74a5285",
+      "bytes": 8054
+    },
+    {
+      "path": "lib/snakepit/telemetry/naming.ex",
+      "sha256": "4d8a996d5f10966c249d7b5d2a4614bcbe9194661058e00c9ca9db4946186a2d",
+      "bytes": 9272
+    },
+    {
+      "path": "lib/snakepit/telemetry/open_telemetry.ex",
+      "sha256": "137149743838983ac263ee46aa03e5461437f5a8eac5b884f471abf89ec7cf77",
+      "bytes": 12169
+    },
+    {
+      "path": "lib/snakepit/telemetry/safe_metadata.ex",
+      "sha256": "76a8b72c8e1708f88d21b817c8398f1afcfca093a73cdbad77e9723fdd81a1dd",
+      "bytes": 4064
+    },
+    {
+      "path": "lib/snakepit/telemetry/span.ex",
+      "sha256": "f4248aab7b674f4fb161a6cc00aa0be553e88a683aec1695aea52c090c342743",
+      "bytes": 4835
+    },
+    {
+      "path": "lib/snakepit/telemetry_metrics.ex",
+      "sha256": "09e6fe0a9e3e3ed50b4033aab429cba7e2fd559abed354eac0103e1897f0437b",
+      "bytes": 4633
+    },
+    {
+      "path": "lib/snakepit/worker/configuration.ex",
+      "sha256": "4581bace2bef5f6297696c74f4b519797d49678caa0a4bb5964714796e05deba",
+      "bytes": 9009
+    },
+    {
+      "path": "lib/snakepit/worker/lifecycle_config.ex",
+      "sha256": "5dcd18393c857e84b498cfcff1eb77973e60a7edd9d19582b1a07bec4de3e31d",
+      "bytes": 5176
+    },
+    {
+      "path": "lib/snakepit/worker/lifecycle_manager.ex",
+      "sha256": "3002d4791c0bdaba3337dc0011a37ecf70433b8af446ace89d7b6951b16d329e",
+      "bytes": 27084
+    },
+    {
+      "path": "lib/snakepit/worker/process_manager.ex",
+      "sha256": "b6df3fff638cd1d3cd3e0d53857736d02600afa0a9c2a0c1ec4f6e5037002519",
+      "bytes": 9995
+    },
+    {
+      "path": "lib/snakepit/worker/taint_registry.ex",
+      "sha256": "5f7a0002eef258403d9d91731feec9d08580cb374e6226af2e30d51fd0bebdd4",
+      "bytes": 2207
+    },
+    {
+      "path": "lib/snakepit/worker_profile.ex",
+      "sha256": "b8da60e69b61d64eca9696b7083a7225a707e15e7b16caa9867a8e0f0a1104cc",
+      "bytes": 3127
+    },
+    {
+      "path": "lib/snakepit/worker_profile/process.ex",
+      "sha256": "1521799076a37fc8f292dcc4e4b80c778fe1bb77905dcde3eb1c7db43134d44b",
+      "bytes": 6784
+    },
+    {
+      "path": "lib/snakepit/worker_profile/thread.ex",
+      "sha256": "2561fa73901e409aa0af9fbaa3e36da303bd4f92ad0c1e16e81286735c823846",
+      "bytes": 12656
+    },
+    {
+      "path": "lib/snakepit/worker_profile/thread/capacity_store.ex",
+      "sha256": "55849405a3b468b0d6f139fd7a5f22357154053d4471411e9647cb3d81c03075",
+      "bytes": 4998
+    },
+    {
+      "path": "lib/snakepit/zero_copy.ex",
+      "sha256": "6e0724151f35bd402d1f17d29aa168ebbc937d54ead47053eb2fbc98b96cb64d",
+      "bytes": 4661
+    },
+    {
+      "path": "lib/snakepit/zero_copy_ref.ex",
+      "sha256": "4f401bcbf31d82f274597f04a23dbdcd16783db6a85159ba23d27913c7121001",
+      "bytes": 3697
+    },
+    {
+      "path": "mix.exs",
+      "sha256": "b7f7c2585b0ef30f571fbae15150cb80ed13ab270c9ce0b58b2b12c6f11e304d",
+      "bytes": 9773
+    },
+    {
+      "path": "priv/proto/README.md",
+      "sha256": "f18cf97dffe22da860d1730a16eeacdb91c788b566bebba4bc29de3d2e1a00a6",
+      "bytes": 6475
+    },
+    {
+      "path": "priv/proto/snakepit_bridge.proto",
+      "sha256": "28576b93b6a9f4d6fdcc90392d08edb38e91c2d15c0fd1b4180f594ba8524ab4",
+      "bytes": 5607
+    },
+    {
+      "path": "priv/python/README_THREADING.md",
+      "sha256": "5f65646082c173b7c0ee5d465ae2a398173510483d59fbdc9d5476933b42bf0a",
+      "bytes": 13785
+    },
+    {
+      "path": "priv/python/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "priv/python/grpc_server.py",
+      "sha256": "51eb307055a7b1a7cd66a469a6ecd8d7009451c6067918cc5cd42ecb821eba11",
+      "bytes": 57785
+    },
+    {
+      "path": "priv/python/grpc_server_threaded.py",
+      "sha256": "eebcdafce3aa230076922ba3bcdb871c4ddd1c633bdcce5f20f0e315f2d463b5",
+      "bytes": 39166
+    },
+    {
+      "path": "priv/python/requirements.txt",
+      "sha256": "65601deb7e6d5963962f37eab23d407de67e4577795500e4ddc281bbccefa18f",
+      "bytes": 603
+    },
+    {
+      "path": "priv/python/setup.py",
+      "sha256": "90f33f40fdc8f4561ff6b4561047e445d5cd71014de68e2d899c34ec3f2aa5c8",
+      "bytes": 3658
+    },
+    {
+      "path": "priv/python/snakepit_bridge/__init__.py",
+      "sha256": "c33f7365c9f6130a5b559933a777b65e015b0c5234f3fcf21de21d17df9b5bc9",
+      "bytes": 649
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/__init__.py",
+      "sha256": "87881c05378182e31bd1944bb614a235b56bfaef7d68fd26e9046f86295dad1e",
+      "bytes": 375
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/__init__.py",
+      "sha256": "ffd4240df26f9f46b571c76bc1b30697e31070a0ddf25deb5b4cd43071c66c4f",
+      "bytes": 151
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/__init__.py",
+      "sha256": "5d8a98f503c9176678a414bb0cbbfd694f46dea0e9a520e87ce6a68929e2a6f8",
+      "bytes": 547
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/basic_ops.py",
+      "sha256": "ef0834f054ce067faae00f976ea50cda850e02fbab042b8fb3c7eb32dc5fba73",
+      "bytes": 10817
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/binary_ops.py",
+      "sha256": "67a72d152c2fec499142d16721e3853b59cca6c7f3f332d754bdcd1663e3e59d",
+      "bytes": 3985
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/concurrent_ops.py",
+      "sha256": "ebc1fa696ba0b4546fe48ce020bffc9aacae871c54d6119d9c2c1816c45f544c",
+      "bytes": 2109
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/ml_workflow.py",
+      "sha256": "4c9fd663ce3e60295b28ee683379ef049c4af1d057917044c05663946aaf2161",
+      "bytes": 8457
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/session_ops.py",
+      "sha256": "2f4a0c86ff274b4c2df406ee0adaf2e9882c277287ba874bf54b904adc9b56de",
+      "bytes": 4020
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/handlers/streaming_ops.py",
+      "sha256": "284cae2af4265644bd849d869bf3bc6bc32d582a7c1082dd21643a3aee85a875",
+      "bytes": 3560
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/showcase_adapter.py",
+      "sha256": "2692af1ee2b56067554c4be36bf9062664f34f02e5dbde74d2ebda2bb75878eb",
+      "bytes": 7691
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/tool.py",
+      "sha256": "09c7f89b42827d6b8e0981f613757d6c7f33cf35e4d617ec7f03575ad89c696e",
+      "bytes": 445
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/showcase/utils/__init__.py",
+      "sha256": "edaa87cae91a8c0d1c6f0d4d20811eac0b045764ba25707d73be1232d92d8cce",
+      "bytes": 49
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/template.py",
+      "sha256": "28be6889b57eb0af5650649fae55818e906cdc21a59d2297ab99763a4343da22",
+      "bytes": 3635
+    },
+    {
+      "path": "priv/python/snakepit_bridge/adapters/threaded_showcase.py",
+      "sha256": "c43e5de8ae05979bdd0b23a1819b8f6e3db05d7efd0fc04e217c827363f7c3a1",
+      "bytes": 15928
+    },
+    {
+      "path": "priv/python/snakepit_bridge/base_adapter.py",
+      "sha256": "344ec2f386f9b1eb125a79472701db4581fa82a5b31cf92cffe71a9795d815be",
+      "bytes": 13776
+    },
+    {
+      "path": "priv/python/snakepit_bridge/base_adapter_threaded.py",
+      "sha256": "821e8d40e95f0d87fafd0da4232f276f8fa006dd8482bb0a6ae5fa147687059b",
+      "bytes": 12835
+    },
+    {
+      "path": "priv/python/snakepit_bridge/heartbeat.py",
+      "sha256": "380359ff66d5e9ce15fd54fb7774dffbf777daea45cbb744c27415905bf6cf03",
+      "bytes": 10523
+    },
+    {
+      "path": "priv/python/snakepit_bridge/logging_config.py",
+      "sha256": "1bb65e4f6ecfa183e71cfc935c6815c3de4d29127ab6776f7eeb300c44af93c4",
+      "bytes": 2152
+    },
+    {
+      "path": "priv/python/snakepit_bridge/otel_tracing.py",
+      "sha256": "0d305d431c1ae2a5d20b3ed8d0720d5e8785a487c7fa217f884cc96e9d2ac85c",
+      "bytes": 5375
+    },
+    {
+      "path": "priv/python/snakepit_bridge/py.typed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "priv/python/snakepit_bridge/serialization.py",
+      "sha256": "935987d3a3ca83ce3e8c2b945283e5f028b27a8a6af6a626a6580e90b5b5d5c4",
+      "bytes": 25909
+    },
+    {
+      "path": "priv/python/snakepit_bridge/session_context.py",
+      "sha256": "847c64d71a2710f3a9e8a7c116406bde31545aada5721b03a1fc2d1fc6517879",
+      "bytes": 7000
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/__init__.py",
+      "sha256": "508cbbfdde8866114bde49632b6064e8e989ed63e617a42e65eb9ea8f80155d4",
+      "bytes": 4430
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/backends/__init__.py",
+      "sha256": "7537ec65f277afc4bde2238b0a9f86734f7d11e9feae9acaada12f48303bd16c",
+      "bytes": 102
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/backends/base.py",
+      "sha256": "867c34b914204544f914833c943a4277e4daf806bba237ce0e66c95411cc45c7",
+      "bytes": 1135
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/backends/grpc.py",
+      "sha256": "8781b0a84059bfba8ad5aa9bb9e25aaa4bbd11fe2e3bd0aad11296c63ce10267",
+      "bytes": 1680
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/backends/stderr.py",
+      "sha256": "c9a91a6b7858b32813b3cbc54c658873ccd19e7f21438e2876dae36e843aaa62",
+      "bytes": 1727
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/manager.py",
+      "sha256": "c69a86d6e85a65a876c47cfba36f60e6b484133b60291468ccc09061a64d6ab8",
+      "bytes": 921
+    },
+    {
+      "path": "priv/python/snakepit_bridge/telemetry/stream.py",
+      "sha256": "6daf3be3dac0c554c8a9f33ee7b7e8506b95cadc2b195e4698a03a275fd9b9fc",
+      "bytes": 8846
+    },
+    {
+      "path": "priv/python/snakepit_bridge/thread_safety_checker.py",
+      "sha256": "d682f30d0e6cd27ad9dbd81204299cce12fafdceae79cd56650d545a8ac833c1",
+      "bytes": 16003
+    },
+    {
+      "path": "priv/python/snakepit_bridge/zero_copy.py",
+      "sha256": "6dcb990be8bea337f749381c699fcfb255ea2d7bbc8b01b47ed377a3f16d9d02",
+      "bytes": 936
+    },
+    {
+      "path": "priv/python/snakepit_bridge_pb2.py",
+      "sha256": "351596d6a5f282fe41ddc21a57b9d4b7722efa0d56f1bf03d234e1b0120d4f29",
+      "bytes": 18645
+    },
+    {
+      "path": "priv/python/snakepit_bridge_pb2_grpc.py",
+      "sha256": "8c73e98ce9b29a38cee907868fec06c3d7a21098b41a8392dac873828a822ef3",
+      "bytes": 21506
+    }
+  ]
+}

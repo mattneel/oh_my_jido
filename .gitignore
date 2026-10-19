@@ -22,3 +22,15 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 oh_my_jido-*.tar
 
+# Source snapshots and independent consumers keep their own build caches.
+/vendor/*/deps/
+/vendor/*/_build/
+/examples/*/deps/
+/examples/*/_build/
+/examples/*/tmp/
+/examples/*/var/
+
+# Python bytecode and native worker registry state are runtime artifacts.
+__pycache__/
+*.py[cod]
+/vendor/snakepit/priv/data/

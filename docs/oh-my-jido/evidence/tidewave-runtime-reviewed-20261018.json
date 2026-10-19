@@ -1,0 +1,36 @@
+{
+  "recorded_date": "2026-10-18",
+  "scope": "Post-review native Tidewave0.9.1/Bandit1.13.1 external application proof",
+  "supersedes_authority_claims_in": "tidewave-runtime-20261018.json",
+  "native_source_lookup_regression": {
+    "before": {"grants": ["mcp"], "unique_references": 24, "target_atom_growth": 50, "source_lookup_executed_on_load": true},
+    "after": {"grants": ["mcp"], "unique_references": 24, "target_atom_growth": 0, "source_lookup_executed_on_load": false, "requests_denied_for_missing_live_eval": true},
+    "evidence": ["native reproduction bg_55", "post-fix native denial smoke bg_56"],
+    "boundary": "get_docs/get_source_location require live_eval and exact target/tool/argument-digest approval; only get_logs is exempt"
+  },
+  "approved_runtime_smoke": {
+    "evidence": "artifact://427",
+    "command_exit_status": 0,
+    "actual_module_and_function_docs": true,
+    "actual_source_location": true,
+    "actual_target_log_challenge": true,
+    "separately_approved_source_requests": true,
+    "distinct_library_proxy_and_target_vms": true,
+    "live_nonce_commitment_matched": true,
+    "proof_calls": 1,
+    "native_rpc_and_erpc_in_target": true,
+    "native_error_and_uncertain_outcome_envelopes_preserved": true,
+    "grant_approval_and_model_target_override_denials": true,
+    "owned_proxy_cleanup": "confirmed",
+    "owned_target_subsequently_stopped": true,
+    "api_key_or_model_used": false,
+    "isolated_eval": "unchanged"
+  },
+  "final_integration": {"full_quality_gate": "artifact://546", "tests_passed": 462, "density_and_schema": "library-acceptance-20261019.json"},
+  "limitations": [
+    "This direct proof precedes the final-source full quality gate",
+    "Runtime lookup and approved code are not a sandbox",
+    "RPC/ERPC address the target's own node; distributed Observer is proven separately",
+    "No user application, database, subscription or credentials were used"
+  ]
+}

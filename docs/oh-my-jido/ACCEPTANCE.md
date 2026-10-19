@@ -3,6 +3,8 @@
 A test validates a public behavior, not a private implementation detail.
 Prefer stable behavior tests and scripted model fixtures over upstream byte-level differential tests.
 
+Current library-scope results are retained in the [final source acceptance record](evidence/library-acceptance-20261019.json) and [progress ledger](PROGRESS.md). The explicit human override in [INDEX](INDEX.md#scope-change) excludes external Elixos F06/F07/T10; it does not waive generic host, provider coding, quality or density gates below.
+
 ## Required test layers
 
 | Layer | Scope | Evidence |
@@ -11,7 +13,7 @@ Prefer stable behavior tests and scripted model fixtures over upstream byte-leve
 | Component | Jido agent turns with scripted model and host callback fixtures | Real Jido runtime traces |
 | Integration | Git, filesystem, shell, LSP, DAP, Eval backends, MCP, browser | Actual adapter operations |
 | Fault | Worker crash, cancellation, timeout, partial result, restart | Recovery and no duplicate effects |
-| Host | Plain Mix application and separate Elixos adapter | Host-owned lifecycle and tool authority |
+| Host | Independent plain Mix application; external Elixos adapter excluded by explicit scope override | Host-owned lifecycle and tool authority |
 | Live opt-in | Authorized subscription accounts and external services | Explicit, redacted smoke-test report |
 | Performance | Multiple concurrent agent and tool populations | Memory, latency, queue and error measurements |
 
@@ -83,6 +85,9 @@ Exercise an actual AST search and targeted transformation on a fixture repositor
 Exercise LSP diagnostics and symbol navigation with a supported language server.
 Exercise a debugger breakpoint, step, variable lookup, and session teardown.
 Use fake adapters for baseline tests and real servers for optional smoke tests.
+The configured native Elixir rename alternative must prove cross-file symbol identity, default-arity/multiclause and import/capture handling, scoped bindings, destination conflicts, immutable preview and snapshot/version-guarded publication. Native package success without complete supported-source evidence is not a passing rename.
+Corroborate the native server's source buffers with actual confined text before trusting semantic locations; unchanged version counters alone do not prove freshness after same-length disk edits.
+
 
 ### T10: Elixos candidate generation
 
@@ -99,6 +104,23 @@ Measure bounded active sessions with realistic scripted tool and model latency.
 Record resident memory, process count, p50/p95/p99 latency, and queue pressure.
 Keep resource limits explicit and record the point of saturation.
 Treat unmeasured performance improvements as hypotheses, not delivered claims.
+
+### T12: headless live Observer
+
+Observe an actual running OTP application using the public Action, locally and on an explicitly configured separate node.
+Read bounded system/application/process/supervision/ETS metadata; preserve private state, queued messages, process dictionaries and table contents.
+Prove independent grants, confined supervision roots, limits/truncation, disappeared targets and owned fixture cleanup.
+Do not start wxWidgets, distribution, alter cookies or inject code as part of an Observer request.
+Return native collection failures as tagged failures without exiting the caller; process pagination must use bounded native iteration rather than a full process-list copy.
+
+### T13: live runtime escape hatch
+
+Use real runtime tools against an owned live application, not a mock catalog or isolated Eval kernel.
+Read exact installed documentation, source locations and an actual app log challenge.
+Reject target overrides, missing grants and unapproved evaluation or runtime-loading source lookups before target effects. Native docs/source must not create atoms or execute`@on_load` without the additional runtime authority.
+With explicit approval, evaluate fixed code and invoke native RPC against actual app state in a distinct target VM.
+Preserve transport/tool error and uncertain-effect envelopes; never retry or automatically escalate.
+Confirm owned client/target cleanup; do not attach to a real user app without approval.
 
 ## Quality gates
 

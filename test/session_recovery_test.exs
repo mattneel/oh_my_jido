@@ -1,0 +1,411 @@
+defmodule OhMyJido.SessionRecoveryTest do
+  use Jido.AI.TestCase, async: false
+
+  @moduletag timeout: 60_000
+
+  alias OhMyJido.{Eval, Event, Runtime, Tool}
+
+  defmodule ObservedRequests do
+    @behaviour Jido.AI.Reasoning.ReAct.RequestTransformer
+
+    @impl true
+    def transform_request(request, state, config, %{oh_my_jido: context} = runtime_context) do
+      with {:ok, projected} <-
+             OhMyJido.Models.Transformer.transform_request(
+               request,
+               state,
+               config,
+               runtime_context
+             ) do
+        query =
+          request.messages
+          |> Enum.reverse()
+          |> Enum.find_value(fn
+            %{role: :user, content: content} -> Jido.AI.Turn.extract_from_content(content)
+            _message -> nil
+          end)
+
+        send(
+          context.metadata.observer,
+          {:model_request, query, request.messages, projected.messages}
+        )
+
+        {:ok, projected}
+      end
+    end
+  end
+
+  defmodule WaitingEffect do
+    use Jido.Action,
+      name: "recovery_wait",
+      description: "Wait at an observable authorized effect boundary",
+      schema: Zoi.object(%{})
+
+    def capability, do: :read
+
+    @impl true
+    def run(_params, %{oh_my_jido: context} = execution_context) do
+      with :ok <- Tool.authorize(execution_context, :read) do
+        send(context.metadata.observer, {:waiting_effect, self()})
+
+        receive do
+          :release -> {:ok, %{released: true}}
+        end
+      end
+    end
+  end
+
+  setup do
+    root = Path.join(System.tmp_dir!(), "omj-recovery-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    %{root: root}
+  end
+
+  test "a compacted terminal answer reaches the next native model request", %{root: root} do
+    session = session(root, context_policy: [max_messages: 4, keep_recent: 4])
+    answer_run(session, "Establish the task", "The task is established.")
+    answer_run(session, "Inspect the next fact", "The second fact is recorded.")
+    answer_run(session, "Finish this turn", "Distinct terminal observation 7319.")
+
+    assert Enum.any?(OhMyJido.events(session), fn
+             %Event{kind: :context_compacted, payload: %{removed_messages: count}} -> count > 0
+             _event -> false
+           end)
+
+    answer_run(session, "Use the previous answer", "The previous answer is available.")
+    assert_receive {:model_request, "Use the previous answer", native, projected}
+    assert assistant_message?(native, "Distinct terminal observation 7319.")
+    assert assistant_message?(projected, "Distinct terminal observation 7319.")
+
+    assert :ok = OhMyJido.checkpoint(session)
+    assert :ok = OhMyJido.stop_session(session)
+    assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
+    answer_run(session, "Continue after restore", "The restored conversation is available.")
+    assert_receive {:model_request, "Continue after restore", native, projected}
+    assert assistant_message?(native, "The previous answer is available.")
+    assert assistant_message?(projected, "The previous answer is available.")
+  end
+
+  for restored? <- [false, true] do
+    @restored restored?
+
+    test "a terminal tool exchange survives compaction with restore=#{restored?}", %{root: root} do
+      session = session(root, context_policy: [max_messages: 4, keep_recent: 6])
+      answer_run(session, "Establish the task", "The task is established.")
+      answer_run(session, "Inspect the next fact", "The second fact is recorded.")
+      query = "Write one terminal receipt"
+
+      script =
+        expect_react do
+          user(query)
+          call("write", %{path: "receipt.txt", content: "written once", snapshot: "missing"})
+          answer("The receipt is complete.")
+        end
+
+      assert {:ok, run} =
+               OhMyJido.prompt(
+                 session,
+                 query,
+                 Keyword.put(react_opts(script), :max_iterations, 1)
+               )
+
+      assert {:ok, %{status: :completed}} = OhMyJido.await(session, run)
+      assert File.read!(Path.join(root, "receipt.txt")) == "written once"
+      assert Enum.any?(OhMyJido.events(session), &(&1.kind == :context_compacted))
+
+      if @restored do
+        assert :ok = OhMyJido.checkpoint(session)
+        assert :ok = OhMyJido.stop_session(session)
+        assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
+      end
+
+      answer_run(session, "Reconcile the terminal receipt", "No effect needs replay.", 1)
+      assert_receive {:model_request, "Reconcile the terminal receipt", native, projected}
+      assert_receipt_exchange(native)
+      assert_receipt_exchange(projected)
+      assert File.read!(Path.join(root, "receipt.txt")) == "written once"
+      assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+      assert Enum.count(effects, fn {_id, effect} -> effect.name == "write" end) == 1
+    end
+  end
+
+  test "a hard Eval controller death releases its session slot without replay", %{root: root} do
+    session = session(root, max_resources: 1)
+    eval = Runtime.eval(__MODULE__.Host)
+    coordinator = GenServer.whereis(Runtime.via(session))
+
+    script =
+      expect_react do
+        user("Run an owned cell")
+
+        call("eval", %{
+          language: "elixir",
+          source:
+            ~s|Eval.tool("write", %{"path" => "receipt.txt", "content" => "written once", "snapshot" => "missing"}); Eval.tool("recovery_wait", %{})|,
+          timeout: 25_000
+        })
+
+        answer("Reconcile the interrupted cell without replay.")
+      end
+
+    assert {:ok, run} = OhMyJido.prompt(session, "Run an owned cell", react_opts(script))
+    assert_receive {:waiting_effect, callback}, 20_000
+    callback_monitor = Process.monitor(callback)
+
+    assert {:ok, %{controller: controller, worker: worker}} =
+             Eval.info(eval, session.id, :elixir)
+
+    controller_monitor = Process.monitor(controller)
+    worker_monitor = Process.monitor(worker)
+    Process.exit(controller, :kill)
+    assert_receive {:DOWN, ^controller_monitor, :process, ^controller, _reason}, 10_000
+    assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _reason}, 10_000
+    assert_receive {:DOWN, ^callback_monitor, :process, ^callback, _reason}, 10_000
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, run)
+    assert GenServer.whereis(Runtime.via(session)) == coordinator
+    assert Process.alive?(eval)
+
+    assert {:ok, %{status: :ready}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", operation: "reset"})
+
+    assert {:ok, %{status: :ok, display: "42"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "40 + 2"})
+
+    assert File.read!(Path.join(root, "receipt.txt")) == "written once"
+    refute_receive {:waiting_effect, _callback}
+  end
+
+  test "an enclosing native Action timeout keeps a write uncertain across restore", %{root: root} do
+    session = session(root)
+
+    action =
+      Task.async(fn ->
+        OhMyJido.execute_tool(
+          session,
+          "shell",
+          %{
+            executable: "sh",
+            args: ["-c", "printf 'written once' >> receipt.txt; sleep 30"],
+            timeout_ms: 15_000
+          },
+          timeout: 2_000
+        )
+      end)
+
+    wait_until(fn -> File.read(Path.join(root, "receipt.txt")) == {:ok, "written once"} end)
+    assert {:error, %Jido.Action.Error.TimeoutError{}} = Task.await(action, 10_000)
+
+    assert {:error, _known_terminal_error} =
+             OhMyJido.execute_tool(session, "read", %{path: "missing"})
+
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert [%{id: effect_id, status: :uncertain}] = effects_named(effects, "shell")
+    assert [%{status: :completed}] = effects_named(effects, "read")
+
+    assert :ok = OhMyJido.checkpoint(session)
+    assert :ok = OhMyJido.stop_session(session)
+    assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
+    answer_run(session, "Continue without repeating the receipt", "The effect remains uncertain.")
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert [%{id: ^effect_id, status: :uncertain}] = effects_named(effects, "shell")
+    assert File.read!(Path.join(root, "receipt.txt")) == "written once"
+  end
+
+  test "an existing session uses its replacement runtime Eval for every kernel operation", %{
+    root: root
+  } do
+    session = session(root)
+    coordinator = GenServer.whereis(Runtime.via(session))
+    eval = Runtime.eval(__MODULE__.Host)
+
+    assert {:ok, %{status: :ok, display: "40"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "value = 40"})
+
+    assert {:ok, %{worker: worker}} = Eval.info(eval, session.id, :elixir)
+    worker_monitor = Process.monitor(worker)
+    assert :ok = Supervisor.terminate_child(__MODULE__.Host, :eval)
+    assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _reason}, 10_000
+    assert {:ok, replacement} = Supervisor.restart_child(__MODULE__.Host, :eval)
+    assert replacement != eval
+    assert Runtime.eval(__MODULE__.Host) == replacement
+    assert GenServer.whereis(Runtime.via(session)) == coordinator
+
+    assert {:ok, %{status: :ready}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", operation: "open"})
+
+    assert {:ok, %{status: :ok, display: "40"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "value = 40"})
+
+    assert {:ok, %{status: :ready}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", operation: "reset"})
+
+    assert {:ok, %{status: :ok, display: "42"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "6 * 7"})
+
+    assert {:ok, %{status: :closed}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", operation: "close"})
+
+    assert {:error, :not_open} = Eval.info(replacement, session.id, :elixir)
+
+    script =
+      expect_react do
+        user("Use Eval after replacement")
+        call("eval", %{language: "elixir", source: "40 + 2"})
+        answer("The replacement kernel is usable.")
+      end
+
+    assert {:ok, run} = OhMyJido.prompt(session, "Use Eval after replacement", react_opts(script))
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, run)
+    assert {:ok, %{status: :ready}} = Eval.info(replacement, session.id, :elixir)
+  end
+
+  test "retention admission failure preserves the coordinator, bindings, subscriber and model slot",
+       %{
+         root: root
+       } do
+    session = session(root, max_active: 1, context_policy: [max_retained_bytes: 512])
+    coordinator = GenServer.whereis(Runtime.via(session))
+    assert :ok = OhMyJido.subscribe(session, self())
+
+    assert {:ok, %{status: :ok, display: "40"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "retained = 40"})
+
+    admission =
+      Task.async(fn ->
+        OhMyJido.prompt(session, String.duplicate("mandatory fact ", 100))
+      end)
+
+    assert {:error, :retained_context_too_large} = Task.await(admission, 5_000)
+
+    assert GenServer.whereis(Runtime.via(session)) == coordinator
+    assert {:ok, %{status: :idle, goal: nil, runs: runs}} = OhMyJido.inspect_session(session)
+    assert runs == %{}
+    assert OhMyJido.events(session) == []
+
+    assert {:ok, %{status: :ok, display: "42"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "retained + 2"})
+
+    answer_run(session, "Continue with a small task", "The admission slot is usable.")
+    assert_receive {:oh_my_jido, %Event{kind: :run_started}}
+    assert_receive {:oh_my_jido, %Event{kind: :run_completed, payload: %{status: :completed}}}
+    assert GenServer.whereis(Runtime.via(session)) == coordinator
+  end
+
+  test "explicit host Eval ownership is not replaced with the session runtime service", %{
+    root: root
+  } do
+    external =
+      start_supervised!(
+        Supervisor.child_spec(
+          {Eval, backends: %{elixir: [isolation: :trusted]}},
+          id: __MODULE__.ExternalEval,
+          shutdown: 10_000
+        )
+      )
+
+    session = session(root, metadata: %{observer: self(), eval: external})
+
+    assert {:ok, host_context} = OhMyJido.Session.call(session, :context)
+
+    assert {:ok, %{status: :ok, display: "42"}} =
+             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "40 + 2"})
+
+    assert {:ok, %{status: :ready}} = Eval.info(external, session.id, :elixir)
+    assert {:error, :not_open} = Eval.info(Runtime.eval(__MODULE__.Host), session.id, :elixir)
+
+    assert :ok = Supervisor.terminate_child(__MODULE__.Host, :eval)
+    assert {:ok, _replacement} = Supervisor.restart_child(__MODULE__.Host, :eval)
+
+    assert {:ok, %{status: :ok, display: "43"}} =
+             Tool.execute(host_context, "eval", %{language: "elixir", source: "40 + 3"})
+  end
+
+  defp session(root, opts \\ []) do
+    runtime_opts =
+      Keyword.merge(
+        [
+          name: __MODULE__.Host,
+          allow_test_scripts: true,
+          request_transformer: ObservedRequests,
+          storage: {Jido.Storage.File, path: Path.join(root, ".store")},
+          tools: [
+            OhMyJido.Tools.Eval,
+            OhMyJido.Tools.Read,
+            OhMyJido.Tools.Write,
+            OhMyJido.Tools.Shell,
+            WaitingEffect
+          ],
+          eval: [backends: %{elixir: [isolation: :trusted]}, callback_timeout: 20_000],
+          tool_timeout_ms: 30_000,
+          metadata: %{observer: self()}
+        ],
+        opts
+      )
+
+    start_supervised!(Supervisor.child_spec({Runtime, runtime_opts}, shutdown: 10_000))
+
+    assert {:ok, session} =
+             OhMyJido.start_session(__MODULE__.Host,
+               workspace: root,
+               permissions: [:read, :edit, :exec, :eval]
+             )
+
+    session
+  end
+
+  defp answer_run(session, query, text, preceding_calls \\ 0) do
+    script =
+      expect_react do
+        user(query)
+
+        if preceding_calls > 0 do
+          for _index <- 1..preceding_calls, do: call("read", %{path: "receipt.txt"})
+        end
+
+        answer(text)
+      end
+
+    assert {:ok, run} = OhMyJido.prompt(session, query, react_opts(script))
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, run, timeout: 10_000)
+  end
+
+  defp assistant_message?(messages, text) do
+    Enum.any?(messages, fn message ->
+      message.role == :assistant and Jido.AI.Turn.extract_from_content(message.content) == text
+    end)
+  end
+
+  defp assert_receipt_exchange(messages) do
+    calls =
+      Enum.flat_map(messages, fn message ->
+        Enum.filter(Map.get(message, :tool_calls) || [], &(Map.get(&1, :name) == "write"))
+      end)
+
+    assert [call] = calls
+
+    assert Enum.any?(messages, fn message ->
+             message.role == :tool and Map.get(message, :tool_call_id) == call.id and
+               Jido.AI.Turn.extract_from_content(message.content) =~ "written"
+           end)
+  end
+
+  defp effects_named(effects, name),
+    do: effects |> Map.values() |> Enum.filter(&(&1.name == name))
+
+  defp wait_until(predicate, attempts \\ 500)
+
+  defp wait_until(_predicate, 0),
+    do: flunk("the real effect did not reach its observable boundary")
+
+  defp wait_until(predicate, attempts) do
+    if predicate.() do
+      :ok
+    else
+      receive do
+      after
+        10 -> wait_until(predicate, attempts - 1)
+      end
+    end
+  end
+end

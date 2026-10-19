@@ -1,0 +1,50 @@
+{
+  "recorded_date": "2026-10-18",
+  "scope": "Owned external live OTP/Plug application through released native Tidewave stdio proxy and existing MCP Jido Action",
+  "native_versions": {
+    "tidewave": "0.9.1",
+    "bandit": "1.13.1",
+    "plug": "1.20.3"
+  },
+  "behavior_tests": {"passed": 14, "evidence": "artifact://412"},
+  "runtime_smoke": {
+    "verified": true,
+    "command_exit_status": 0,
+    "native_stdio_proxy": true,
+    "new_transport_or_evaluator": false,
+    "loopback_target_only": true,
+    "distinct_target_library_and_proxy_vms": true,
+    "actual_module_and_function_documentation": true,
+    "actual_source_location": true,
+    "actual_unique_target_log_challenge": true,
+    "effective_grant_scoped_initialize_and_tool_catalogs": true,
+    "model_target_port_hidden_and_override_denied": true,
+    "missing_live_eval_grant_denied": true,
+    "missing_host_approval_denied": true,
+    "approved_source_and_arguments_digest_checked": true,
+    "actual_live_nonce_commitment_matched": true,
+    "actual_live_proof_counter": 1,
+    "native_rpc_in_target": true,
+    "native_erpc_in_target": true,
+    "native_tool_error_and_uncertain_outcome_envelopes_preserved": true,
+    "automatic_fallback_or_replay": false,
+    "gui_started": false,
+    "api_key_or_model_used": false,
+    "isolated_eval": "unchanged_and_distinct_default"
+  },
+  "cleanup": {
+    "owned_native_proxy": "confirmed",
+    "target_remained_alive_after_proxy_close": true,
+    "owned_target_subsequently_stopped_by_parent": true
+  },
+  "evidence": "artifact://408",
+  "limitations": [
+    "Pre-review baseline: native source lookup exemption was subsequently found unsafe and tightened; post-review proof is required",
+    "Direct runtime proof precedes the new-feature full quality gate",
+    "RPC and ERPC in this smoke call the target's own node, not a second distributed node",
+    "Observer has a separate actual distributed-node collector proof",
+    "Live evaluation is not an OS sandbox and requires a trusted separately configured application target",
+    "No real user application, database, subscription or provider credential was used",
+    "An initially selected old Bandit fixture pin emitted advisories; it was replaced with native1.13.1 before starting any listener"
+  ]
+}

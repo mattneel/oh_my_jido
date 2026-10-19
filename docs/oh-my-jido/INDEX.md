@@ -32,5 +32,12 @@ Autonomous work can continue across many interactive goal turns, with human appr
 ## Scope change
 
 Record proposed changes in `PROGRESS.md` and explain their effect on acceptance.
+
+The human explicitly changed the delivery boundary on2026-10-18: Elixos integration belongs on the Elixos side; deliver Oh-My-Jido-specific features here. External adapters, OS packaging and guest promotion/fallback are not library completion gates. Generic host contracts and independent Mix embedding remain required. `PROGRESS.md` records this override and preserves historical external observations without claiming their completion.
+
+The human subsequently added structured, headless live OTP/application inspection (explicitly not the wxWidgets Observer app), and retained live IEx-style evaluation/RPC as an explicitly authorized last resort, citing Tidewave MCP runtime tools. These are tracked as C13/C14 and T12/T13. They do not replace isolated Eval or authorize connecting to real user applications without the host's target/grant/approval policy.
+
+The human additionally approved ordinary-Elixir onboarding, native plugin attachment to their own Jido/Jido.AI agents, composable availability bundles, source-installation ergonomics and an independent own-agent example. Deliver these on the stable dependency contract first, then create a dedicated Jido V3 preview branch from the verified result. This request does not itself authorize a stable dependency upgrade or publication.
+
 Never narrow the canonical goal to match the features that already work.
 If an external service blocks a requirement, retain its row as blocked with explicit evidence.

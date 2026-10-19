@@ -1,0 +1,1138 @@
+# OpenAI
+
+Access GPT models including standard chat models and reasoning models (o1, o3, GPT-5).
+
+ReqLLM also exposes a separate `openai_codex` provider for the ChatGPT Codex backend used by OAuth Codex tokens.
+
+## Configuration
+
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+## Model Specs
+
+For the full model-spec workflow, see [Model Specs](model-specs.md).
+
+Use exact OpenAI IDs from [LLM Catalog](https://llmcatalog.dev) when possible. For brand-new model IDs, local OpenAI-compatible servers, or proxies, use `ReqLLM.model!/1` with `provider: :openai`, an explicit `id`, and `base_url` when needed.
+
+### OAuth Access Token (optional)
+
+If you use OAuth instead of API keys, pass an access token and set auth mode:
+
+```elixir
+ReqLLM.generate_text(
+  "openai:gpt-5-codex",
+  "Write a test",
+  auth_mode: :oauth,
+  access_token: System.fetch_env!("OPENAI_ACCESS_TOKEN")
+)
+```
+
+You can also pass these under `provider_options`.
+
+### ChatGPT Codex Backend (`openai_codex`)
+
+Use `openai_codex:*` when your token comes from the ChatGPT/Codex OAuth flow and you want requests routed to `https://chatgpt.com/backend-api/codex/responses` instead of platform OpenAI `/v1/responses`.
+
+This provider is OAuth-only and resolves `chatgpt_account_id` in this order:
+
+- explicit `provider_options: [chatgpt_account_id: "..."]`
+- `accountId` / `account_id` in the oauth/auth JSON file
+- JWT claim extraction from the access token
+
+Example:
+
+```elixir
+ReqLLM.generate_text(
+  "openai_codex:gpt-5.3-codex-spark",
+  "Write a test for this function",
+  provider_options: [
+    auth_mode: :oauth,
+    oauth_file: "/path/to/auth.json"
+  ]
+)
+```
+
+### OAuth Files (`oauth.json` / `auth.json`)
+
+ReqLLM can also read provider credentials from a JSON file using the same shape used by `pi-ai`:
+
+```json
+{
+  "openai-codex": {
+    "type": "oauth",
+    "access": "eyJ...",
+    "refresh": "oai_rt_...",
+    "expires": 1762857415123,
+    "accountId": "user_123"
+  }
+}
+```
+
+When `auth_mode: :oauth` is enabled and no explicit `access_token` is passed, ReqLLM will:
+
+- load credentials from `provider_options: [oauth_file: "..."]`
+- accept `auth_file` as an alias
+- fall back to `oauth.json` or `auth.json` in the current working directory
+- refresh expired `openai-codex` credentials automatically and persist the updated file
+- reuse `accountId` from the file or derive it from the refreshed access token for Codex requests
+
+Example:
+
+```elixir
+ReqLLM.generate_text(
+  "openai:gpt-5-codex",
+  "Write a test",
+  provider_options: [
+    auth_mode: :oauth,
+    oauth_file: "/path/to/oauth.json"
+  ]
+)
+```
+
+If you need to customize the refresh HTTP client, pass `oauth_http_options` under `provider_options`.
+
+For `openai_codex`, you can also override backend request headers with:
+
+- `provider_options: [chatgpt_account_id: "..."]`
+- `provider_options: [codex_originator: "pi"]`
+- `provider_options: [session_id: "stable-session-id", thread_id: "thread-id"]`
+
+Reuse the same `session_id` across related requests. Codex sends it as the
+hyphenated `session-id` header on buffered HTTP, SSE, and WebSocket requests,
+and defaults `prompt_cache_key` to that identity. An explicit
+`provider_options: [prompt_cache_key: "cache-key"]` overrides the cache key.
+`thread_id` is a separate, optional identity sent as `thread-id` and
+`x-client-request-id` on all three transports. No session or cache identity is
+invented when none is supplied. Applications serving multiple users should
+scope these identities to the authenticated user/session; never use one global
+cache key.
+
+For canonical turn attribution, supply caller-owned metadata alongside both
+session and thread identity:
+
+```elixir
+provider_options: [
+  openai_codex: [
+    session_id: "session-1",
+    thread_id: "thread-1",
+    codex_turn_metadata: %{
+      turn_id: "turn-1",
+      window_id: "window-1",
+      request_kind: "turn",
+      turn_started_at_unix_ms: 1_800_000_000_000
+    }
+  ]
+]
+```
+
+The metadata map accepts atom or string keys and an optional `installation_id`.
+IDs and request kind must be nonempty printable ASCII strings of at most 256
+bytes; the timestamp must be a nonnegative integer in Unix milliseconds.
+Unknown fields and incomplete attribution are rejected. ReqLLM projects the
+same identity into canonical `client_metadata`, `x-codex-turn-metadata`, window,
+and optional installation headers on buffered HTTP, SSE, and every WebSocket
+`response.create` frame, including requests sent on a reused connection.
+
+The application or agent runtime owns this lifecycle. Keep one turn ID and start
+time through tool continuations and retries; rotate for independent user work,
+and distinguish internal requests such as compaction with `request_kind`. A
+ReqLLM telemetry request ID identifies one model call, not a whole agent turn.
+ReqLLM never creates attribution implicitly. Valid attribution is also exposed
+as `codex_*` fields in telemetry `request_options`, independently of the per-call
+request ID. Cache-key overrides remain independent of turn attribution.
+
+These fields improve compatibility with the official Codex client but do not
+guarantee a cache hit or change the provider's subscription quota policy.
+
+ReqLLM applies the complete Responses Lite wire profile when the Codex model catalog marks a model with `use_responses_lite: true`. The bundled catalog currently enables that profile for GPT-5.6 Sol, Terra, and Luna. Explicit model specs can provide updated provider metadata under `extra.openai_codex.use_responses_lite`.
+
+Responses Lite is an internal Codex backend contract, not a mode of the public OpenAI Responses API. It sends instructions and client-executed tools as input items, uses persistent reasoning context, disables parallel tool calls, and marks the request with the Codex Responses Lite header. The canonical behavior is defined by the [Codex model metadata](https://github.com/openai/codex/blob/main/codex-rs/protocol/src/openai_models.rs) and [Responses Lite contract tests](https://github.com/openai/codex/blob/main/codex-rs/core/tests/suite/responses_lite.rs).
+
+## Attachments
+
+OpenAI Chat Completions API only supports image attachments (JPEG, PNG, GIF, WebP).
+OpenAI Responses models also support image and PDF file inputs. Inline and URL
+attachments continue to work as before.
+
+Image parts accept a `detail` entry in their metadata (`"low"`, `"high"` or
+`"auto"`) to pick the resolution the model reads the image at. It is sent as
+`image_url.detail` on Chat Completions and as `detail` on a Responses
+`input_image` block; left out, the API applies its own default.
+
+```elixir
+ReqLLM.Context.user([
+  ContentPart.text("What does the sign say?"),
+  ContentPart.image(jpeg_bytes, "image/jpeg", %{detail: :high})
+])
+```
+
+### Reusable OpenAI files
+
+`ReqLLM.Providers.OpenAI.Files` exposes the OpenAI Files lifecycle without
+adding uploads to the common provider behaviour. Uploading once can avoid
+repeating a large inline payload across Responses calls:
+
+```elixir
+alias ReqLLM.Message.ContentPart
+alias ReqLLM.Providers.OpenAI.Files
+
+{:ok, file} =
+  Files.upload(
+    ContentPart.file(pdf_bytes, "report.pdf", "application/pdf"),
+    purpose: :user_data,
+    expires_after: 86_400
+  )
+
+context =
+  ReqLLM.Context.new([
+    ReqLLM.Context.user([
+      ContentPart.text("Summarize this report."),
+      file
+    ])
+  ])
+
+{:ok, response} = ReqLLM.generate_text("openai:gpt-5", context)
+```
+
+`Files.upload/2` accepts an inline file `ContentPart`, a local path, or an
+explicit `{:binary, data, filename, media_type}` tuple. It returns the same
+owned `ContentPart` shape documented in [Data Structures](data-structures.md),
+including OpenAI ownership, purpose, filename, media type, size, status, and
+expiry when available. Inline inputs also include a locally calculated SHA-256.
+Local paths are streamed into the multipart request instead of being loaded
+into one large binary.
+
+Lifecycle operations remain provider-scoped:
+
+```elixir
+{:ok, current} = Files.retrieve(file)
+{:ok, %Files.Page{files: files, has_more: has_more}} =
+  Files.list(purpose: :user_data, limit: 100)
+
+{:ok, true} = Files.delete(current)
+```
+
+OpenAI retains most uploaded files until they are deleted. Use
+`:expires_after` when supported by the selected purpose, or delete references
+when they are no longer needed. Deletion accepts a known-expired reference so
+cleanup remains possible. The caller remains responsible for retention,
+pagination, and cleanup; ReqLLM does not run background workers or upload
+inputs automatically.
+
+Treat returned references as sensitive. Regular inspection and ReqLLM
+telemetry redact provider IDs, URLs, credentials, and file contents. Use
+`ContentPart.provider_file_reference/1` only when the complete provider record
+is required.
+
+See the [OpenAI Files API reference](https://platform.openai.com/docs/api-reference/files)
+for current purposes, retention rules, and service limits.
+
+## API Architecture
+
+OpenAI text generation automatically routes between two APIs based on model metadata:
+
+- **Chat Completions API**: Standard GPT models (gpt-4o, gpt-4-turbo, gpt-3.5-turbo)
+- **Responses API**: Reasoning models (o1, o3, o4-mini, gpt-5) with extended thinking
+
+Evaluation is a separate operation. Eligible models use the Decisions API.
+
+### Chat Completions responsibilities
+
+The V1 provider callbacks and transports remain unchanged. Internally, Chat
+Completions responsibilities are intentionally narrow:
+
+| Responsibility | Before | Current owner |
+| --- | --- | --- |
+| Select Chat Completions or Responses and attach the Req pipeline | `ReqLLM.Providers.OpenAI` | `ReqLLM.Providers.OpenAI` |
+| Implement the Chat Completions driver callbacks and assemble its Finch request | `ReqLLM.Providers.OpenAI.ChatAPI` | `ReqLLM.Providers.OpenAI.ChatAPI` |
+| Build the exact request envelope used by both Req and Finch | private functions mixed into `ChatAPI` | <code>ReqLLM.Providers.OpenAI.ChatAPI.Request</code> |
+| Encode OpenAI-compatible messages and decode buffered/SSE wire data | `ReqLLM.Provider.Defaults` | `ReqLLM.Provider.Defaults` |
+| Accumulate chunks and materialize canonical responses | `ReqLLM.Provider.ChunkAccumulator` and response builders | unchanged shared modules |
+
+The request-envelope seam removes duplicate strict-tool and parallel-tool
+normalization by reusing `ReqLLM.Providers.OpenAI.AdapterHelpers`. SSE decoding,
+transport construction, and response handoff already have single owners, so they
+remain in place. This is an internal refactor: Req remains the buffered
+transport, Finch remains the streaming transport, and the existing
+`ReqLLM.Provider` callbacks and request/response shapes are preserved.
+
+## Non-strict tool schemas
+
+`ReqLLM.Tool` uses `strict: false` by default. In Responses requests, this keeps
+the caller's required fields, optional fields, definitions, references, and
+other schema constraints. It asks the model to follow the schema on a
+best-effort basis. It does not disable schema validation by the provider.
+
+Use a valid JSON Schema for `parameter_schema`. For example, `required` must be
+an array of field names:
+
+```elixir
+tool = ReqLLM.Tool.new!(
+  name: "get_weather",
+  description: "Get weather",
+  parameter_schema: %{
+    "type" => "object",
+    "properties" => %{
+      "location" => %{"type" => "string"},
+      "units" => %{"type" => "string"}
+    },
+    "required" => ["location"],
+    "additionalProperties" => false
+  },
+  strict: false,
+  callback: fn args -> WeatherService.get_current_weather(args) end
+)
+```
+
+Here, `location` is required and `units` is optional. Set
+`additionalProperties: false` explicitly in a raw schema to forbid extra
+arguments. If that keyword is absent, JSON Schema permits extra properties.
+Keyword parameter schemas already set it to `false`. Tools with the default
+empty parameter list keep their empty object schema with extra properties
+disabled.
+
+Earlier versions of the Responses adapter removed root schema fields such as
+`required` and `$defs`, and forced `additionalProperties: false`. Requests that
+depended on this behavior can change after an upgrade. Correct invalid fields
+such as `"required" => "location"` to `"required" => ["location"]`. Providers
+can now reject invalid or unsupported schema fields that were previously
+removed. Schema support still depends on the provider.
+
+Raw function tool maps retain their strict default when `strict` is omitted.
+An explicit `false` selects non-strict encoding. For a nested `function` map,
+its boolean `strict` value takes precedence over the outer value.
+
+Strict tool normalization and structured output behavior are unchanged. This
+schema handling is also used by Azure Responses, Meta, xAI Responses, OpenAI
+Codex, and Bedrock Mantle Responses.
+
+## Provider Options
+
+Passed via `:provider_options` keyword:
+
+### `max_completion_tokens`
+
+- **Type**: Integer
+- **Purpose**: Required for reasoning models (o1, o3, gpt-5)
+- **Note**: ReqLLM auto-translates `max_tokens` to `max_completion_tokens` for reasoning models
+- **Example**: `provider_options: [max_completion_tokens: 4000]`
+
+### `openai_structured_output_mode`
+
+- **Type**: `:auto` | `:json_schema` | `:tool_strict`
+- **Default**: `:auto`
+- **Purpose**: Control structured output strategy
+- **`:auto`**: Use json_schema when supported, else strict tools
+- **`:json_schema`**: Force response_format with json_schema
+- **`:tool_strict`**: Force strict: true on function tools
+- **Example**: `provider_options: [openai_structured_output_mode: :json_schema]`
+
+### `response_format`
+
+- **Type**: Map
+- **Purpose**: Custom response format configuration
+- **Example**:
+  ```elixir
+  provider_options: [
+    response_format: %{
+      type: "json_schema",
+      json_schema: %{
+        name: "person",
+        schema: %{type: "object", properties: %{name: %{type: "string"}}}
+      }
+    }
+  ]
+  ```
+
+### `openai_parallel_tool_calls`
+
+- **Type**: Boolean | nil
+- **Default**: `nil`
+- **Purpose**: Override parallel tool call behavior
+- **Example**: `provider_options: [openai_parallel_tool_calls: false]`
+
+### `reasoning_effort`
+
+- **Type**: `:low` | `:medium` | `:high`
+- **Purpose**: Control reasoning effort
+- **Example**: `reasoning_effort: :high`
+
+### `reasoning_summary`
+
+- **Type**: `:auto` | `:concise` | `:detailed` | String
+- **Purpose**: Ask a Responses API reasoning model for a human-readable summary of its reasoning (`reasoning.summary`). GPT-5 models do not support `:concise`.
+- **Example**: `provider_options: [reasoning_summary: :auto]`
+- **Result**: Responses carry summary text on `message.reasoning_details` and `ReqLLM.Response.thinking/1`. Both buffered and collected streaming responses join nonempty summary parts with a blank line (`"\n\n"`). This is a display convention for separate paragraphs, not an API delimiter. Text and whitespace inside each part stay unchanged. The raw `summary` array remains in `provider_data["summary"]` and is replayed unchanged on later turns.
+
+Streaming emits raw summary deltas as `:thinking` chunks. These fragments have no added separators. Their metadata carries `item_id`, `output_index`, and `summary_index`; a `:meta` chunk with `reasoning_summary_part` marks each part boundary (`status: :added | :done`, the same IDs, and the completed part `text`). A live renderer can use those boundaries to choose its own layout. Do not insert blank lines between fragments of the same part.
+
+### `reasoning_context`
+
+- **Type**: `:current_turn` | `:all_turns` | String
+- **Purpose**: Choose which earlier reasoning items the model renders into context (`reasoning.context`, GPT-5.4 and later). GPT-5.6 defaults to `:all_turns`, which bills more tokens on multi-turn conversations; pin `:current_turn` to keep the earlier behaviour. The response echoes the effective mode in `provider_meta["reasoning"]["context"]`.
+- **Example**: `provider_options: [reasoning_context: :current_turn]`
+
+### `context_management`
+
+- **Type**: List of maps or keyword lists
+- **Purpose**: Enable server-side context management on ordinary requests, such as automatic compaction once the output token count crosses a threshold. Any `compaction` item the service emits lands on the response message as a `:provider_block` content part and is replayed automatically on the next request. See [Context Compaction](#context-compaction-responses-api).
+- **Example**: `provider_options: [context_management: [%{type: "compaction", compact_threshold: 200_000}]]`
+
+### `service_tier`
+
+- **Type**: `:auto` | `:default` | `:flex` | `:fast` | `:priority` | `:ultrafast` | String
+- **Purpose**: Service tier for request prioritization
+- **Example**: `service_tier: :auto`
+
+### `seed`
+
+- **Type**: Integer
+- **Purpose**: Set seed for reproducible outputs
+- **Example**: `provider_options: [seed: 42]`
+
+### `logprobs`
+
+- **Type**: Boolean
+- **Purpose**: Request log probabilities
+- **Example**: `provider_options: [logprobs: true, top_logprobs: 3]`
+
+### `top_logprobs`
+
+- **Type**: Integer (1-20)
+- **Purpose**: Number of log probabilities to return
+- **Requires**: `logprobs: true`
+- **Example**: `provider_options: [logprobs: true, top_logprobs: 5]`
+
+### `user`
+
+- **Type**: String
+- **Purpose**: Track usage by user identifier
+- **Example**: `provider_options: [user: "user_123"]`
+
+### `verbosity`
+
+- **Type**: `"low"` | `"medium"` | `"high"`
+- **Default**: `"medium"`
+- **Purpose**: Control output detail level
+- **Example**: `provider_options: [verbosity: "high"]`
+
+### `openai_stream_transport`
+
+- **Type**: `:sse` | `:websocket`
+- **Default**: `:sse`
+- **Purpose**: Select the streaming transport for Responses models
+- **Note**: `:websocket` currently applies to OpenAI Responses models only
+- **Example**: `provider_options: [openai_stream_transport: :websocket]`
+
+### Embedding Options
+
+#### `dimensions`
+
+- **Type**: Positive integer
+- **Purpose**: Control embedding dimensions (model-specific ranges)
+- **Example**: `provider_options: [dimensions: 512]`
+
+#### `encoding_format`
+
+- **Type**: `"float"` | `"base64"`
+- **Purpose**: Format for embedding output
+- **Example**: `provider_options: [encoding_format: "base64"]`
+
+### Responses API Resume Flow
+
+#### `previous_response_id`
+
+- **Type**: String
+- **Purpose**: Resume tool calling flow from previous response
+- **Example**: `provider_options: [previous_response_id: "resp_abc123"]`
+
+#### `tool_outputs`
+
+- **Type**: List of `%{call_id, output}` maps
+- **Purpose**: Provide tool execution results for resume flow
+- **Example**: `provider_options: [tool_outputs: [%{call_id: "call_1", output: "result"}]]`
+
+## Context Compaction (Responses API)
+
+Long conversations can be folded into opaque `compaction` items that carry the
+essential prior state (including reasoning) in far fewer tokens. ReqLLM keeps
+those items as `:provider_block` content parts on the assistant message and
+replays them verbatim, as top-level input items, on the next request.
+
+### Manual compaction
+
+`ReqLLM.compact_context/3` calls `POST /responses/compact`. The returned
+`ReqLLM.Response` has a `context` holding only the compacted assistant message,
+so the next user message can be appended directly:
+
+```elixir
+{:ok, first} = ReqLLM.generate_text("openai:gpt-5.4", "Draft a landing page for a dog cafe.")
+
+{:ok, compacted} = ReqLLM.compact_context("openai:gpt-5.4", first.context)
+
+next = ReqLLM.Context.append(compacted.context, ReqLLM.Context.user("Add a booking form."))
+{:ok, follow_up} = ReqLLM.generate_text("openai:gpt-5.4", next)
+```
+
+A stored response can be compacted by id instead of replaying its messages:
+
+```elixir
+{:ok, compacted} =
+  ReqLLM.compact_context("openai:gpt-5.4", nil, previous_response_id: first.id)
+```
+
+The compacted message keeps the compaction response id under
+`metadata.compaction_response_id` rather than `metadata.response_id`, so the
+next turn replays the complete returned window instead of chaining through
+`previous_response_id`. `ReqLLM.Response.provider_items/1` returns the
+compaction parts. Retained messages and tool items remain in `metadata.responses_replay` in their original order; do not remove them. `ReqLLM.Compaction.trim/1` drops every message before the
+most recent compaction item when you keep appending to an existing context.
+
+### Server-side compaction
+
+Pass `context_management` on ordinary requests and the service compacts on its
+own once the threshold is crossed. Compaction items arrive in the response
+output (streamed as `:content_part` chunks on `response.output_item.done`) and
+replay automatically:
+
+```elixir
+{:ok, response} =
+  ReqLLM.generate_text("openai:gpt-5.4", context,
+    provider_options: [
+      store: false,
+      context_management: [%{type: "compaction", compact_threshold: 200_000}]
+    ]
+  )
+```
+
+Compaction is available on OpenAI and Azure OpenAI Responses API models.
+
+## WebSocket Mode
+
+ReqLLM keeps SSE as the default transport for OpenAI streaming, but Responses models can opt into OpenAI WebSocket mode per request:
+
+```elixir
+{:ok, stream_response} =
+  ReqLLM.stream_text(
+    "openai:gpt-5",
+    "Write a short summary",
+    provider_options: [openai_stream_transport: :websocket]
+  )
+
+text = ReqLLM.StreamResponse.text(stream_response)
+usage = ReqLLM.StreamResponse.usage(stream_response)
+```
+
+Use this when you want a call-scoped WebSocket transport while keeping the existing `StreamResponse` API. SSE remains the safer default for broad provider parity and existing fixture coverage.
+
+## GPT-6 Astra (experimental)
+
+The standard text scenarios and focused Astra features have live JSON fixtures
+and offline replay tests that run locally. See
+[Astra fixture testing](fixture-testing.md#gpt-6-astra-launch-fixtures) for the
+commands and the exact coverage limits.
+
+Use `openai:gpt-6-astra` with `llm_db` 2026.9.1 or later. ReqLLM selects Responses
+and accepts `low`, `medium`, `high`, `xhigh`, or `max` reasoning effort. It rejects
+`none`, `minimal`, and log-probability options before dispatch. Sampling options
+are removed with a translation warning. The raw session API rejects them.
+See the [Astra migration guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra).
+
+### Async function tools
+
+Set the OpenAI tool option when the application can run a job while the model
+continues:
+
+```elixir
+tool = ReqLLM.Tool.new!(
+  name: "read_report",
+  description: "Read a report",
+  parameter_schema: [report_id: [type: :string, required: true]],
+  callback: &MyReports.read/1,
+  provider_options: [openai: [async: true]]
+)
+
+{:ok, response} = ReqLLM.generate_text(
+  "openai:gpt-6-astra",
+  "Read report 123 and start an outline while it loads",
+  tools: [tool],
+  reasoning_effort: :low
+)
+
+async_calls = Enum.filter(response.message.tool_calls || [], &ReqLLM.ToolCall.async?/1)
+```
+
+Raw function maps can also include `"async" => true`. Responses may contain both
+text and async calls. The application must start and track each job. A call with
+`ReqLLM.ToolCall.async?(call)` can return its result in a later turn. Complete
+synchronous calls before continuation; `Context.append_tool_exchange/3` checks
+that their results are present and permits pending async calls.
+
+Append delayed results to the **latest** context with the original call ID:
+
+```elixir
+result = ReqLLM.Context.tool_result(call.id, "Report contents")
+context = ReqLLM.Context.append(latest_context, result)
+```
+
+For server-side continuation, use the latest `previous_response_id` while jobs
+remain pending. For manual replay, retain the assistant call and its async
+metadata. The generic ToolCall JSON encoder uses Chat Completions format and
+omits metadata; persist calls with `ToolCall.to_map/1` and restore their metadata
+with `ToolCall.put_metadata/2`. No automatic tool scheduler is included. Async
+custom tools and hosted tools are outside this implementation.
+See [async tool calling](https://developers.openai.com/api/docs/guides/async-tool-calling).
+
+### Change reasoning effort within a conversation
+
+Attach an update to the next user message:
+
+```elixir
+message =
+  ReqLLM.Context.user("Check the edge cases in detail")
+  |> ReqLLM.OpenAI.Responses.with_reasoning_effort(:high)
+
+context = ReqLLM.Context.append(context, message)
+ReqLLM.generate_text("openai:gpt-6-astra", context, reasoning_effort: :low)
+```
+
+The encoder places a `configuration_update` input item immediately before this
+user message. Keep the request effort at its original value (`low` in this
+example). The update stays in the same place when later messages are appended.
+Manual Astra history also retains each encrypted reasoning item at its original
+assistant turn, so later turns preserve the earlier input prefix. The response's
+request-level effort does not report the effective update.
+
+Use the current cache option when needed:
+
+```elixir
+provider_options: [prompt_cache_options: %{ttl: "30m"}]
+```
+
+The fixtures verify that the API accepts this option. They do not measure cache
+hits or cache cost savings.
+
+This feature requires a GPT-6 model in standard single-agent mode. It cannot use
+automatic compaction or truncation. After explicit compaction, add a fresh
+update. Raw session requests reject adjacent updates and incompatible context
+settings. See [reasoning updates](https://developers.openai.com/api/docs/guides/reasoning#change-reasoning-mid-conversation).
+
+### Steering over a persistent WebSocket
+
+`ReqLLM.OpenAI.Responses` keeps one connection open across responses and returns
+raw provider events. `stream_text/3` continues to represent one response.
+
+```elixir
+alias ReqLLM.OpenAI.Responses
+
+{:ok, session} = Responses.connect("openai:gpt-6-astra")
+:ok = Responses.response_create(session, %{
+  "input" => "Draft a project plan",
+  "reasoning" => %{"effort" => "low"}
+})
+
+{:ok, %{"type" => "response.created", "response" => %{"id" => id}}} =
+  Responses.next_event(session)
+
+:ok = Responses.steer(session, id, "Keep the plan small enough for one developer")
+```
+
+Continue reading with `Responses.next_event/2`. Track accepted submissions by
+`steer.id`. Acceptance means queued input. Later events show whether it was applied. Read
+past the original `response.completed` or `response.incomplete` event to receive
+the automatic successor. Use the successor's ID for later steering.
+
+If `response.steer.pending` requests tool results, send them through
+`Responses.response_create/2` on the same session, with the pending event's
+`previous_response_id`. Include the tools and instructions again. Do not repeat
+the steering input. Already started application tools still need results.
+
+Handle `response.steer.failed`, response failures, and connection errors in the
+application. The client does not retry or reconnect. Pending steering belongs
+to the current connection; check recorded events before sending it again after
+a disconnect. Close the session with `Responses.close/1` when finished.
+See the [steering guide](https://developers.openai.com/api/docs/guides/steering).
+
+## Realtime API
+
+ReqLLM also exposes an experimental low-level Realtime WebSocket client for session-oriented workflows that do not fit `stream_text/3`:
+
+```elixir
+{:ok, session} = ReqLLM.OpenAI.Realtime.connect("gpt-realtime")
+
+:ok =
+  ReqLLM.OpenAI.Realtime.session_update(session, %{
+    "type" => "realtime",
+    "instructions" => "Be concise and friendly."
+  })
+
+{:ok, event} = ReqLLM.OpenAI.Realtime.next_event(session)
+
+:ok = ReqLLM.OpenAI.Realtime.close(session)
+```
+
+This API is intentionally low-level. You send JSON events, receive JSON events, and manage the session lifecycle explicitly. Existing `next_event/2` calls continue to return the decoded OpenAI event unchanged.
+
+For consumers that already understand `ReqLLM.StreamEvent`, use the additive projected view:
+
+```elixir
+{:ok, projected} = ReqLLM.OpenAI.Realtime.next_projected_event(session)
+
+projected.type
+#=> "response.output_text.delta"
+
+projected.native
+#=> the native event with sensitive payloads redacted
+
+projected.stream_events
+#=> [%ReqLLM.StreamEvent{type: :text_delta, data: "[REDACTED]", ...}]
+```
+
+Pass `payloads: :raw` only when that consumer is authorized to retain text, audio transcripts, tool arguments/results, and provider error messages. Raw audio deltas, input transcription, session/control events, rate limits, MCP and other provider-native tools, and recoverable session errors remain native-only because ReqLLM has no exact portable event for them.
+
+The experimental projection is intentionally narrow:
+
+| OpenAI Realtime event | Portable projection |
+| --- | --- |
+| `response.created` | `:start` when the resolved session model is available |
+| `response.output_text.delta` | `:text_delta` |
+| `response.output_audio_transcript.delta` | `:text_delta` with `modality: :audio_transcript` |
+| application `response.output_item.added` | `:tool_call_start` |
+| `response.function_call_arguments.delta` / `.done` | `:tool_call_delta` / `:tool_call` |
+| application `conversation.item.done` function output | `:tool_result` |
+| `response.done` | optional `:usage`, then one `:finish`, `:cancelled`, or terminal `:error` |
+
+All other events have an empty `stream_events` list and remain available through `native`. This includes top-level `error` events because OpenAI defines many of them as recoverable session errors, while canonical `StreamEvent` errors are terminal. See the [OpenAI Realtime server-event reference](https://platform.openai.com/docs/api-reference/realtime-server-events) for the provider event catalog.
+
+`response.created` starts a canonical response lifecycle, and `response.done` contributes usage followed by exactly one completion, cancellation, or terminal error event. OpenAI event, response, item, call, conversation, session, index, and sequence identifiers are retained for correlation. Reconnecting creates a new provider session; ReqLLM does not hide reconnection or replay events. Applications or Jido continue to own session hosting, reconnection, tool execution, and follow-up calls.
+
+## Usage Metrics
+
+OpenAI provides comprehensive usage data including:
+
+- `reasoning_tokens` - For reasoning models (o1, o3, gpt-5)
+- `cached_tokens` - Cached input tokens
+- Standard input/output/total tokens and costs
+- `compute_units` - Decisions work units when the service reports them
+
+A positive or invalid `compute_units` value makes billing usage incomplete. ReqLLM keeps the raw
+value, but it does not calculate a total cost until LLMDB has a supported tariff. A missing or zero
+value does not change the current token-cost behavior.
+
+### Web Search (Responses API)
+
+Models using the Responses API (o1, o3, gpt-5) support web search tools:
+
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "openai:gpt-5-mini",
+  "What are the latest AI announcements?",
+  tools: [%{"type" => "web_search"}]
+)
+
+# Access web search usage
+response.usage.tool_usage.web_search
+#=> %{count: 2, unit: "call"}
+
+# Access cost breakdown
+response.usage.cost
+#=> %{tokens: 0.002, tools: 0.02, images: 0.0, total: 0.022}
+```
+
+Responses API server-side tools may also appear in `response.message.tool_calls` as builtin records (for example `web_search_call` or `file_search_call`). They are preserved for observability, but the provider already executed them: do not replay them as local tool calls. `ReqLLM.Response.classify/1` and `ReqLLM.StreamResponse.classify/1` treat builtin-only responses as final answers.
+
+### Citations
+
+When a model cites its sources — web search being the common case — the citations
+are retained as annotations and read back with `ReqLLM.Response.annotations/1`:
+
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "openai:gpt-5-mini",
+  "Find one recent AI model announcement and cite the source.",
+  tools: [%{"type" => "web_search"}]
+)
+
+ReqLLM.Response.annotations(response)
+#=> [
+#=>   %{
+#=>     "type" => "url_citation",
+#=>     "url" => "https://example.com/announcement",
+#=>     "title" => "Example Announcement",
+#=>     "start_index" => 120,
+#=>     "end_index" => 168
+#=>   }
+#=> ]
+```
+
+`start_index` and `end_index` locate the citation inside `ReqLLM.Response.text/1`.
+The same list is available unprojected at `response.provider_meta["annotations"]`.
+
+Note that OpenAI usually points the span at an inline Markdown link it already wrote
+into the text, not at the prose the citation supports:
+
+```elixir
+text = ReqLLM.Response.text(response)
+String.slice(text, annotation["start_index"], annotation["end_index"] - annotation["start_index"])
+#=> "([example.com](https://example.com/announcement))"
+```
+
+So treat the span as "where this citation is already rendered" rather than "the
+claim to hyperlink" — wrapping it in another link would nest one link inside another.
+If you want your own citation markers, strip those Markdown links from the text and
+render footnotes from the annotation list instead.
+
+#### One shape across both API surfaces
+
+OpenAI's two API surfaces disagree on the wire format: Chat Completions nests the
+citation fields under a `"url_citation"` key, while the Responses API returns them
+flat. ReqLLM normalizes Chat Completions to the flat form, so consumers match one
+shape regardless of which surface a model uses:
+
+```
+Chat Completions, on the wire        What annotations/1 returns
+─────────────────────────────        ──────────────────────────
+%{"type" => "url_citation",          %{"type" => "url_citation",
+  "url_citation" => %{                 "url" => "https://…",
+    "url" => "https://…",       ──►    "title" => "…",
+    "title" => "…",                    "start_index" => 120,
+    "start_index" => 120,              "end_index" => 168}
+    "end_index" => 168}}
+```
+
+Annotation types that OpenAI already returns flat (`file_citation`, `file_path`,
+and others) pass through unchanged.
+
+The two surfaces also differ in how you *ask* for web search. The Responses API takes
+it as a tool; Chat Completions takes a `web_search_options` body field and serves it
+only on `*-search-preview` models:
+
+| | Responses API | Chat Completions |
+| --- | --- | --- |
+| Models | `gpt-5-mini`, `gpt-4o`, … | `gpt-4o-search-preview`, `gpt-4o-mini-search-preview` |
+| Enable with | `tools: [%{"type" => "web_search"}]` | `web_search_options: %{}` |
+| Citations on the wire | flat | nested under `"url_citation"` |
+
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "openai:gpt-4o-mini-search-preview",
+  "Find one recent AI model announcement and cite the source.",
+  web_search_options: %{}
+)
+
+ReqLLM.Response.annotations(response)
+#=> flat url_citation maps, same as the Responses API
+```
+
+Pass `%{}` for OpenAI's defaults, or a configuration map such as
+`%{"search_context_size" => "high"}`. ReqLLM routes `*-search-preview` models to Chat
+Completions automatically, even though they share the `gpt-4o` prefix that otherwise
+selects the Responses API.
+
+#### Streaming
+
+Streaming needs no special handling — citations arrive incrementally and are
+accumulated for you, so the materialized response carries the full list:
+
+```elixir
+{:ok, stream_response} = ReqLLM.stream_text(
+  "openai:gpt-5-mini",
+  "Find one recent AI model announcement and cite the source.",
+  stream: true,
+  tools: [%{"type" => "web_search"}]
+)
+
+{:ok, response} = ReqLLM.StreamResponse.to_response(stream_response)
+ReqLLM.Response.annotations(response)
+#=> same list as the buffered call
+```
+
+To surface citations *during* the stream — to render footnotes as text arrives —
+consume `ReqLLM.StreamResponse.events/1` and watch for annotation output items:
+
+```elixir
+{:ok, stream_response} = ReqLLM.stream_text(
+  "openai:gpt-5-mini",
+  "Find one recent AI model announcement and cite the source.",
+  stream: true,
+  tools: [%{"type" => "web_search"}]
+)
+
+stream_response
+|> ReqLLM.StreamResponse.events()
+|> Stream.filter(&match?(%ReqLLM.StreamEvent{type: :output_item, data: %{type: :annotation}}, &1))
+|> Enum.each(fn event -> IO.inspect(event.data.data) end)
+```
+
+> #### Pick one consumer per stream {: .warning}
+>
+> A `StreamResponse` carries a single consumable stream, so `events/1`, `tokens/1`,
+> `to_response/1`, and the raw chunk stream are alternatives, not steps. Calling
+> `to_response/1` after draining `events/1` exits with `{:noproc, ...}` because the
+> stream is already spent. Each example above starts its own `stream_text/3` call
+> for that reason.
+>
+> To watch citations live *and* get the materialized response from one request, use
+> `ReqLLM.StreamResponse.process_stream/2`, which streams through your callbacks and
+> returns the final `Response`:
+>
+> ```elixir
+> {:ok, response} =
+>   ReqLLM.StreamResponse.process_stream(stream_response,
+>     on_meta: fn %ReqLLM.StreamChunk{metadata: meta} ->
+>       Enum.each(meta[:annotations] || [], &IO.inspect/1)
+>     end
+>   )
+>
+> ReqLLM.Response.annotations(response)
+> ```
+
+Each citation is emitted once. Providers that re-send a citation they already
+streamed, or that emit both incremental events and a final list, do not produce
+duplicates.
+
+#### Other OpenAI-format providers
+
+Citation normalization lives in the shared OpenAI-format decoders rather than in the
+OpenAI provider, so a provider inherits it by decoding through them — no
+per-provider work required. Providers that route both their buffered and streaming
+decode through the shared path get citations on both: Azure OpenAI, OpenRouter,
+Groq, MiniMax, ZenMux, Z.AI, Google Vertex (OpenAI-compatible endpoint), and xAI.
+
+Perplexity Sonar models routed through OpenRouter, for example, return nested
+`url_citation` annotations and read back through `ReqLLM.Response.annotations/1`
+in the same flat shape.
+
+The Responses API decoder is shared the same way, so Azure (Responses), OpenAI
+Codex, and Meta pick up annotations there. xAI is covered on both surfaces — it
+routes through the Responses API whenever built-in tools such as `web_search` or
+`x_search` are in play, and through Chat Completions otherwise.
+
+Some providers are covered only partially, because they hand-roll one half of their
+decoding:
+
+| Provider | Buffered | Streaming |
+| --- | --- | --- |
+| Amazon Bedrock (OpenAI models) | no — custom response parser | yes |
+| Google (OpenAI-compatible endpoint) | yes | no — native event decoder |
+
+Anthropic is not covered at all: it returns citations attached to its own content
+blocks rather than as OpenAI-style annotations. Google's native Gemini endpoints
+report grounding metadata through `ReqLLM.Response.sources/1`, a related but
+distinct channel.
+
+### Code Interpreter (Responses API)
+
+Models using the Responses API support the Code Interpreter tool, which runs Python code in a sandboxed container. Pass the tool as a map and ReqLLM will forward it unchanged to OpenAI:
+
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "openai:gpt-5-mini",
+  "What is the factorial of 12804/53 + 300? Solve with Python.",
+  tools: [%{
+    "type" => "code_interpreter",
+    "container" => %{"type" => "auto", "memory_limit" => "4g"}
+  }]
+)
+
+# Access the raw code interpreter output items
+response.provider_meta["code_interpreter"]["items"]
+#=> [
+#=>   %{
+#=>     "type" => "code_interpreter_call",
+#=>     "code" => "from fractions import Fraction...",
+#=>     "status" => "completed",
+#=>     ...
+#=>   }
+#=> ]
+
+# Access code interpreter usage
+response.usage.tool_usage.code_interpreter
+#=> %{count: 1, unit: :call}
+```
+
+The container value may also be an existing container ID string:
+
+```elixir
+tools: [%{"type" => "code_interpreter", "container" => "cntr_abc123"}]
+```
+
+Code Interpreter is a server-side builtin: the provider executes the code and returns the result items. Do not replay them as local tool calls. `ReqLLM.Response.classify/1` treats these responses as final answers.
+
+### Image Generation
+
+Image generation costs are tracked separately:
+
+```elixir
+{:ok, response} = ReqLLM.generate_image("openai:gpt-image-1", prompt)
+
+response.usage.image_usage
+#=> %{generated: %{count: 1, size_class: "1024x1024"}}
+
+response.usage.cost
+#=> %{tokens: 0.0, tools: 0.0, images: 0.04, total: 0.04}
+```
+
+GPT Image models accept the full Images API parameter set as top-level options (`quality` tiers, `background`, `moderation`, `output_compression`, `input_fidelity`); see [GPT Image Options](image-generation.md#gpt-image-options).
+
+See the [Image Generation Guide](image-generation.md) for more details.
+
+## Resources
+
+- [OpenAI API Documentation](https://platform.openai.com/docs/api-reference)
+- [Model Overview](https://platform.openai.com/docs/models)
+
+## GPT-6.1 Sol
+
+Use `openai:gpt-6.1-sol` after installing the updated LLMDB catalog. Before that
+catalog is released, use an explicit model specification:
+
+```elixir
+model = ReqLLM.model!(%{provider: :openai, id: "gpt-6.1-sol"})
+ReqLLM.generate_text(model, "Review this code", reasoning_effort: :low)
+```
+
+ReqLLM selects Responses. Supported efforts are `low`, `medium`, `high`,
+`xhigh`, and `max`. OpenAI uses `medium` by default. `none` and `minimal` are
+invalid. Tool calls require Responses. Sampling controls are removed with a
+translation warning. Log-probability options are invalid when reasoning is
+active. GPT-6 Sol and Luna permit sampling controls at effort `none`.
+
+See the [model reference](https://developers.openai.com/api/docs/models/gpt-6.1-sol)
+and [migration guide](https://developers.openai.com/api/docs/guides/latest-model?model=gpt-6-astra).
+
+## Astra Ultrafast
+
+Set `service_tier: :ultrafast` for GPT-6 Astra. This tier has a separate price
+and rate limit. It supports global processing and US data residency. It does
+not support EU or other non-US regional processing. Check account access and
+pricing before use. GPT-6.1 Sol Ultrafast is not available in this rollout.
+
+```elixir
+ReqLLM.generate_text("openai:gpt-6-astra", "Review this code",
+  service_tier: :ultrafast,
+  reasoning_effort: :low
+)
+```
+
+See the [Ultrafast guide](https://developers.openai.com/api/docs/guides/ultrafast-mode).
+
+## Responses multi-agent beta
+
+The rollout adds request configuration for GPT-6.1 Sol and GPT-5.6 models:
+
+```elixir
+ReqLLM.generate_text(model, "Compare these proposals",
+  provider_options: [multi_agent: %{enabled: true, max_concurrent_subagents: 3}]
+)
+```
+
+ReqLLM adds `OpenAI-Beta: responses_multi_agent=v1` to HTTP, SSE, and WebSocket
+requests. The concurrency limit must be a positive integer. OpenAI uses `3`
+when it is omitted. Reasoning summaries, `max_tool_calls`, and explicit compact operations are
+not supported in this mode.
+
+OpenAI executes hosted collaboration calls. The application executes function
+calls from any agent and returns outputs with the original call ID. Function
+call metadata keeps the `agent` attribute. Stream chunks also keep this
+attribute. Final response assembly excludes child-agent text.
+
+Raw response items are kept in message metadata for stateless history replay.
+They include encrypted agent messages and hosted collaboration items. Use the
+returned response context for the next turn. Token usage comes from the overall
+response. Do not add child-agent usage to that total a second time.
+
+Hosted agent events that have no portable content appear in meta chunks under
+`multi_agent_event`. Stream completion preserves the full output list, including
+encrypted agent messages and per-agent compaction items. Continue through the
+returned context after the response completes. Live WebSocket tool injection
+uses the native session interface and requires handling acknowledgement events.
+
+See the [rollout checklist](openai-devday-rollout.md) and
+[OpenAI multi-agent guide](https://developers.openai.com/api/docs/guides/responses-multi-agent).
+
+## Decisions API
+
+Use `ReqLLM.evaluate/4` with a model returned by `ReqLLM.evaluation_models/0`:
+
+```elixir
+questions = %{
+  department: %{
+    type: :choice,
+    instructions: "Which team should handle this?",
+    criteria: %{billing: "Billing and refunds", support: "Other requests"}
+  },
+  severity: %{
+    type: :score,
+    instructions: "How severe is this?",
+    criteria: ["low", "medium", "high"]
+  },
+  urgent: %{type: :boolean, instructions: "Is this urgent?"}
+}
+
+{:ok, result} =
+  ReqLLM.evaluate("openai:gpt-6-luna", %{ticket: "Refund me today"}, questions,
+    provider_options: [openai: [safety_identifier: "tenant-123"]]
+  )
+
+result.object["urgent"]
+#=> %{"type" => "boolean", "probability" => 0.91}
+```
+
+The first release accepts string, map, and list state. Maps and lists become stable JSON text.
+Supported question types are boolean, choice, and score. Multimodal state, streaming, Batch API
+submission, and OpenAI Evals are not part of this interface.
+
+LLMDB is the model eligibility source. ReqLLM does not keep a second model-ID list. A model must
+have `evaluate: true` and the OpenAI Decisions execution contract. Calls with excluded or invalid
+records fail before authentication and HTTP work.
+
+Answers remain a map keyed by the question name. Choice values keep their string or boolean type,
+probability lists stay available, and a provider refusal appears as `%{"type" => "refusal"}`. The
+complete provider body remains in `response.provider_meta.raw_response`.
+
+`safety_identifier` is optional and must be a string with at most 128 characters. Put it under the
+OpenAI provider namespace as shown above.
+
+See the [OpenAI Decisions API reference](https://developers.openai.com/api/reference/resources/decisions/methods/create).
+
+## Prompt cache diagnostics
+
+Pass `comparison_response_id` in `provider_options[:prompt_cache_options]` to
+compare a request with an earlier response. This option requests diagnostics;
+it does not restore the earlier conversation. Buffered and streaming Responses
+results retain `prompt_cache_diagnostics` in `response.provider_meta`. Use usage
+fields for billing. Diagnostic estimates are not billable token counts.
+
+See the [official diagnostics guide](https://developers.openai.com/api/docs/guides/prompt-caching/diagnostics).
+
+## GPT-6 feature compatibility
+
+Async function tools, mid-turn steering, and reasoning configuration updates
+support the GPT-6 family, including Sol 6.1, Sol, and Luna. Configuration updates
+require standard single-agent mode. Sol and Luna also accept none effort in
+these updates. Async tools in multi-agent mode require parallel_tool_calls to
+be disabled.
+
+See [async tools](https://developers.openai.com/api/docs/guides/async-tool-calling),
+[steering](https://developers.openai.com/api/docs/guides/steering), and
+[configuration updates](https://developers.openai.com/api/docs/guides/reasoning#change-reasoning-mid-conversation).
+
+## Image 2.5 token billing
+
+Images results retain input_tokens_details and optional output_tokens_details
+in usage. Billing uses the catalog text and image token rates after checking
+that the split matches the aggregate counts. Image-only models can use the
+aggregate output count when output details are absent. Reported image counts
+are retained, but token-priced models do not receive an extra per-image charge.
+
+Missing or inconsistent counts return unknown cost. Reported cache usage with
+no modality allocation also returns unknown cost. If no cache use is reported,
+input uses the standard uncached rates. The catalog retains the published cache
+rates. ReqLLM does not infer undocumented cache allocations.
+
+Sources: [Images response schema](https://github.com/openai/openai-python/blob/main/src/openai/types/images_response.py),
+[Flare prices](https://developers.openai.com/api/docs/models/gpt-image-2.5-flare), and
+[Sunburst prices](https://developers.openai.com/api/docs/models/gpt-image-2.5-sunburst).

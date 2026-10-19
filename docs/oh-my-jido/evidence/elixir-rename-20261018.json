@@ -1,0 +1,74 @@
+{
+  "recorded_date": "2026-10-19",
+  "scope": "Existing public LSP Jido Action using host-configured rename_backend:elixir with actual ElixirLS",
+  "runtime_smoke": {
+    "evidence": "artifact://541",
+    "command_exit_status": 0,
+    "native_server": "ElixirLS 0.31.1",
+    "native_elixir": "1.20.2",
+    "native_otp": "28",
+    "native_erts": "16.4.0.2",
+    "host_and_native_fixture_toolchains_matched": true,
+    "server_rename_provider": "not advertised; alternate backend explicitly configured",
+    "separate_rename_tool": false,
+    "automatic_fallback": false,
+    "read_only_preview_and_guarded_apply": true,
+    "cross_file_default_arity_and_multiclause_function_family": true,
+    "local_imported_remote_and_captured_calls": true,
+    "explicit_import_qualifiers_updated": true,
+    "unrelated_arity_comments_and_literals_preserved": true,
+    "same_length_stale_receiver_changed_to_different_module_before_preview": true,
+    "different_module_call_and_source_preserved": true,
+    "native_buffer_fingerprints_and_incremental_unknown_state_exercised": true,
+    "variable_binding_shadowing_and_rebinding_preserved": true,
+    "variable_destination_capture_rejected": true,
+    "same_namespace_module_leaf_preview_and_apply": true,
+    "explicit_alias_names_preserved": true,
+    "opaque_exunit_scope_reference_made_absolute": true,
+    "spec_heads_updated_with_builtin_types_and_unrelated_arity_specs_preserved": true,
+    "native_whole_spec_and_self_definition_cases_exercised": true,
+    "independent_real_mix_tests_after_each_of_three_applied_stages": "passed",
+    "persisted_native_sources_notified_saved": true,
+    "owned_server_cleanup": "confirmed",
+    "owned_fixture_root_removed": true,
+    "provider_credentials_or_model_used": false
+  },
+  "native_conflict_verification": {
+    "evidence": "artifact://545",
+    "actual_native_cases": ["existing function destination", "future import exclusion", "implicit alias capture", "nested declaration alias capture"],
+    "actual_child_mix_tests_before_and_after": "passed",
+    "authored_sources_unchanged": true,
+    "owned_native_cleanup": "confirmed"
+  },
+  "focused_contract_verification": {
+    "planner_cases": {"passed": 59, "evidence": "artifact://541"},
+    "completed_and_partial_effect_receipt_cases": {"passed": 4, "evidence": "artifact://546"},
+    "trusted_route_snapshot_version_permission_and_publication_cases": {"passed": 7, "evidence": "artifact://546"}
+  },
+  "audit_repair_evidence": {
+    "compiler_owned_destination_preview_failed_before": "artifact://518",
+    "module_scope_caller_and_spec_nil_dereference_failed_before": "artifact://527",
+    "actual_native_whole_spec_range_failure": "artifact://532",
+    "actual_native_self_signature_identity_failure": "artifact://536",
+    "self_signature_consumer_failure_before": "artifact://539",
+    "all_59_planner_cases_and_actual_native_workflow_after": "artifact://541",
+    "compiler_owned_default_family_and_remote_only_destinations_rejected": true,
+    "legal_module_info_arity_two_preserved": true,
+    "malformed_runtime_caller_proof_returns_typed_error": true,
+    "self_signature_requires_independent_native_implementation": true,
+    "signature_cycles_and_unaudited_profiles_rejected": true
+  },
+  "final_integration": {
+    "full_quality_gate": "artifact://546",
+    "tests_passed": 462,
+    "independent_mix_host_tests": 2,
+    "independent_mix_host_evidence": "bg_115",
+    "density_and_schema": "library-acceptance-20261019.json"
+  },
+  "limitations": [
+    "Native caller/namespace/SDK-kind profile is currently ElixirLS0.31.1, not every server/version",
+    "Generated/dynamic identities, opaque macro/compiler scopes, grouped aliases, namespace moves and unproved qualified nested declaration aliases fail explicitly",
+    "Native declaration index corroboration is restricted to the audited profile and exact positive authored URI/range/module identity; unavailable evidence is not a textual fallback",
+    "A trusted external language server may compile/load project code in its own VM; this is not an OS sandbox or host-VM project evaluator"
+  ]
+}

@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:oh-my-jido:density:1",
+  "title": "Oh-My-Jido credential-free density evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "schema_version", "recorded_at", "result", "host", "configuration", "workload", "before", "after", "populations", "errors", "cleanup", "elapsed_ms"],
+  "properties": {
+    "schema": {"const": "oh_my_jido.density"},
+    "schema_version": {"const": 1},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "result": {"enum": ["passed", "failed", "partial"]},
+    "host": {"$ref": "#/$defs/host"},
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "workload": {
+      "type": "object",
+      "required": ["model_boundary", "request_transformer", "model_latency", "tool_latency", "steps", "fresh_session_per_job", "history_policy", "queue_policy", "percentile_method", "memory_scope", "descendant_rss_scope", "sampling_scope", "cleanup_deadline_ms", "host_module", "model_label", "permissions", "action_modules"],
+      "properties": {
+        "fresh_session_per_job": {"const": true},
+        "cleanup_deadline_ms": {"type": "integer", "minimum": 1},
+        "steps": {"type": "array", "items": {"type": "string"}},
+        "permissions": {"type": "array", "items": {"type": "string"}},
+        "action_modules": {"type": "array", "items": {"type": "string"}}
+      },
+      "additionalProperties": {"type": "string"}
+    },
+    "before": {"$ref": "#/$defs/sample"},
+    "after": {"$ref": "#/$defs/sample"},
+    "populations": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/population"}, {"$ref": "#/$defs/population_error"}]}},
+    "errors": {"type": "array", "items": {"$ref": "#/$defs/error"}},
+    "cleanup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supervisor_stopped", "runtime_stopped", "driver_supervisor_stopped", "disposable_root_removed", "host_cwd_unchanged", "host_environment_unchanged", "os_live_descendants_before", "os_live_descendants_after", "os_descendants_returned_to_baseline"],
+      "properties": {
+        "supervisor_stopped": {"type": "boolean"},
+        "runtime_stopped": {"type": "boolean"},
+        "driver_supervisor_stopped": {"type": "boolean"},
+        "disposable_root_removed": {"type": "boolean"},
+        "host_cwd_unchanged": {"type": "boolean"},
+        "host_environment_unchanged": {"type": "boolean"},
+        "os_live_descendants_before": {"$ref": "#/$defs/count"},
+        "os_live_descendants_after": {"$ref": "#/$defs/count"},
+        "os_descendants_returned_to_baseline": {"type": "boolean"}
+      }
+    },
+    "elapsed_ms": {"$ref": "#/$defs/duration"}
+  },
+  "$defs": {
+    "count": {"type": "integer", "minimum": 0},
+    "duration": {"type": "number", "minimum": 0},
+    "nullable_number": {"type": ["number", "null"]},
+    "nullable_string": {"type": ["string", "null"]},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "error": {
+      "type": "object", "additionalProperties": false, "required": ["code"],
+      "properties": {"code": {"type": "string"}, "resource": {"type": "string"}, "type": {"type": "string"}, "kind": {"type": "string"}}
+    },
+    "distribution": {
+      "type": "object", "additionalProperties": false,
+      "required": ["count", "min", "max", "p50", "p95", "p99"],
+      "properties": {
+        "count": {"$ref": "#/$defs/count"},
+        "min": {"$ref": "#/$defs/nullable_number"}, "max": {"$ref": "#/$defs/nullable_number"},
+        "p50": {"$ref": "#/$defs/nullable_number"}, "p95": {"$ref": "#/$defs/nullable_number"}, "p99": {"$ref": "#/$defs/nullable_number"}
+      }
+    },
+    "host": {
+      "type": "object",
+      "required": ["os", "kernel_release", "architecture", "cpu_model", "logical_processors", "physical_memory_bytes", "cgroup", "elixir_version", "elixir_build", "otp_release", "erts_version", "word_size_bytes", "schedulers", "schedulers_online", "dirty_cpu_schedulers_online", "dirty_io_schedulers", "beam_process_limit", "beam_port_limit", "mix_environment", "application_versions", "source_fingerprints", "loaded_beam_sha256", "executables"],
+      "properties": {
+        "os": {"const": "linux"},
+        "kernel_release": {"$ref": "#/$defs/nullable_string"},
+        "architecture": {"type": "string"}, "cpu_model": {"$ref": "#/$defs/nullable_string"},
+        "logical_processors": {"type": ["integer", "string"]},
+        "physical_memory_bytes": {"type": ["integer", "null"]},
+        "cgroup": {
+          "type": "object", "required": ["version"],
+          "properties": {
+            "version": {"enum": ["v2", "unavailable"]},
+            "cpu_max": {"$ref": "#/$defs/nullable_string"}, "cpuset_cpus_effective": {"$ref": "#/$defs/nullable_string"},
+            "memory_max_bytes": {"type": ["integer", "string", "null"]}, "pids_max": {"type": ["integer", "string", "null"]}
+          }, "additionalProperties": false
+        },
+        "elixir_version": {"type": "string"}, "elixir_build": {"type": "object"},
+        "otp_release": {"type": "string"}, "erts_version": {"type": "string"},
+        "word_size_bytes": {"type": "integer"}, "schedulers": {"type": "integer"}, "schedulers_online": {"type": "integer"},
+        "dirty_cpu_schedulers_online": {"type": "integer"}, "dirty_io_schedulers": {"type": "integer"},
+        "beam_process_limit": {"type": "integer"}, "beam_port_limit": {"type": "integer"}, "mix_environment": {"type": "string"},
+        "application_versions": {"type": "object", "additionalProperties": {"$ref": "#/$defs/nullable_string"}},
+        "source_fingerprints": {"type": "object", "additionalProperties": {"$ref": "#/$defs/sha256"}},
+        "loaded_beam_sha256": {"type": "object", "additionalProperties": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"}},
+        "executables": {"type": "object", "additionalProperties": {"type": "string"}}
+      }, "additionalProperties": false
+    },
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["populations", "active", "rounds", "idle_ms", "sample_ms", "model_ms", "tool_ms", "process_ms", "run_timeout_ms", "tool_timeout_ms", "deadline_ms"],
+      "properties": {
+        "populations": {"type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": {"type": "integer", "minimum": 1, "maximum": 500}},
+        "active": {"type": "integer", "minimum": 1, "maximum": 64}, "rounds": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "idle_ms": {"type": "integer", "minimum": 25, "maximum": 10000}, "sample_ms": {"type": "integer", "minimum": 5, "maximum": 1000},
+        "model_ms": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"type": "integer", "minimum": 0, "maximum": 2000}},
+        "tool_ms": {"type": "object", "required": ["read", "edit", "exec"], "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 2000}},
+        "process_ms": {"type": "array", "minItems": 1, "maxItems": 16, "items": {"type": "integer", "minimum": 0, "maximum": 2000}},
+        "run_timeout_ms": {"type": "integer", "minimum": 1000, "maximum": 120000},
+        "tool_timeout_ms": {"type": "integer", "minimum": 500, "maximum": 60000},
+        "deadline_ms": {"type": "integer", "minimum": 5000, "maximum": 3600000}
+      }
+    },
+    "sample": {
+      "type": "object", "additionalProperties": false,
+      "required": ["at_ms", "sampling_ms", "beam_memory_bytes", "beam_process_count", "beam_port_count", "beam_run_queue", "os", "runtime_supervised_process_count", "runtime_tree_read_errors", "session_coordinator_count", "native_agent_supervisor_count", "leases", "mailboxes"],
+      "properties": {
+        "at_ms": {"$ref": "#/$defs/duration"}, "sampling_ms": {"$ref": "#/$defs/duration"},
+        "beam_memory_bytes": {"type": "object", "required": ["total"], "additionalProperties": {"$ref": "#/$defs/count"}},
+        "beam_process_count": {"$ref": "#/$defs/count"}, "beam_port_count": {"$ref": "#/$defs/count"}, "beam_run_queue": {"$ref": "#/$defs/count"},
+        "runtime_supervised_process_count": {"$ref": "#/$defs/count"}, "runtime_tree_read_errors": {"$ref": "#/$defs/count"},
+        "session_coordinator_count": {"type": ["integer", "null"]}, "native_agent_supervisor_count": {"type": ["integer", "null"]},
+        "in_flight_driver_attempts": {"$ref": "#/$defs/count"},
+        "os": {
+          "type": "object", "additionalProperties": false,
+          "required": ["beam_rss_bytes", "beam_rss_high_water_bytes", "live_descendant_count", "descendant_rss_sum_bytes", "descendant_rss_unavailable_count", "descendant_scan_read_errors", "observed_zombie_descendant_count"],
+          "properties": {
+            "beam_rss_bytes": {"type": ["integer", "null"]}, "beam_rss_high_water_bytes": {"type": ["integer", "null"]},
+            "live_descendant_count": {"$ref": "#/$defs/count"}, "descendant_rss_sum_bytes": {"$ref": "#/$defs/count"},
+            "descendant_rss_unavailable_count": {"$ref": "#/$defs/count"}, "descendant_scan_read_errors": {"$ref": "#/$defs/count"},
+            "observed_zombie_descendant_count": {"$ref": "#/$defs/count"}
+          }
+        },
+        "leases": {"type": "object", "required": ["model", "process", "subagent"], "additionalProperties": {"type": ["integer", "null"]}},
+        "mailboxes": {
+          "type": "object", "additionalProperties": false,
+          "required": ["runtime_total", "runtime_max", "runtime_nonempty", "observed_runtime_processes", "vanished_runtime_processes", "observer"],
+          "properties": {
+            "runtime_total": {"$ref": "#/$defs/count"}, "runtime_max": {"$ref": "#/$defs/count"}, "runtime_nonempty": {"$ref": "#/$defs/count"},
+            "observed_runtime_processes": {"$ref": "#/$defs/count"}, "vanished_runtime_processes": {"$ref": "#/$defs/count"}, "observer": {"type": ["integer", "null"]}
+          }
+        }
+      }
+    },
+    "pressure": {
+      "type": "object", "required": ["sample_count", "beam_process_count", "runtime_supervised_process_count", "os_live_descendant_count", "os_beam_rss_bytes", "beam_total_memory_bytes", "beam_run_queue", "runtime_mailbox_total", "runtime_mailbox_max", "observer_mailbox", "sampling_ms", "model_leases", "process_leases", "runtime_tree_read_errors"],
+      "properties": {"sample_count": {"$ref": "#/$defs/count"}, "runtime_tree_read_errors": {"$ref": "#/$defs/count"}},
+      "additionalProperties": {"$ref": "#/$defs/distribution"}
+    },
+    "job": {
+      "type": "object", "additionalProperties": false,
+      "required": ["job_id", "run_id", "offered_at_ms", "driver_dispatch_ms", "admission", "admission_ms", "run_latency_ms", "native_status", "status", "error", "checks", "tool_evidence", "offered_concurrency", "round", "delay_observations", "unexpected_host_calls", "requested_process_ms"],
+      "properties": {
+        "job_id": {"type": "string"}, "run_id": {"$ref": "#/$defs/nullable_string"},
+        "offered_at_ms": {"$ref": "#/$defs/nullable_number"}, "driver_dispatch_ms": {"$ref": "#/$defs/nullable_number"},
+        "admission": {"enum": ["unknown", "admitted", "rejected"]},
+        "admission_ms": {"$ref": "#/$defs/nullable_number"}, "run_latency_ms": {"$ref": "#/$defs/nullable_number"},
+        "native_status": {"$ref": "#/$defs/nullable_string"},
+        "status": {"enum": ["unknown", "completed", "admission_rejected", "workload_error", "run_error", "worker_error", "timed_out"]},
+        "error": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/error"}]},
+        "checks": {"type": "object", "additionalProperties": {"type": "boolean"}},
+        "tool_evidence": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "completed_effect_count": {"$ref": "#/$defs/count"},
+            "read_snapshot_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+            "written_snapshot_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+            "written_bytes": {"type": ["integer", "null"]}, "process_duration_ms": {"$ref": "#/$defs/nullable_number"},
+            "process_exit_status": {"type": ["integer", "null"]}, "process_status": {"$ref": "#/$defs/nullable_string"},
+            "process_cleanup": {"$ref": "#/$defs/nullable_string"}, "process_effect": {"$ref": "#/$defs/nullable_string"},
+            "stdout_bytes": {"type": ["integer", "null"]}, "stderr_bytes": {"type": ["integer", "null"]}
+          }
+        },
+        "offered_concurrency": {"type": "integer", "minimum": 1}, "round": {"type": "integer", "minimum": 1},
+        "requested_process_ms": {"type": "integer", "minimum": 0, "maximum": 2000},
+        "delay_observations": {
+          "type": "array", "items": {
+            "type": "object", "additionalProperties": false, "required": ["kind", "step", "requested_ms", "observed_ms"],
+            "properties": {"kind": {"enum": ["model", "tool_authorization"]}, "step": {"type": "string"}, "requested_ms": {"type": "integer", "minimum": 0, "maximum": 2000}, "observed_ms": {"$ref": "#/$defs/duration"}}
+          }
+        },
+        "unexpected_host_calls": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "admission": {
+      "type": "object", "additionalProperties": false,
+      "required": ["offered", "admitted", "rejected", "model_capacity_rejections", "completed", "failed_or_unobserved", "queued"],
+      "properties": {
+        "offered": {"$ref": "#/$defs/count"}, "admitted": {"$ref": "#/$defs/count"}, "rejected": {"$ref": "#/$defs/count"},
+        "model_capacity_rejections": {"$ref": "#/$defs/count"}, "completed": {"$ref": "#/$defs/count"}, "failed_or_unobserved": {"$ref": "#/$defs/count"}, "queued": {"const": 0}
+      }
+    },
+    "wave": {
+      "type": "object", "additionalProperties": false, "required": ["round", "offered_concurrency", "elapsed_ms", "jobs", "pressure", "samples"],
+      "properties": {
+        "round": {"type": "integer", "minimum": 1}, "offered_concurrency": {"type": "integer", "minimum": 1}, "elapsed_ms": {"$ref": "#/$defs/duration"},
+        "jobs": {"type": "array", "items": {"$ref": "#/$defs/job"}}, "pressure": {"$ref": "#/$defs/pressure"}, "samples": {"type": "array", "items": {"$ref": "#/$defs/sample"}}
+      }
+    },
+    "load": {
+      "type": "object", "additionalProperties": false, "required": ["offered_concurrency", "rounds", "admission", "latency_ms", "errors", "pressure", "waves"],
+      "properties": {
+        "offered_concurrency": {"type": "integer", "minimum": 1}, "rounds": {"type": "integer", "minimum": 1}, "admission": {"$ref": "#/$defs/admission"},
+        "latency_ms": {"type": "object", "required": ["admitted_run", "completed_run", "admitted_call", "rejected_call", "driver_dispatch"], "additionalProperties": {"$ref": "#/$defs/distribution"}},
+        "errors": {"type": "object", "additionalProperties": {"$ref": "#/$defs/count"}}, "pressure": {"$ref": "#/$defs/pressure"},
+        "waves": {"type": "array", "items": {"$ref": "#/$defs/wave"}}
+      }
+    },
+    "population_error": {
+      "type": "object", "additionalProperties": false, "required": ["population", "result", "error"],
+      "properties": {"population": {"type": "integer", "minimum": 1, "maximum": 500}, "result": {"const": "failed"}, "error": {"$ref": "#/$defs/error"}}
+    },
+    "population": {
+      "type": "object", "additionalProperties": false,
+      "required": ["population", "result", "elapsed_ms", "limits", "baseline", "idle", "active", "saturation", "cleanup"],
+      "properties": {
+        "population": {"type": "integer", "minimum": 1, "maximum": 500}, "result": {"enum": ["passed", "failed"]}, "elapsed_ms": {"$ref": "#/$defs/duration"},
+        "limits": {
+          "type": "object", "required": ["max_sessions", "max_active", "max_processes", "max_subagents", "max_jido_tasks", "run_timeout_ms", "tool_timeout_ms", "max_iterations", "max_runs_per_session", "max_effects_per_session", "event_limit", "subscriber_limit", "eval_backends", "storage", "max_resources_per_session", "max_secrets_per_session", "max_pending_questions", "question_timeout_ms", "process_timeout_ms", "max_output_bytes", "max_file_bytes", "max_read_bytes", "context_policy"],
+          "properties": {
+            "storage": {"type": "string"}, "eval_backends": {"type": "array", "maxItems": 0},
+            "context_policy": {"type": "object", "required": ["max_messages", "keep_recent", "max_bytes"], "additionalProperties": {"type": "integer", "minimum": 1}}
+          }, "additionalProperties": {"type": "integer", "minimum": 1}
+        },
+        "baseline": {"$ref": "#/$defs/sample"},
+        "idle": {
+          "type": "object", "additionalProperties": false, "required": ["invariant_passed", "sample", "samples", "delta_from_empty_runtime", "pressure"],
+          "properties": {
+            "invariant_passed": {"type": "boolean"}, "sample": {"$ref": "#/$defs/sample"}, "samples": {"type": "array", "items": {"$ref": "#/$defs/sample"}},
+            "delta_from_empty_runtime": {"type": "object", "required": ["os_beam_rss_bytes", "beam_total_bytes", "beam_process_count", "runtime_supervised_process_count"], "additionalProperties": {"type": "integer"}},
+            "pressure": {"$ref": "#/$defs/pressure"}
+          }
+        },
+        "active": {"type": "array", "items": {"$ref": "#/$defs/load"}},
+        "saturation": {
+          "type": "object", "additionalProperties": false,
+          "required": ["session_admission", "first_observed_model_rejection_concurrency", "max_sampled_model_leases", "model_limit_exercised", "oversubscription_offered", "admission_protocol_passed", "resource_bounds_passed", "queued_work_count", "capacity_mechanism"],
+          "properties": {
+            "session_admission": {
+              "type": "object", "required": ["status"],
+              "properties": {
+                "status": {"enum": ["capacity_rejected", "not_exercised", "unexpected_admission", "unexpected_rejection"]},
+                "offered_sessions": {"type": "integer", "minimum": 1}, "admitted_sessions": {"$ref": "#/$defs/count"}, "latency_ms": {"$ref": "#/$defs/duration"},
+                "reason": {"oneOf": [{"type": "string"}, {"$ref": "#/$defs/error"}]}
+              }, "additionalProperties": false
+            },
+            "first_observed_model_rejection_concurrency": {"type": ["integer", "null"]}, "max_sampled_model_leases": {"type": ["integer", "null"]},
+            "model_limit_exercised": {"type": "boolean"}, "oversubscription_offered": {"type": "boolean"},
+            "admission_protocol_passed": {"type": "boolean"}, "resource_bounds_passed": {"type": "boolean"},
+            "queued_work_count": {"const": 0}, "capacity_mechanism": {"type": "string"}
+          }
+        },
+        "cleanup": {"type": "object", "additionalProperties": false, "required": ["population_removed", "after_sessions"], "properties": {"population_removed": {"type": "boolean"}, "after_sessions": {"$ref": "#/$defs/sample"}}}
+      }
+    }
+  }
+}

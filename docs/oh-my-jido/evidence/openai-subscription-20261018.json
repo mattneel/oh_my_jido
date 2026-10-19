@@ -1,0 +1,52 @@
+{
+  "recorded_date": "2026-10-18",
+  "scope": "Human-authorized native OpenAI SIWC subscription smoke; no metered API fallback",
+  "provider": "openai",
+  "model": "gpt-6-luna",
+  "library_source_sha256": "8d4f12a22d7b6970a2d16091e090ca5d95db10c5c4c407c1ba73bfa331177c70",
+  "authentication": {
+    "native_consent_verified": true,
+    "active_account_observed": true,
+    "catalog_http_status": 200,
+    "catalog_models_key": "models",
+    "selected_model_returned_by_catalog": true,
+    "selected_model_supported_by_installed_registry": true,
+    "imported_credentials": false,
+    "metered_fallback": false
+  },
+  "read_smoke": {
+    "verified": true,
+    "native_jido_reqllm_path": true,
+    "unpredictable_file_challenge_absent_from_prompt": true,
+    "completed_read_receipt_verified": true,
+    "exact_final_answer_verified": true,
+    "input_tokens": 2006,
+    "output_tokens": 46,
+    "pricing_status": "unknown"
+  },
+  "coding_smoke": {
+    "verified": true,
+    "independent_before_exit": 2,
+    "native_shell_exit_statuses_unordered": [0, 2, 0],
+    "independent_after_exit": 0,
+    "completed_native_run": true,
+    "real_read_edit_shell_receipts": true,
+    "exact_targeted_source_change": "a + b -> a * b",
+    "tests_and_configuration_unchanged": true,
+    "positive_and_negative_multiplication_test_passed": true,
+    "input_tokens": 22318,
+    "output_tokens": 431,
+    "reasoning_tokens_reported": 42,
+    "pricing_status": "unknown"
+  },
+  "final_grant_cleanup": {
+    "local": "logged_out",
+    "remote": "revoked",
+    "verification_host_exit": 0
+  },
+  "limitations": [
+    "One account and selected model, not universal eligibility or future availability",
+    "Temporary-host setup errors were corrected and are not counted as inference successes",
+    "No credentials, callback codes, authorization URLs or account identities retained in this report"
+  ]
+}

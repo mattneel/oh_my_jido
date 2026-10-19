@@ -1,0 +1,2077 @@
+# Modified by Oh-My-Jido contributors, 2026-10-13: safe opt-in failure metadata
+# and metadata-only OTP diagnostics. Original ReqLLM 1.28.0 source remains under
+# Apache License 2.0; see LICENSE and UPSTREAM.json in this package.
+defmodule ReqLLM.StreamServer do
+  @moduledoc """
+  GenServer that manages streaming LLM sessions with backpressure and SSE parsing.
+
+  StreamServer acts as a bridge between HTTP streaming clients (like FinchClient)
+  and consumers, providing:
+
+  - SSE event parsing across HTTP chunk boundaries
+  - Token queuing with configurable backpressure
+  - Provider-agnostic event decoding via provider callbacks
+  - Completion detection and metadata extraction
+  - Clean error handling and resource cleanup
+
+  ## Architecture
+
+  The StreamServer receives HTTP events via synchronous GenServer.call/2, which
+  enables natural backpressure - if the consumer queue is full, HTTP events are
+  delayed until the queue drains. This prevents memory issues from fast producers
+  overwhelming slow consumers.
+
+  ## Usage
+
+      # Start a streaming session
+      {:ok, server} = StreamServer.start_link(
+        provider_mod: ReqLLM.Providers.OpenAI,
+        model: %LLMDB.Model{...}
+      )
+
+      # Attach HTTP task for monitoring
+      StreamServer.attach_http_task(server, http_task_pid)
+
+      # Consumer loop
+      case StreamServer.next(server) do
+        {:ok, chunk} -> handle_chunk(chunk)
+        :halt -> handle_completion()
+        {:error, reason} -> handle_error(reason)
+      end
+
+  ## State Management
+
+  The server maintains state for:
+
+  - `provider_mod`: Provider module for event decoding
+  - `model`: ReqLLM.Model struct for provider context
+  - `provider_state`: Optional provider-specific state for stateful transformations
+  - `protocol_state`: Opaque parser state across chunks
+  - `queue`: Token chunks awaiting consumer retrieval
+  - `status`: Current session status (`:init`, `:streaming`, `:done`, `{:error, reason}`)
+  - `http_task`: HTTP task reference for monitoring
+  - `consumer_refs`: Set of consumer process references
+  - `fixture_path`: Optional path for fixture capture
+  - `metadata`: Final metadata when streaming completes
+  - `high_watermark`: Queue size limit for backpressure (default 500)
+
+  ## Backpressure
+
+  When the number of decoded public chunks in the internal queue reaches
+  `high_watermark`, the server delays replying to the producing
+  `{:http_event, {:data, _}}` call until consumers drain the queue below the
+  watermark via `next/2`. Each transport data event is processed atomically, so
+  one event that decodes to multiple chunks can exceed the watermark by the
+  chunks from that event. No later transport event is acknowledged or processed
+  while the producer is suspended. Before telemetry setup completes, the first
+  data event is held so its decoded chunk count can be evaluated against the
+  watermark instead of estimating capacity from raw transport reads.
+  """
+
+  use GenServer
+
+  alias ReqLLM.MapAccess
+  alias ReqLLM.StreamChunk
+  alias ReqLLM.Streaming.Failure
+  alias ReqLLM.Streaming.SSE
+
+  require Logger
+  require ReqLLM.Debug, as: Debug
+
+  @type server :: GenServer.server()
+  @type status :: :init | :streaming | :done | {:error, any()}
+
+  defstruct [
+    :provider_mod,
+    :model,
+    :pricing_context,
+    :error_context,
+    :http_task,
+    :fixture_path,
+    :fixture_backend,
+    :http_context,
+    :canonical_json,
+    :protocol_parser,
+    :protocol_state,
+    :provider_state,
+    :transport_cancel,
+    :telemetry,
+    :pending_http_exit,
+    pending_http_events: [],
+    pending_retry_events: [],
+    telemetry_pending?: false,
+    canonical_stream?: false,
+    queue: :queue.new(),
+    status: :init,
+    consumer_refs: MapSet.new(),
+    metadata: %{},
+    stream_requested?: false,
+    metadata_delivered?: false,
+    terminal_delivered?: false,
+    completion_cleanup_after: 30_000,
+    completion_cleanup_timer: nil,
+    completion_cleanup_token: nil,
+    total_timeout: :infinity,
+    total_timeout_deadline: :infinity,
+    total_timeout_timer: nil,
+    total_timeout_token: nil,
+    stream_idle_timeout: nil,
+    stream_idle_timeout_timer: nil,
+    stream_idle_timeout_token: nil,
+    high_watermark: 500,
+    headers: [],
+    http_status: nil,
+    blocked_http_event: nil,
+    pending_http_calls: :queue.new(),
+    waiting_callers: [],
+    object_json_mode?: false,
+    object_acc: [],
+    fixture_saved?: false,
+    raw_iodata: [],
+    raw_bytes: 0,
+    terminated?: false,
+    message_acc: %ReqLLM.Provider.ChunkAccumulator{},
+    # Per-call wall-clock timestamps for server-side builtin tool
+    # invocations. Populated as `response.output_item.added` /
+    # `response.output_item.done` SSE events arrive (for builtin segment
+    # types). Surfaced to the `[:req_llm, :request, :stop]` event so the
+    # OTel bridge can emit `gen_ai.execute_tool` child spans with
+    # measured durations. Keyed by call id, values are
+    # `%{start_unix_nano: integer, end_unix_nano: integer}`.
+    builtin_tool_timing: %{}
+  ]
+
+  @doc """
+  Start a StreamServer with the given options.
+
+  ## Options
+
+    * `:provider_mod` - Provider module implementing ReqLLM.Provider behavior (required)
+    * `:model` - ReqLLM.Model struct (required)
+    * `:fixture_path` - Optional path for fixture capture
+    * `:high_watermark` - Positive decoded public-chunk queue bound for backpressure
+      (default: 500)
+
+  ## Examples
+
+      {:ok, server} = ReqLLM.StreamServer.start_link(
+        provider_mod: ReqLLM.Providers.OpenAI,
+        model: %LLMDB.Model{provider: :openai, name: "gpt-4o"}
+      )
+
+  """
+  @spec start_link(keyword()) :: GenServer.on_start()
+  def start_link(opts) do
+    provider_mod = Keyword.fetch!(opts, :provider_mod)
+    model = Keyword.fetch!(opts, :model)
+    high_watermark = validate_high_watermark!(Keyword.get(opts, :high_watermark, 500))
+
+    canonical_stream? = Keyword.get(opts, :canonical_stream?, false)
+
+    provider_state =
+      if not canonical_stream? and function_exported?(provider_mod, :init_stream_state, 1) do
+        provider_mod.init_stream_state(model)
+      end
+
+    state = %__MODULE__{
+      provider_mod: provider_mod,
+      model: model,
+      error_context: {Keyword.get(opts, :stream_error_normalizer) || provider_mod, model},
+      pricing_context: Keyword.get(opts, :pricing_context),
+      protocol_parser: Keyword.get(opts, :protocol_parser),
+      provider_state: provider_state,
+      fixture_path: Keyword.get(opts, :fixture_path),
+      fixture_backend: Keyword.get(opts, :fixture_backend, ReqLLM.Step.Fixture.Backend),
+      completion_cleanup_after:
+        Keyword.get(
+          opts,
+          :completion_cleanup_after,
+          Application.get_env(:req_llm, :stream_completion_cleanup_after, 30_000)
+        ),
+      total_timeout: Keyword.get(opts, :total_timeout, :infinity),
+      total_timeout_deadline:
+        Keyword.get(opts, :total_timeout_deadline, Keyword.get(opts, :total_timeout, :infinity)),
+      stream_idle_timeout: Keyword.get(opts, :stream_idle_timeout),
+      high_watermark: high_watermark,
+      canonical_stream?: canonical_stream?
+    }
+
+    GenServer.start_link(__MODULE__, state, opts)
+  end
+
+  @doc """
+  Get the next chunk from the stream with optional timeout.
+
+  Blocks until a chunk is available or the stream completes/errors.
+  Returns `:halt` when the stream is complete.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+    * `timeout` - Maximum time without semantic stream progress, or `:infinity`
+
+  ## Returns
+
+    * `{:ok, chunk}` - Next StreamChunk
+    * `:halt` - Stream is complete
+    * `{:error, reason}` - Error occurred
+
+  ## Examples
+
+      case ReqLLM.StreamServer.next(server) do
+        {:ok, %ReqLLM.StreamChunk{type: :content, text: text}} ->
+          IO.write(text)
+          next(server)
+
+        :halt ->
+          :ok
+
+        {:error, reason} ->
+          Logger.error("Stream error: " <> inspect(reason))
+      end
+
+  """
+  @spec next(server(), non_neg_integer()) :: {:ok, StreamChunk.t()} | :halt | {:error, any()}
+  def next(server, timeout \\ 30_000) do
+    GenServer.call(server, {:next, timeout}, :infinity)
+  end
+
+  @doc """
+  Cancel the streaming session and cleanup resources.
+
+  Stops the HTTP task if running and terminates the server.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+
+  ## Examples
+
+      ReqLLM.StreamServer.cancel(server)
+
+  """
+  @spec cancel(server()) :: :ok
+  def cancel(server) do
+    GenServer.call(server, :cancel)
+  catch
+    :exit, {:noproc, {GenServer, :call, [^server, :cancel, _timeout]}} -> :ok
+    :exit, {:normal, {GenServer, :call, [^server, :cancel, _timeout]}} -> :ok
+  end
+
+  @doc false
+  @spec monitor_consumer(server(), pid()) :: :ok
+  def monitor_consumer(server, consumer_pid) when is_pid(consumer_pid) do
+    GenServer.call(server, {:monitor_consumer, consumer_pid})
+  end
+
+  @doc """
+  Start HTTP streaming from within the StreamServer.
+
+  This method ensures proper lifecycle coupling by having the StreamServer
+  own and link to the HTTP streaming task. When the server exits, the task
+  automatically terminates, preventing orphaned callbacks.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+    * `provider_mod` - Provider module (e.g., ReqLLM.Providers.OpenAI)
+    * `model` - ReqLLM.Model struct
+    * `context` - ReqLLM.Context with messages to stream
+    * `opts` - Additional options for the request
+    * `finch_name` - Finch process name (default: ReqLLM.Finch)
+
+  ## Returns
+
+    * `{:ok, task_pid, http_context, canonical_json}` - Successfully started
+    * `{:error, reason}` - Failed to start
+
+  ## Examples
+
+      {:ok, _task_pid, _http_context, _canonical_json} =
+        StreamServer.start_http(
+          server,
+          ReqLLM.Providers.OpenAI,
+          model,
+          context,
+          opts
+        )
+
+  """
+  @spec start_http(server(), module(), LLMDB.Model.t(), ReqLLM.Context.t(), keyword(), atom()) ::
+          {:ok, pid(), any(), any()} | {:error, term()}
+  def start_http(server, provider_mod, model, context, opts, finch_name \\ ReqLLM.Finch) do
+    GenServer.call(
+      server,
+      {:start_http, provider_mod, model, context, opts, finch_name},
+      :infinity
+    )
+  end
+
+  @doc false
+  @spec start_in_process(server(), module(), LLMDB.Model.t(), ReqLLM.Context.t(), keyword()) ::
+          {:ok, pid(), nil, map()} | {:error, term()}
+  def start_in_process(server, provider_mod, model, context, opts) do
+    GenServer.call(
+      server,
+      {:start_in_process, provider_mod, model, context, opts},
+      :infinity
+    )
+  end
+
+  @doc """
+  Attach an HTTP task to the server for monitoring.
+
+  The server will monitor the task and handle cleanup if it crashes.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+    * `task_pid` - HTTP task process ID
+
+  ## Examples
+
+      task = Task.async(fn -> Finch.stream(...) end)
+      ReqLLM.StreamServer.attach_http_task(server, task.pid)
+
+  """
+  @spec attach_http_task(server(), pid()) :: :ok
+  def attach_http_task(server, task_pid) do
+    GenServer.call(server, {:attach_http_task, task_pid})
+  end
+
+  @doc """
+  Forward an HTTP event to the server for processing.
+
+  This is the primary interface for HTTP clients to deliver streaming events.
+  Provides backpressure through synchronous GenServer.call.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+    * `event` - HTTP event tuple: `{:status, integer()}`, `{:headers, list()}`,
+                `{:data, binary()}`, `:done`, or `{:error, term()}`
+
+  ## Examples
+
+      ReqLLM.StreamServer.http_event(server, {:status, 200})
+      ReqLLM.StreamServer.http_event(server, {:headers, [{"content-type", "text/event-stream"}]})
+      ReqLLM.StreamServer.http_event(server, {:data, "data: {...}\\n\\n"})
+      ReqLLM.StreamServer.http_event(server, :done)
+
+  """
+  @spec http_event(server(), term()) :: :ok
+  def http_event(server, event) do
+    GenServer.call(server, {:http_event, event}, :infinity)
+  end
+
+  @doc false
+  @spec in_process_event(server(), term()) :: :ok
+  def in_process_event(server, event) do
+    GenServer.call(server, {:http_event, normalize_in_process_event(event)}, :infinity)
+  end
+
+  @doc """
+  Set HTTP context and canonical JSON for fixture capture.
+
+  This is called by the streaming pipeline to provide the HTTP metadata
+  and request data needed for fixture capture.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+    * `http_context` - HTTPContext struct with request/response metadata
+    * `canonical_json` - The request body as JSON for fixture saving
+
+  ## Examples
+
+      ReqLLM.StreamServer.set_fixture_context(server, http_context, request_json)
+
+  """
+  @spec set_fixture_context(server(), ReqLLM.Streaming.Fixtures.HTTPContext.t(), any()) :: :ok
+  def set_fixture_context(server, http_context, canonical_json) do
+    GenServer.call(server, {:set_fixture_context, http_context, canonical_json})
+  end
+
+  @doc """
+  Sets streaming telemetry context for the current stream.
+  """
+  @spec set_telemetry_context(server(), map()) :: :ok
+  def set_telemetry_context(server, telemetry_context) do
+    GenServer.call(server, {:set_telemetry_context, telemetry_context})
+  end
+
+  @doc false
+  @spec retry_event(server(), map()) :: :ok
+  def retry_event(server, retry) do
+    GenServer.cast(server, {:retry_event, retry})
+  end
+
+  @doc """
+  Block until metadata is available from the completed stream.
+
+  ## Parameters
+
+    * `server` - StreamServer process
+    * `timeout` - Maximum time to wait in milliseconds (default: 30_000)
+
+  ## Returns
+
+    * `{:ok, metadata}` - Final stream metadata
+    * `{:error, :timeout}` - Metadata was not available before the timeout
+
+  Failed streams return `{:ok, metadata}` with `:finish_reason` set to `:error`
+  and the structured failure under `:error`.
+
+  ## Examples
+
+      case ReqLLM.StreamServer.await_metadata(server, 10_000) do
+        {:ok, metadata} ->
+          IO.puts("Tokens used: " <> inspect(metadata[:usage][:total_tokens]))
+        {:error, :timeout} ->
+          IO.puts("Metadata not available yet")
+      end
+
+  """
+  @spec await_metadata(server(), timeout()) :: {:ok, map()} | {:error, any()}
+  def await_metadata(server, timeout \\ 30_000)
+      when timeout == :infinity or (is_integer(timeout) and timeout >= 0) do
+    GenServer.call(server, {:await_metadata, timeout}, :infinity)
+  end
+
+  ## GenServer Callbacks
+
+  @impl GenServer
+  def init(state) do
+    Process.flag(:trap_exit, true)
+
+    protocol_parser =
+      cond do
+        is_function(state.protocol_parser, 2) ->
+          state.protocol_parser
+
+        function_exported?(state.provider_mod, :parse_stream_protocol, 2) ->
+          fn chunk, buffer -> state.provider_mod.parse_stream_protocol(chunk, buffer) end
+
+        true ->
+          &ReqLLM.Provider.parse_stream_protocol/2
+      end
+
+    {:ok, %{state | protocol_parser: protocol_parser}}
+  end
+
+  @impl GenServer
+  def handle_call(message, from, state) do
+    dispatch_call(message, from, state)
+  rescue
+    error -> stop_callback_failure(:call, state, :error, error, __STACKTRACE__)
+  catch
+    kind, reason -> stop_callback_failure(:call, state, kind, reason, __STACKTRACE__)
+  end
+
+  @impl GenServer
+  def handle_cast(message, state) do
+    dispatch_cast(message, state)
+  rescue
+    error -> stop_callback_failure(:async, state, :error, error, __STACKTRACE__)
+  catch
+    kind, reason -> stop_callback_failure(:async, state, kind, reason, __STACKTRACE__)
+  end
+
+  @impl GenServer
+  def handle_info(message, state) do
+    dispatch_info(message, state)
+  rescue
+    error -> stop_callback_failure(:async, state, :error, error, __STACKTRACE__)
+  catch
+    kind, reason -> stop_callback_failure(:async, state, kind, reason, __STACKTRACE__)
+  end
+
+  # OTP's independent crash report includes original callback stack arguments.
+  # Opted-in requests must stop with a literal reason rather than re-raise them.
+  defp stop_callback_failure(type, state, kind, reason, stacktrace) do
+    if ReqLLM.Streaming.Failure.normalizer?(state.error_context) do
+      error = ReqLLM.Streaming.Failure.normalize(reason, state.error_context)
+      ReqLLM.Streaming.Failure.log(error)
+      state = %{state | status: {:error, error}, metadata: %{error: error, finish_reason: :error}}
+      state = state |> release_http_event_callers() |> reply_to_waiting_callers()
+
+      case type do
+        :call -> {:stop, {:shutdown, :stream_callback_failed}, {:error, error}, state}
+        :async -> {:stop, {:shutdown, :stream_callback_failed}, state}
+      end
+    else
+      :erlang.raise(kind, reason, stacktrace)
+    end
+  end
+
+  defp dispatch_call({:monitor_consumer, consumer_pid}, _from, state) do
+    ref = Process.monitor(consumer_pid)
+    {:reply, :ok, %{state | consumer_refs: MapSet.put(state.consumer_refs, ref)}}
+  end
+
+  defp dispatch_call({:http_event, event}, from, %{blocked_http_event: nil} = state) do
+    {reply, new_state} = apply_http_event(event, state)
+    finish_http_event_call(event, from, reply, new_state)
+  end
+
+  defp dispatch_call({:http_event, event}, from, state) do
+    pending_http_calls = :queue.in({from, event}, state.pending_http_calls)
+    {:noreply, %{state | pending_http_calls: pending_http_calls}}
+  end
+
+  defp dispatch_call({:next, timeout}, from, state) do
+    state = cancel_completion_cleanup(%{state | stream_requested?: true})
+
+    case dequeue_chunk(state) do
+      {:ok, chunk, new_state} ->
+        reply_with_lifecycle({:ok, chunk}, resume_http_event_callers(new_state))
+
+      {:empty, new_state} ->
+        case state.status do
+          :done ->
+            terminal_state = %{new_state | terminal_delivered?: true}
+
+            case finalize_lifecycle(terminal_state) do
+              {:stop, final_state} -> {:stop, :normal, :halt, final_state}
+              {:continue, final_state} -> {:reply, :halt, final_state}
+            end
+
+          {:error, reason} ->
+            terminal_state = %{new_state | terminal_delivered?: true}
+
+            case finalize_lifecycle(terminal_state) do
+              {:stop, final_state} -> {:stop, :normal, {:error, reason}, final_state}
+              {:continue, final_state} -> {:reply, {:error, reason}, final_state}
+            end
+
+          _ ->
+            {:noreply, register_waiting_caller(new_state, from, :next, timeout)}
+        end
+    end
+  end
+
+  defp dispatch_call(:cancel, _from, state) do
+    new_state =
+      state
+      |> finalize_cancelled_stream()
+      |> reply_to_waiting_callers()
+      |> cleanup_resources()
+
+    {:stop, :normal, :ok, new_state}
+  end
+
+  defp dispatch_call({:start_http, provider_mod, model, context, opts, finch_name}, _from, state) do
+    defer_events? = Keyword.get(opts, :defer_http_events_until_telemetry?, false)
+    streamer_opts = Keyword.delete(opts, :defer_http_events_until_telemetry?)
+
+    streamer_mod =
+      case Keyword.get(streamer_opts, :stream_transport) do
+        :websocket -> ReqLLM.Streaming.WebSocketClient
+        _ -> ReqLLM.Streaming.FinchClient
+      end
+
+    case streamer_mod.start_stream(
+           provider_mod,
+           model,
+           context,
+           streamer_opts,
+           self(),
+           finch_name
+         ) do
+      {:ok, task_pid, http_context, canonical_json} ->
+        Process.monitor(task_pid)
+
+        is_google = model.provider == :google
+
+        json_mode? =
+          is_google and
+            get_in(canonical_json, ["generationConfig", "responseMimeType"]) ==
+              "application/json"
+
+        new_state = %{
+          state
+          | http_task: task_pid,
+            status: :streaming,
+            http_context: http_context,
+            canonical_json: canonical_json,
+            object_json_mode?: json_mode?,
+            object_acc: [],
+            pending_http_events: [],
+            telemetry_pending?: defer_events?
+        }
+
+        {:reply, {:ok, task_pid, http_context, canonical_json}, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  defp dispatch_call({:start_in_process, provider_mod, model, context, opts}, _from, state) do
+    defer_events? = Keyword.get(opts, :defer_http_events_until_telemetry?, false)
+    streamer_opts = Keyword.delete(opts, :defer_http_events_until_telemetry?)
+
+    case ReqLLM.Streaming.InProcessClient.start_stream(
+           provider_mod,
+           model,
+           context,
+           streamer_opts,
+           self()
+         ) do
+      {:ok, task_pid, cancel} ->
+        Process.monitor(task_pid)
+
+        new_state = %{
+          state
+          | http_task: task_pid,
+            transport_cancel: cancel,
+            status: :streaming,
+            http_context: nil,
+            canonical_json: %{},
+            object_json_mode?: false,
+            object_acc: [],
+            pending_http_events: [],
+            telemetry_pending?: defer_events?
+        }
+
+        {:reply, {:ok, task_pid, nil, %{}}, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, state}
+    end
+  end
+
+  defp dispatch_call({:attach_http_task, task_pid}, _from, state) do
+    Process.monitor(task_pid)
+    new_state = %{state | http_task: task_pid, status: :streaming}
+    {:reply, :ok, new_state}
+  end
+
+  defp dispatch_call({:set_fixture_context, http_context, canonical_json}, _from, state) do
+    is_google = state.model.provider == :google
+
+    json_mode? =
+      is_google and
+        get_in(canonical_json, ["generationConfig", "responseMimeType"]) == "application/json"
+
+    new_state = %{
+      state
+      | http_context: http_context,
+        canonical_json: canonical_json,
+        object_json_mode?: json_mode?,
+        object_acc: []
+    }
+
+    {:reply, :ok, new_state}
+  end
+
+  defp dispatch_call({:set_telemetry_context, telemetry_context}, _from, state) do
+    new_state =
+      state
+      |> Map.put(:telemetry, telemetry_context)
+      |> start_timeout_budgets()
+      |> drain_pending_retry_events()
+      |> drain_pending_http_events()
+      |> resume_http_event_callers()
+
+    case finalize_lifecycle(new_state) do
+      {:stop, final_state} -> {:stop, :normal, :ok, final_state}
+      {:continue, final_state} -> {:reply, :ok, final_state}
+    end
+  end
+
+  defp dispatch_call({:await_metadata, _timeout}, _from, %{status: :done} = state) do
+    reply_with_metadata(state)
+  end
+
+  defp dispatch_call({:await_metadata, _timeout}, _from, %{status: {:error, _reason}} = state) do
+    reply_with_metadata(state)
+  end
+
+  defp dispatch_call({:await_metadata, timeout}, from, state) do
+    {:noreply, register_waiting_caller(state, from, :metadata, timeout)}
+  end
+
+  defp dispatch_cast({:retry_event, retry}, %{telemetry: nil} = state) do
+    {:noreply, %{state | pending_retry_events: [retry | state.pending_retry_events]}}
+  end
+
+  defp dispatch_cast({:retry_event, retry}, state) do
+    ReqLLM.Telemetry.retry_request(state.telemetry, retry)
+    {:noreply, state}
+  end
+
+  defp dispatch_info({ref, _result}, state) when is_reference(ref) do
+    {:noreply, state}
+  end
+
+  defp dispatch_info({:caller_timeout, token}, state) do
+    case pop_waiting_caller(state, token) do
+      {nil, new_state} ->
+        {:noreply, new_state}
+
+      {%{from: from, type: _type}, new_state} ->
+        GenServer.reply(from, {:error, :timeout})
+        {:noreply, new_state}
+    end
+  end
+
+  defp dispatch_info({:timeout_budget, :total, token}, %{total_timeout_token: token} = state) do
+    handle_timeout_budget(state, :total, state.total_timeout)
+  end
+
+  defp dispatch_info(
+         {:timeout_budget, :stream_idle, token},
+         %{stream_idle_timeout_token: token} = state
+       ) do
+    handle_timeout_budget(state, :stream_idle, state.stream_idle_timeout)
+  end
+
+  defp dispatch_info({:timeout_budget, _kind, _token}, state) do
+    {:noreply, state}
+  end
+
+  defp dispatch_info({:EXIT, pid, reason}, %{http_task: pid, telemetry_pending?: true} = state) do
+    {:noreply, store_pending_http_exit(state, reason)}
+  end
+
+  defp dispatch_info({:EXIT, pid, reason}, %{http_task: pid} = state) do
+    new_state =
+      state
+      |> process_http_task_exit(reason)
+      |> release_http_event_callers()
+      |> reply_to_waiting_callers()
+
+    case finalize_lifecycle(new_state) do
+      {:stop, final_state} -> {:stop, :normal, final_state}
+      {:continue, final_state} -> {:noreply, final_state}
+    end
+  end
+
+  defp dispatch_info({:EXIT, _pid, _reason}, state) do
+    {:noreply, state}
+  end
+
+  defp dispatch_info(
+         {:DOWN, _ref, :process, pid, reason},
+         %{http_task: pid, telemetry_pending?: true} = state
+       ) do
+    {:noreply, store_pending_http_exit(state, reason)}
+  end
+
+  defp dispatch_info({:DOWN, _ref, :process, pid, reason}, %{http_task: pid} = state) do
+    new_state =
+      state
+      |> process_http_task_exit(reason)
+      |> release_http_event_callers()
+      |> reply_to_waiting_callers()
+
+    case finalize_lifecycle(new_state) do
+      {:stop, final_state} -> {:stop, :normal, final_state}
+      {:continue, final_state} -> {:noreply, final_state}
+    end
+  end
+
+  defp dispatch_info({:DOWN, ref, :process, _pid, _reason}, state) do
+    case {MapSet.member?(state.consumer_refs, ref), terminal_status?(state.status)} do
+      {true, true} ->
+        {:noreply, %{state | consumer_refs: MapSet.delete(state.consumer_refs, ref)}}
+
+      {true, false} ->
+        new_state =
+          %{state | consumer_refs: MapSet.delete(state.consumer_refs, ref)}
+          |> finalize_cancelled_stream()
+          |> cleanup_resources()
+          |> reply_to_waiting_callers()
+
+        {:stop, :normal, new_state}
+
+      {false, _terminal?} ->
+        {:noreply, state}
+    end
+  end
+
+  defp dispatch_info(
+         {:completion_cleanup, token},
+         %{completion_cleanup_token: token} = state
+       ) do
+    new_state = %{state | completion_cleanup_timer: nil, completion_cleanup_token: nil}
+
+    case should_schedule_completion_cleanup?(new_state) do
+      true -> {:stop, :normal, new_state}
+      false -> {:noreply, new_state}
+    end
+  end
+
+  defp dispatch_info({:completion_cleanup, _ref}, state) do
+    {:noreply, state}
+  end
+
+  @impl GenServer
+  def format_status(status) do
+    Map.new(status, fn
+      {:state, %__MODULE__{} = state} ->
+        summary = %{
+          provider: if(is_map(state.model), do: Map.get(state.model, :provider)),
+          model: if(is_map(state.model), do: Map.get(state.model, :id)),
+          status: if(is_tuple(state.status), do: :error, else: state.status),
+          http_status: state.http_status,
+          queued_chunks: :queue.len(state.queue),
+          metadata_fields: map_size(state.metadata)
+        }
+        {:state, summary}
+      {:state, _state} -> {:state, :redacted}
+      {:message, _message} -> {:message, :redacted}
+      {:reason, _reason} -> {:reason, :redacted}
+      {:log, _log} -> {:log, []}
+      field -> field
+    end)
+  end
+
+  @impl GenServer
+  def terminate(_reason, state) do
+    cleanup_resources(state)
+    :ok
+  end
+
+  ## Private Functions
+
+  defp validate_high_watermark!(high_watermark)
+       when is_integer(high_watermark) and high_watermark > 0,
+       do: high_watermark
+
+  defp validate_high_watermark!(high_watermark) do
+    raise ArgumentError,
+          ":high_watermark must be a positive integer, got: #{inspect(high_watermark)}"
+  end
+
+  defp apply_http_event(event, %{telemetry_pending?: true} = state) do
+    {:ok, %{state | pending_http_events: state.pending_http_events ++ [event]}}
+  end
+
+  defp apply_http_event(event, state) do
+    {:reply, reply, new_state} = process_http_event(event, state)
+    {reply, new_state}
+  end
+
+  defp finish_http_event_call(event, from, reply, state) do
+    if backpressure_required?(event, state) do
+      {:noreply, %{state | blocked_http_event: {from, reply}}}
+    else
+      reply_with_lifecycle(reply, state)
+    end
+  end
+
+  defp reply_with_lifecycle(reply, state) do
+    case finalize_lifecycle(state) do
+      {:stop, final_state} -> {:stop, :normal, reply, final_state}
+      {:continue, final_state} -> {:reply, reply, final_state}
+    end
+  end
+
+  defp backpressure_required?({:data, _chunk}, state) do
+    active_stream?(state) and backpressure_saturated?(state)
+  end
+
+  defp backpressure_required?({:canonical_chunk, _chunk}, state) do
+    active_stream?(state) and backpressure_saturated?(state)
+  end
+
+  defp backpressure_required?(_event, _state), do: false
+
+  defp active_stream?(%{status: :done}), do: false
+  defp active_stream?(%{status: {:error, _reason}}), do: false
+  defp active_stream?(_state), do: true
+
+  defp backpressure_saturated?(%{telemetry_pending?: true}), do: true
+
+  defp backpressure_saturated?(state) do
+    :queue.len(state.queue) >= state.high_watermark
+  end
+
+  defp resume_http_event_callers(%{blocked_http_event: nil} = state) do
+    drain_pending_http_calls(state)
+  end
+
+  defp resume_http_event_callers(state) do
+    if active_stream?(state) and backpressure_saturated?(state) do
+      state
+    else
+      {from, reply} = state.blocked_http_event
+      GenServer.reply(from, reply)
+
+      state
+      |> Map.put(:blocked_http_event, nil)
+      |> drain_pending_http_calls()
+    end
+  end
+
+  defp drain_pending_http_calls(%{blocked_http_event: nil} = state) do
+    case :queue.out(state.pending_http_calls) do
+      {{:value, {from, event}}, pending_http_calls} ->
+        {reply, new_state} =
+          apply_http_event(event, %{state | pending_http_calls: pending_http_calls})
+
+        cond do
+          not active_stream?(new_state) ->
+            GenServer.reply(from, reply)
+            release_http_event_callers(new_state)
+
+          backpressure_required?(event, new_state) ->
+            %{new_state | blocked_http_event: {from, reply}}
+
+          true ->
+            GenServer.reply(from, reply)
+            drain_pending_http_calls(new_state)
+        end
+
+      {:empty, _pending_http_calls} ->
+        state
+    end
+  end
+
+  defp drain_pending_http_calls(state), do: state
+
+  defp release_http_event_callers(state) do
+    case state.blocked_http_event do
+      nil -> :ok
+      {from, reply} -> GenServer.reply(from, reply)
+    end
+
+    state.pending_http_calls
+    |> :queue.to_list()
+    |> Enum.each(fn {from, _event} -> GenServer.reply(from, :ok) end)
+
+    %{state | blocked_http_event: nil, pending_http_calls: :queue.new()}
+  end
+
+  defp process_http_event(_event, %{status: {:error, _reason}} = state) do
+    {:reply, :ok, state}
+  end
+
+  defp process_http_event(
+         {:transport_fallback, :http, _reason, http_context, canonical_json},
+         state
+       ) do
+    protocol_parser = http_protocol_parser(state.provider_mod)
+    provider_state = reset_provider_state(state.provider_mod, state.model)
+
+    new_state = %{
+      state
+      | protocol_parser: protocol_parser,
+        protocol_state: nil,
+        provider_state: provider_state,
+        http_context: http_context,
+        canonical_json: canonical_json,
+        http_status: nil,
+        headers: []
+    }
+
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event({:status, status}, state) do
+    new_state = %{state | http_status: status}
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event({:headers, headers}, state) do
+    alias ReqLLM.Streaming.Fixtures.HTTPContext
+
+    updated_http_context =
+      if state.http_context do
+        status = state.http_status || 200
+        HTTPContext.update_response(state.http_context, status, Map.new(headers))
+      else
+        state.http_context
+      end
+
+    new_state = %{state | headers: headers, http_context: updated_http_context}
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event({:data, chunk}, state) do
+    if state.http_status && state.http_status >= 400 do
+      error = build_http_error(state.http_status, chunk, state.headers)
+
+      new_state =
+        state
+        |> finalize_failed_stream(error)
+        |> reply_to_waiting_callers()
+
+      {:reply, :ok, new_state}
+    else
+      process_data_chunk(chunk, state)
+    end
+  end
+
+  defp process_http_event({:canonical_chunk, %StreamChunk{} = chunk}, state) do
+    chunks = [chunk]
+
+    new_state =
+      state
+      |> then(&enqueue_chunks(chunks, &1))
+      |> reset_metadata_waiter_timeouts(chunks)
+      |> reset_stream_idle_timeout(chunks)
+
+    new_state =
+      if terminal_chunk?(chunk) do
+        finalize_stream_with_fixture(%{new_state | terminated?: true})
+      else
+        new_state
+      end
+
+    {:reply, :ok, reply_to_waiting_callers(new_state)}
+  end
+
+  defp process_http_event({:canonical_chunk, value}, state) do
+    reason = {:invalid_in_process_stream_item, value}
+
+    new_state =
+      state
+      |> finalize_failed_stream(reason)
+      |> reply_to_waiting_callers()
+
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event(:done, %{http_status: status} = state)
+       when is_integer(status) and status >= 400 do
+    error = build_http_error(status, nil, state.headers)
+
+    new_state =
+      state
+      |> finalize_failed_stream(error)
+      |> reply_to_waiting_callers()
+
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event(:done, state) do
+    new_state = finalize_stream_with_fixture(state) |> reply_to_waiting_callers()
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event({:error, reason}, state) do
+    new_state =
+      state
+      |> finalize_failed_stream(reason)
+      |> reply_to_waiting_callers()
+
+    {:reply, :ok, new_state}
+  end
+
+  defp process_http_event({:cancelled, _reason}, state) do
+    new_state = state |> finalize_cancelled_stream() |> reply_to_waiting_callers()
+    {:reply, :ok, new_state}
+  end
+
+  defp drain_pending_http_events(%{pending_http_events: []} = state) do
+    state
+    |> Map.put(:telemetry_pending?, false)
+    |> drain_pending_http_exit()
+  end
+
+  defp drain_pending_http_events(state) do
+    pending_events = state.pending_http_events
+    state = %{state | telemetry_pending?: false, pending_http_events: []}
+
+    Enum.reduce(pending_events, state, fn event, acc ->
+      {:reply, _reply, new_acc} = process_http_event(event, acc)
+      new_acc
+    end)
+    |> drain_pending_http_exit()
+  end
+
+  defp drain_pending_http_exit(%{pending_http_exit: nil} = state), do: state
+
+  defp drain_pending_http_exit(state) do
+    state
+    |> Map.put(:pending_http_exit, nil)
+    |> process_http_task_exit(state.pending_http_exit)
+    |> reply_to_waiting_callers()
+  end
+
+  defp store_pending_http_exit(%{pending_http_exit: nil} = state, reason) do
+    %{state | pending_http_exit: reason}
+  end
+
+  defp store_pending_http_exit(state, _reason), do: state
+
+  defp process_http_task_exit(%{status: :done} = state, _reason), do: state
+  defp process_http_task_exit(%{status: {:error, _reason}} = state, _exit_reason), do: state
+
+  defp process_http_task_exit(state, reason) when reason in [:normal, :shutdown] do
+    finalize_stream_with_fixture(state)
+  end
+
+  defp process_http_task_exit(state, {:shutdown, _}) do
+    finalize_stream_with_fixture(state)
+  end
+
+  defp process_http_task_exit(state, reason) do
+    finalize_failed_stream(state, {:http_task_failed, reason})
+  end
+
+  defp http_protocol_parser(provider_mod) do
+    if function_exported?(provider_mod, :parse_stream_protocol, 2) do
+      fn chunk, buffer -> provider_mod.parse_stream_protocol(chunk, buffer) end
+    else
+      &ReqLLM.Provider.parse_stream_protocol/2
+    end
+  end
+
+  defp reset_provider_state(provider_mod, model) do
+    if function_exported?(provider_mod, :init_stream_state, 1) do
+      provider_mod.init_stream_state(model)
+    end
+  end
+
+  defp parse_protocol_events(chunk, state) do
+    case state.protocol_parser.(chunk, state.protocol_state) do
+      {:ok, events, new_protocol_state} ->
+        {events, new_protocol_state}
+
+      {:incomplete, new_protocol_state} ->
+        {[], new_protocol_state}
+
+      {:error, _reason} ->
+        Logger.warning("Protocol parse error")
+        {[], state.protocol_state}
+    end
+  end
+
+  defp process_data_chunk(chunk, state) do
+    state =
+      if state.fixture_path && is_binary(chunk) do
+        new_bytes = state.raw_bytes + byte_size(chunk)
+
+        if new_bytes > 100_000_000 and state.raw_bytes <= 100_000_000 do
+          Logger.warning(
+            "Streaming fixture exceeded 100MB - consider reviewing test data size"
+          )
+        end
+
+        %{state | raw_iodata: [chunk | state.raw_iodata], raw_bytes: new_bytes}
+      else
+        state
+      end
+
+    {events, new_protocol_state} = parse_protocol_events(chunk, state)
+
+    {stream_chunks, new_provider_state} = decode_protocol_events(events, state)
+
+    new_state =
+      enqueue_chunks(stream_chunks, %{
+        state
+        | protocol_state: new_protocol_state,
+          provider_state: new_provider_state
+      })
+      |> reset_metadata_waiter_timeouts(stream_chunks)
+      |> reset_stream_idle_timeout(stream_chunks)
+
+    terminated? =
+      Enum.any?(events, &termination_event?/1) or
+        Enum.any?(stream_chunks, &terminal_chunk?/1)
+
+    new_state =
+      if terminated? do
+        finalize_stream_with_fixture(%{new_state | terminated?: true})
+      else
+        new_state
+      end
+
+    new_state = reply_to_waiting_callers(new_state)
+    {:reply, :ok, new_state}
+  end
+
+  defp decode_protocol_events(events, state) do
+    {stream_chunks, provider_state} =
+      Enum.reduce(events, {[], state.provider_state}, fn event, {chunks_acc, prov_state} ->
+        case SSE.process_sse_event(event) do
+          nil ->
+            {chunks_acc, prov_state}
+
+          processed_event ->
+            {new_chunks, updated_prov_state} =
+              decode_provider_event(processed_event, state.provider_mod, state.model, prov_state)
+
+            {prepend_chunks(new_chunks, chunks_acc), updated_prov_state}
+        end
+      end)
+
+    {Enum.reverse(stream_chunks), provider_state}
+  end
+
+  defp prepend_chunks(chunks, acc) do
+    Enum.reduce(chunks, acc, fn chunk, chunk_acc -> [chunk | chunk_acc] end)
+  end
+
+  defp decode_provider_event(event, provider_mod, model, provider_state) do
+    cond do
+      function_exported?(provider_mod, :decode_stream_event, 3) ->
+        provider_mod.decode_stream_event(event, model, provider_state)
+
+      function_exported?(provider_mod, :decode_stream_event, 2) ->
+        chunks = provider_mod.decode_stream_event(event, model)
+        {chunks, provider_state}
+
+      true ->
+        chunks = ReqLLM.Provider.Defaults.default_decode_stream_event(event, model)
+        {chunks, provider_state}
+    end
+  end
+
+  defp termination_event?(%{data: "[DONE]"}), do: true
+  defp termination_event?(%{data: %{"done" => true}}), do: true
+  defp termination_event?(%{data: %{"type" => "message_stop"}}), do: true
+  defp termination_event?(%{data: %{"type" => "response.completed"}}), do: true
+  defp termination_event?(_), do: false
+
+  defp terminal_chunk?(%ReqLLM.StreamChunk{type: :meta, metadata: metadata})
+       when is_map(metadata) do
+    Map.get(metadata, :terminal?) == true or Map.get(metadata, "terminal?") == true
+  end
+
+  defp terminal_chunk?(_chunk), do: false
+
+  defp price_stream_usage(%{usage: usage} = metadata, state) do
+    context =
+      if state.model.provider == :openai do
+        url = state.http_context && state.http_context.url
+
+        ReqLLM.PricingContext.from_openai(
+          url,
+          Map.get(metadata, :provider_meta),
+          state.pricing_context
+        )
+      else
+        state.pricing_context
+      end
+
+    Map.put(
+      metadata,
+      :usage,
+      ReqLLM.Usage.Cost.apply(usage, state.model, pricing_context: context)
+    )
+  end
+
+  defp price_stream_usage(metadata, _state), do: metadata
+
+  defp provider_metadata(metadata) do
+    case ReqLLM.MapAccess.get_raw(metadata, :provider_meta) do
+      provider_meta when is_map(provider_meta) -> provider_meta
+      _ -> %{}
+    end
+  end
+
+  defp returned_service_tier?(provider_meta) do
+    Map.has_key?(provider_meta, :service_tier) or Map.has_key?(provider_meta, "service_tier")
+  end
+
+  defp merge_provider_metadata(existing, incoming) do
+    if returned_service_tier?(incoming) do
+      existing = Map.drop(existing, [:service_tier, "service_tier"])
+
+      incoming =
+        if Map.has_key?(incoming, :service_tier),
+          do: Map.delete(incoming, "service_tier"),
+          else: incoming
+
+      Map.merge(existing, incoming)
+    else
+      Map.merge(existing, incoming)
+    end
+  end
+
+  defp enqueue_chunks(chunks, state) do
+    {new_queue, updated_metadata, new_obj_acc, telemetry, message_acc, builtin_timing} =
+      Enum.reduce(
+        chunks,
+        {state.queue, state.metadata, state.object_acc, state.telemetry, state.message_acc,
+         state.builtin_tool_timing},
+        fn chunk, {queue, metadata, obj_acc, telemetry, msg_acc, timing} ->
+          public_chunk = public_stream_chunk(chunk)
+
+          new_queue =
+            case public_chunk do
+              nil -> queue
+              chunk -> :queue.in(chunk, queue)
+            end
+
+          updated_metadata =
+            case chunk.type do
+              :meta ->
+                chunk_meta = chunk.metadata || %{}
+
+                usage = Map.get(chunk_meta, :usage)
+
+                merged_metadata =
+                  Map.merge(
+                    metadata,
+                    Map.drop(chunk_meta, [
+                      :usage,
+                      "usage",
+                      :builtin_tool_started,
+                      "builtin_tool_started"
+                    ])
+                  )
+
+                merged_metadata =
+                  if state.model.provider == :openai do
+                    provider_meta =
+                      merge_provider_metadata(
+                        provider_metadata(metadata),
+                        provider_metadata(chunk_meta)
+                      )
+
+                    merged_metadata
+                    |> Map.delete("provider_meta")
+                    |> Map.put(:provider_meta, provider_meta)
+                  else
+                    merged_metadata
+                  end
+
+                if usage do
+                  normalized_usage = ReqLLM.Usage.normalize(usage)
+
+                  merged_metadata
+                  |> Map.update(:usage, normalized_usage, fn existing ->
+                    ReqLLM.Usage.merge(existing, normalized_usage)
+                  end)
+                  |> price_stream_usage(state)
+                else
+                  if state.model.provider == :openai and
+                       returned_service_tier?(provider_metadata(chunk_meta)) do
+                    price_stream_usage(merged_metadata, state)
+                  else
+                    merged_metadata
+                  end
+                end
+
+              _ ->
+                metadata
+            end
+
+          timing = update_builtin_timing(timing, chunk)
+
+          obj_acc =
+            if state.object_json_mode? and content_chunk?(public_chunk) do
+              [obj_acc, chunk.text]
+            else
+              obj_acc
+            end
+
+          msg_acc =
+            case public_chunk do
+              nil -> msg_acc
+              chunk -> ReqLLM.Provider.ChunkAccumulator.push(msg_acc, chunk)
+            end
+
+          telemetry =
+            case {telemetry, public_chunk} do
+              {nil, _chunk} -> nil
+              {context, nil} -> context
+              {context, chunk} -> ReqLLM.Telemetry.observe_stream_chunk(context, chunk)
+            end
+
+          {new_queue, updated_metadata, obj_acc, telemetry, msg_acc, timing}
+        end
+      )
+
+    %{
+      state
+      | queue: new_queue,
+        metadata: updated_metadata,
+        object_acc: new_obj_acc,
+        telemetry: telemetry,
+        message_acc: message_acc,
+        builtin_tool_timing: builtin_timing
+    }
+  end
+
+  defp public_stream_chunk(%ReqLLM.StreamChunk{type: :meta, metadata: meta} = chunk)
+       when is_map(meta) do
+    metadata = Map.drop(meta, [:builtin_tool_started, "builtin_tool_started"])
+
+    if map_size(metadata) == 0 do
+      nil
+    else
+      %{chunk | metadata: metadata}
+    end
+  end
+
+  defp public_stream_chunk(%ReqLLM.StreamChunk{type: :tool_call, metadata: meta} = chunk)
+       when is_map(meta) do
+    %{chunk | metadata: Map.drop(meta, [:done_at_unix_nano, "done_at_unix_nano"])}
+  end
+
+  defp public_stream_chunk(chunk), do: chunk
+
+  defp content_chunk?(%ReqLLM.StreamChunk{type: :content, text: text}) when is_binary(text),
+    do: true
+
+  defp content_chunk?(_chunk), do: false
+
+  # Captures `:added → :done` wall-clock timestamps for server-side
+  # builtin tool calls (e.g. web_search_call on the Responses API).
+  # Paired chunks carry the same call id: the `:meta` chunk with
+  # `builtin_tool_started.id` records the start, the `:tool_call` chunk
+  # with `builtin? == true` records the end.
+  defp update_builtin_timing(timing, %ReqLLM.StreamChunk{type: :meta, metadata: meta})
+       when is_map(meta) do
+    case MapAccess.get(meta, :builtin_tool_started) do
+      started when is_map(started) ->
+        id = MapAccess.get(started, :id)
+        t = MapAccess.get(started, :started_at_unix_nano)
+
+        if not is_nil(id) and is_integer(t) do
+          Map.update(timing, id, %{start_unix_nano: t}, &Map.put(&1, :start_unix_nano, t))
+        else
+          timing
+        end
+
+      _ ->
+        timing
+    end
+  end
+
+  defp update_builtin_timing(timing, %ReqLLM.StreamChunk{type: :tool_call, metadata: meta})
+       when is_map(meta) do
+    id = MapAccess.get(meta, :id)
+    t = MapAccess.get(meta, :done_at_unix_nano)
+
+    if MapAccess.get(meta, :builtin?) == true and not is_nil(id) and is_integer(t) do
+      Map.update(timing, id, %{end_unix_nano: t}, &Map.put(&1, :end_unix_nano, t))
+    else
+      timing
+    end
+  end
+
+  defp update_builtin_timing(timing, _chunk), do: timing
+
+  # Synthesizes a partial assistant `%Message{}` from the accumulated stream
+  # chunks for OTel content capture (`gen_ai.output.messages`). The canonical
+  # response message — with reasoning_details, provider metadata, and object
+  # extraction — is still built by `ReqLLM.Provider.Defaults.ResponseBuilder`
+  # from the full chunk list. Reasoning is intentionally `nil` here because
+  # OTel content capture redacts reasoning text anyway.
+  defp finalize_message_metadata(state) do
+    case ReqLLM.Provider.ChunkAccumulator.finalize_message(state.message_acc) do
+      nil -> state
+      message -> %{state | metadata: Map.put(state.metadata, :message, message)}
+    end
+  end
+
+  defp dequeue_chunk(state) do
+    case :queue.out(state.queue) do
+      {{:value, chunk}, new_queue} ->
+        new_state = %{state | queue: new_queue}
+        {:ok, chunk, new_state}
+
+      {:empty, _} ->
+        {:empty, state}
+    end
+  end
+
+  defp finalize_stream(state) do
+    state = flush_stream_state(state)
+
+    extra_flush_chunks =
+      if state.object_json_mode? do
+        full = state.object_acc |> IO.iodata_to_binary() |> String.trim()
+
+        Debug.dbug(fn -> "JSON mode finalize: accumulated=#{inspect(full)}" end,
+          component: :stream_server
+        )
+
+        case Jason.decode(full) do
+          {:ok, obj} ->
+            Debug.dbug(fn -> "Parsed object: #{inspect(obj)}" end, component: :stream_server)
+
+            [ReqLLM.StreamChunk.tool_call("structured_output", obj)]
+
+          {:error, _reason} ->
+            Debug.dbug(fn -> "Failed to parse streamed JSON" end,
+              component: :stream_server
+            )
+
+            []
+        end
+      else
+        []
+      end
+
+    state =
+      state
+      |> then(&enqueue_chunks(extra_flush_chunks, &1))
+
+    metadata = extract_final_metadata(state)
+
+    state
+    |> Map.put(:status, :done)
+    |> Map.put(:metadata, metadata)
+    |> maybe_emit_stream_stop(metadata[:finish_reason] || :unknown)
+    |> cancel_timeout_budgets()
+  end
+
+  defp finalize_cancelled_stream(%{status: :done} = state), do: state
+  defp finalize_cancelled_stream(%{status: {:error, _reason}} = state), do: state
+
+  defp finalize_cancelled_stream(state) do
+    state = flush_stream_state(state)
+
+    metadata =
+      state
+      |> extract_final_metadata()
+      |> then(fn metadata ->
+        if Failure.normalizer?(state.error_context),
+          do: Map.drop(metadata, [:error, :error_code]),
+          else: metadata
+      end)
+      |> Map.put(:finish_reason, :cancelled)
+
+    state
+    |> Map.put(:status, :done)
+    |> Map.put(:queue, :queue.new())
+    |> Map.put(:metadata, metadata)
+    |> maybe_emit_stream_stop(:cancelled)
+    |> cancel_timeout_budgets()
+  end
+
+  defp flush_provider_state(state) do
+    {flush_chunks, new_provider_state} =
+      if function_exported?(state.provider_mod, :flush_stream_state, 2) do
+        state.provider_mod.flush_stream_state(state.model, state.provider_state)
+      else
+        {[], state.provider_state}
+      end
+
+    state
+    |> Map.put(:provider_state, new_provider_state)
+    |> then(&enqueue_chunks(flush_chunks, &1))
+  end
+
+  defp flush_stream_state(%{canonical_stream?: true} = state), do: state
+
+  defp flush_stream_state(state) do
+    state |> flush_protocol_state() |> flush_provider_state()
+  end
+
+  defp flush_protocol_state(state) do
+    {events, new_protocol_state} = SSE.flush(state.protocol_state)
+    terminated? = Enum.any?(events, &termination_event?/1)
+
+    if events != [] do
+      {stream_chunks, new_provider_state} = decode_protocol_events(events, state)
+
+      state
+      |> Map.put(:provider_state, new_provider_state)
+      |> Map.put(:protocol_state, new_protocol_state)
+      |> Map.put(:terminated?, state.terminated? or terminated?)
+      |> then(&enqueue_chunks(stream_chunks, &1))
+    else
+      %{state | protocol_state: new_protocol_state}
+    end
+  end
+
+  defp finalize_stream_with_fixture(state) do
+    Debug.dbug(
+      fn ->
+        "finalize_stream_with_fixture: fixture_path=#{inspect(state.fixture_path)}, has_http_context=#{inspect(state.http_context != nil)}, has_canonical_json=#{inspect(state.canonical_json != nil)}, already_saved=#{state.fixture_saved?}"
+      end,
+      component: :stream_server
+    )
+
+    # Only save once - guard against multiple finalization calls
+    if state.fixture_path && state.http_context && state.canonical_json && !state.fixture_saved? do
+      Debug.dbug(
+        fn ->
+          "Attempting to save streaming fixture to #{Path.relative_to_cwd(state.fixture_path)}"
+        end,
+        component: :stream_server
+      )
+
+      try do
+        fixture_backend = state.fixture_backend
+
+        case Code.ensure_loaded(fixture_backend) do
+          {:module, ^fixture_backend} ->
+            Debug.dbug(
+              fn -> "Calling save_streaming_fixture with #{state.raw_bytes} bytes..." end,
+              component: :stream_server
+            )
+
+            iodata = Enum.reverse(state.raw_iodata)
+
+            fixture_backend.save_streaming_fixture(
+              state.http_context,
+              state.fixture_path,
+              state.canonical_json,
+              state.model,
+              iodata
+            )
+
+            Debug.dbug("save_streaming_fixture completed", component: :stream_server)
+
+          {:error, _} ->
+            Debug.dbug("Could not load ReqLLM.Step.Fixture.Backend", component: :stream_server)
+            :ok
+        end
+      rescue
+        error ->
+          Debug.dbug(fn -> "Error saving streaming fixture" end,
+            component: :stream_server
+          )
+
+          Logger.warning("Failed to save streaming fixture")
+          reraise error, __STACKTRACE__
+      end
+
+      # Mark as saved to prevent duplicate saves
+      state = %{state | fixture_saved?: true}
+      Debug.dbug("Fixture marked as saved", component: :stream_server)
+      # Continue with normal finalization
+      finalize_stream(state)
+    else
+      Debug.dbug("Skipping fixture save - missing requirements or already saved",
+        component: :stream_server
+      )
+
+      # Continue with normal finalization
+      finalize_stream(state)
+    end
+  end
+
+  defp extract_final_metadata(state) do
+    meta =
+      state.metadata
+      |> Map.put(:status, state.http_status)
+      |> Map.put(:headers, state.headers)
+      |> maybe_put_request_id(state.telemetry)
+      |> normalize_public_stream_finish_reason()
+
+    cleanly_terminated? =
+      state.terminated? or Map.get(state.metadata, :terminal?) == true
+
+    meta =
+      if cleanly_terminated? do
+        Map.put_new(meta, :finish_reason, :stop)
+      else
+        Map.put_new(meta, :finish_reason, :incomplete)
+      end
+
+    meta |> Map.delete(:terminal?) |> safe_failure_metadata(state)
+  end
+
+  defp error_metadata(state, reason) do
+    state
+    |> extract_final_metadata()
+    |> Map.put(:finish_reason, :error)
+    |> Map.put(:error, reason)
+    |> safe_failure_metadata(state)
+  end
+
+  defp finalize_failed_stream(state, reason) do
+    reason = Failure.normalize(reason, state.error_context)
+    metadata = error_metadata(state, reason)
+    reason = metadata.error
+
+    state
+    |> Map.put(:status, {:error, reason})
+    |> Map.put(:metadata, metadata)
+    |> maybe_emit_stream_exception(reason)
+    |> cancel_timeout_budgets()
+  end
+
+  defp safe_failure_metadata(%{error: reason} = metadata, state) do
+    if Failure.normalizer?(state.error_context) do
+      boundary_reason =
+        if is_integer(metadata[:status]) do
+          ReqLLM.Error.API.Request.exception(
+            reason: "Streaming response failed",
+            status: metadata.status,
+            headers: state.headers,
+            cause: reason
+          )
+        else
+          reason
+        end
+
+      error = Failure.normalize(boundary_reason, state.error_context)
+      error_status = if is_map(error), do: Map.get(error, :status)
+
+      metadata
+      |> Map.drop([:headers, "headers", :request_body, "request_body", :response_body, "response_body"])
+      |> Map.put(:error, error)
+      |> Map.put(:status, metadata[:status] || error_status)
+    else
+      metadata
+    end
+  end
+
+  defp safe_failure_metadata(metadata, _state), do: metadata
+
+  defp reply_with_metadata(state) do
+    new_state = %{state | metadata_delivered?: true}
+
+    case finalize_lifecycle(new_state) do
+      {:stop, final_state} -> {:stop, :normal, {:ok, final_state.metadata}, final_state}
+      {:continue, final_state} -> {:reply, {:ok, final_state.metadata}, final_state}
+    end
+  end
+
+  defp reply_to_waiting_callers(state) do
+    {replied_callers, remaining_callers} =
+      Enum.split_with(state.waiting_callers, fn caller ->
+        can_reply_to_caller?(caller, state)
+      end)
+
+    # Thread the state through each reply to preserve queue updates
+    updated_state =
+      Enum.reduce(replied_callers, state, fn caller, acc_state ->
+        reply_to_caller(caller, acc_state)
+      end)
+
+    %{updated_state | waiting_callers: remaining_callers}
+  end
+
+  defp can_reply_to_caller?(%{type: :next}, state) do
+    not :queue.is_empty(state.queue) or state.status == :done or match?({:error, _}, state.status)
+  end
+
+  defp can_reply_to_caller?(%{type: :metadata}, state) do
+    state.status == :done or match?({:error, _}, state.status)
+  end
+
+  defp reply_to_caller(%{from: from, type: :next} = caller, state) do
+    cancel_waiting_caller_timer(caller)
+
+    case {dequeue_chunk(state), state.status} do
+      {{:ok, chunk, new_state}, _} ->
+        GenServer.reply(from, {:ok, chunk})
+        new_state
+
+      {{:empty, _}, :done} ->
+        GenServer.reply(from, :halt)
+        %{state | terminal_delivered?: true}
+
+      {{:empty, _}, {:error, reason}} ->
+        GenServer.reply(from, {:error, reason})
+        %{state | terminal_delivered?: true}
+
+      {{:empty, _}, _} ->
+        GenServer.reply(from, {:error, :unexpected_empty_queue})
+        state
+    end
+  end
+
+  defp reply_to_caller(%{from: from, type: :metadata} = caller, %{status: :done} = state) do
+    cancel_waiting_caller_timer(caller)
+    GenServer.reply(from, {:ok, state.metadata})
+    %{state | metadata_delivered?: true}
+  end
+
+  defp reply_to_caller(
+         %{from: from, type: :metadata} = caller,
+         %{status: {:error, _reason}} = state
+       ) do
+    cancel_waiting_caller_timer(caller)
+    GenServer.reply(from, {:ok, state.metadata})
+    %{state | metadata_delivered?: true}
+  end
+
+  defp reply_to_caller(%{from: from, type: :metadata} = caller, state) do
+    cancel_waiting_caller_timer(caller)
+    GenServer.reply(from, {:error, :not_ready})
+    state
+  end
+
+  defp register_waiting_caller(state, from, type, timeout) do
+    token = make_ref()
+    timer = start_waiting_caller_timer(token, timeout)
+
+    caller = %{from: from, type: type, token: token, timer: timer, timeout: timeout}
+    %{state | waiting_callers: state.waiting_callers ++ [caller]}
+  end
+
+  defp reset_metadata_waiter_timeouts(state, chunks) do
+    if Enum.any?(chunks, &semantic_progress_chunk?/1) do
+      waiting_callers = Enum.map(state.waiting_callers, &reset_metadata_waiter_timeout/1)
+      %{state | waiting_callers: waiting_callers}
+    else
+      state
+    end
+  end
+
+  defp semantic_progress_chunk?(%StreamChunk{type: type})
+       when type in [:content, :content_part, :thinking, :tool_call],
+       do: true
+
+  defp semantic_progress_chunk?(%StreamChunk{type: :meta, metadata: metadata})
+       when is_map(metadata) do
+    map_size(metadata) > 0 and
+      Map.get(metadata, :keepalive?) != true and Map.get(metadata, "keepalive?") != true
+  end
+
+  defp semantic_progress_chunk?(_chunk), do: false
+
+  defp reset_metadata_waiter_timeout(%{type: :metadata, timeout: timeout} = caller)
+       when is_integer(timeout) do
+    cancel_waiting_caller_timer(caller)
+    token = make_ref()
+    %{caller | token: token, timer: start_waiting_caller_timer(token, timeout)}
+  end
+
+  defp reset_metadata_waiter_timeout(caller), do: caller
+
+  defp start_waiting_caller_timer(_token, :infinity), do: nil
+
+  defp start_waiting_caller_timer(token, timeout) do
+    Process.send_after(self(), {:caller_timeout, token}, timeout)
+  end
+
+  defp pop_waiting_caller(state, token) do
+    {matched, remaining} =
+      Enum.split_with(state.waiting_callers, fn caller -> caller.token == token end)
+
+    {List.first(matched), %{state | waiting_callers: remaining}}
+  end
+
+  defp cancel_waiting_caller_timer(%{timer: nil}), do: :ok
+
+  defp cancel_waiting_caller_timer(%{timer: timer}) do
+    Process.cancel_timer(timer, async: true, info: false)
+  end
+
+  defp cleanup_resources(state) do
+    {transport_cancel, state} =
+      state
+      |> release_http_event_callers()
+      |> cancel_timeout_budgets()
+      |> pop_transport_cancel()
+
+    # Kill HTTP task if running
+    if state.http_task && Process.alive?(state.http_task) do
+      Process.exit(state.http_task, :cancelled)
+    end
+
+    ReqLLM.Streaming.InProcessClient.cancel_stream(transport_cancel)
+    cancel_completion_cleanup(state)
+  end
+
+  defp pop_transport_cancel(%{transport_cancel: nil} = state), do: {nil, state}
+
+  defp pop_transport_cancel(%{transport_cancel: cancel} = state) do
+    callback = if transport_cancel_required?(state), do: cancel
+    {callback, %{state | transport_cancel: nil}}
+  end
+
+  defp transport_cancel_required?(%{status: :done, metadata: metadata}) do
+    Map.get(metadata, :finish_reason) == :cancelled
+  end
+
+  defp transport_cancel_required?(_state), do: true
+
+  defp handle_timeout_budget(state, kind, timeout) do
+    error = ReqLLM.TimeoutBudget.error(kind, timeout)
+
+    new_state =
+      state
+      |> finalize_failed_stream(error)
+      |> reply_to_waiting_callers()
+      |> cleanup_resources()
+
+    case finalize_lifecycle(new_state) do
+      {:stop, final_state} -> {:stop, :normal, final_state}
+      {:continue, final_state} -> {:noreply, final_state}
+    end
+  end
+
+  defp drain_pending_retry_events(state) do
+    state.pending_retry_events
+    |> Enum.reverse()
+    |> Enum.each(&ReqLLM.Telemetry.retry_request(state.telemetry, &1))
+
+    %{state | pending_retry_events: []}
+  end
+
+  defp start_timeout_budgets(state) do
+    state
+    |> cancel_timeout_budgets()
+    |> start_total_timeout()
+    |> start_stream_idle_timeout()
+  end
+
+  defp start_total_timeout(%{total_timeout: timeout} = state) when is_integer(timeout) do
+    token = make_ref()
+    remaining = total_timeout_remaining(state.total_timeout_deadline, timeout)
+    timer = Process.send_after(self(), {:timeout_budget, :total, token}, remaining)
+    %{state | total_timeout_timer: timer, total_timeout_token: token}
+  end
+
+  defp start_total_timeout(state), do: state
+
+  defp total_timeout_remaining(%{expires_at: _expires_at} = deadline, _timeout) do
+    ReqLLM.TimeoutBudget.remaining(deadline)
+  end
+
+  defp total_timeout_remaining(_deadline, timeout), do: timeout
+
+  defp start_stream_idle_timeout(%{stream_idle_timeout: timeout} = state)
+       when is_integer(timeout) do
+    token = make_ref()
+    timer = Process.send_after(self(), {:timeout_budget, :stream_idle, token}, timeout)
+    %{state | stream_idle_timeout_timer: timer, stream_idle_timeout_token: token}
+  end
+
+  defp start_stream_idle_timeout(state), do: state
+
+  defp reset_stream_idle_timeout(state, chunks) do
+    if Enum.any?(chunks, &semantic_progress_chunk?/1) do
+      state
+      |> cancel_stream_idle_timeout()
+      |> start_stream_idle_timeout()
+    else
+      state
+    end
+  end
+
+  defp cancel_timeout_budgets(state) do
+    state
+    |> cancel_total_timeout()
+    |> cancel_stream_idle_timeout()
+  end
+
+  defp cancel_total_timeout(%{total_timeout_timer: nil} = state), do: state
+
+  defp cancel_total_timeout(%{total_timeout_timer: timer} = state) do
+    Process.cancel_timer(timer, async: true, info: false)
+    %{state | total_timeout_timer: nil, total_timeout_token: nil}
+  end
+
+  defp cancel_stream_idle_timeout(%{stream_idle_timeout_timer: nil} = state), do: state
+
+  defp cancel_stream_idle_timeout(%{stream_idle_timeout_timer: timer} = state) do
+    Process.cancel_timer(timer, async: true, info: false)
+    %{state | stream_idle_timeout_timer: nil, stream_idle_timeout_token: nil}
+  end
+
+  defp ready_to_stop?(state) do
+    terminal_status?(state.status) and state.metadata_delivered? and state.terminal_delivered? and
+      :queue.is_empty(state.queue)
+  end
+
+  defp finalize_lifecycle(state) do
+    cond do
+      ready_to_stop?(state) ->
+        {:stop, cancel_completion_cleanup(state)}
+
+      should_schedule_completion_cleanup?(state) ->
+        {:continue, ensure_completion_cleanup_timer(state)}
+
+      true ->
+        {:continue, cancel_completion_cleanup(state)}
+    end
+  end
+
+  defp should_schedule_completion_cleanup?(state) do
+    terminal_status?(state.status) and state.metadata_delivered? and not state.stream_requested? and
+      not state.terminal_delivered? and is_integer(state.completion_cleanup_after) and
+      state.completion_cleanup_after >= 0
+  end
+
+  defp terminal_status?(:done), do: true
+  defp terminal_status?({:error, _reason}), do: true
+  defp terminal_status?(_status), do: false
+
+  defp ensure_completion_cleanup_timer(%{completion_cleanup_timer: nil} = state) do
+    token = make_ref()
+
+    timer =
+      Process.send_after(self(), {:completion_cleanup, token}, state.completion_cleanup_after)
+
+    %{state | completion_cleanup_timer: timer, completion_cleanup_token: token}
+  end
+
+  defp ensure_completion_cleanup_timer(state), do: state
+
+  defp cancel_completion_cleanup(%{completion_cleanup_timer: nil} = state), do: state
+
+  defp cancel_completion_cleanup(%{completion_cleanup_timer: ref} = state) do
+    Process.cancel_timer(ref)
+    %{state | completion_cleanup_timer: nil, completion_cleanup_token: nil}
+  end
+
+  defp build_http_error(status, chunk, headers) do
+    Failure.api_error(status, chunk, headers)
+  end
+
+  defp maybe_emit_stream_stop(%{telemetry: nil} = state, _finish_reason), do: state
+
+  # Partial assistant messages are attached on stream stop only — not on
+  # exception. This matches the OTel GenAI spec: errors do not populate
+  # `gen_ai.output.messages` because the response is not well-formed.
+  defp maybe_emit_stream_stop(%{telemetry: telemetry} = state, finish_reason) do
+    state = finalize_message_metadata(state)
+    usage = state.metadata[:usage]
+
+    telemetry =
+      ReqLLM.Telemetry.stop_request(
+        telemetry,
+        state.metadata,
+        finish_reason: normalize_telemetry_stream_finish_reason(finish_reason),
+        http_status: state.http_status,
+        usage: usage,
+        builtin_tool_timing: state.builtin_tool_timing,
+        emit_token_usage?: is_map(usage)
+      )
+
+    %{state | telemetry: telemetry}
+  end
+
+  defp maybe_emit_stream_exception(%{telemetry: nil} = state, _reason), do: state
+
+  defp maybe_emit_stream_exception(%{telemetry: telemetry} = state, reason) do
+    usage = state.metadata[:usage]
+
+    telemetry =
+      ReqLLM.Telemetry.exception_request(telemetry, reason,
+        http_status: state.http_status,
+        usage: usage,
+        builtin_tool_timing: state.builtin_tool_timing,
+        emit_token_usage?: is_map(usage)
+      )
+
+    %{state | telemetry: telemetry}
+  end
+
+  defp maybe_put_request_id(meta, nil), do: meta
+  defp maybe_put_request_id(meta, telemetry), do: Map.put(meta, :request_id, telemetry.request_id)
+
+  defp normalize_public_stream_finish_reason(%{finish_reason: "stop"} = meta),
+    do: %{meta | finish_reason: :stop}
+
+  defp normalize_public_stream_finish_reason(%{finish_reason: "length"} = meta),
+    do: %{meta | finish_reason: :length}
+
+  defp normalize_public_stream_finish_reason(%{finish_reason: "cancelled"} = meta),
+    do: %{meta | finish_reason: :cancelled}
+
+  defp normalize_public_stream_finish_reason(%{finish_reason: "incomplete"} = meta),
+    do: %{meta | finish_reason: :incomplete}
+
+  defp normalize_public_stream_finish_reason(meta), do: meta
+
+  defp normalize_telemetry_stream_finish_reason("stop"), do: :stop
+  defp normalize_telemetry_stream_finish_reason("length"), do: :length
+  defp normalize_telemetry_stream_finish_reason("tool_use"), do: :tool_calls
+  defp normalize_telemetry_stream_finish_reason("tool_calls"), do: :tool_calls
+  defp normalize_telemetry_stream_finish_reason("cancelled"), do: :cancelled
+  defp normalize_telemetry_stream_finish_reason("incomplete"), do: :incomplete
+  defp normalize_telemetry_stream_finish_reason(finish_reason), do: finish_reason
+
+  defp normalize_in_process_event({:chunk, chunk}), do: {:canonical_chunk, chunk}
+  defp normalize_in_process_event({:error, reason}), do: {:error, reason}
+  defp normalize_in_process_event(:done), do: :done
+end

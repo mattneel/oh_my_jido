@@ -1,0 +1,85 @@
+#!/usr/bin/env elixir
+
+# Basic gRPC Usage Example
+# Demonstrates simple request/response patterns with Snakepit's gRPC adapter
+
+Code.require_file("mix_bootstrap.exs", __DIR__)
+
+Snakepit.Examples.Bootstrap.ensure_mix!([
+  {:snakepit, path: "."}
+])
+
+# Configure Snakepit for gRPC
+Application.put_env(:snakepit, :adapter_module, Snakepit.Adapters.GRPCPython)
+Application.put_env(:snakepit, :pooling_enabled, true)
+
+Application.put_env(:snakepit, :pools, [
+  %{
+    name: :default,
+    worker_profile: :process,
+    pool_size: 2,
+    adapter_module: Snakepit.Adapters.GRPCPython
+  }
+])
+
+Application.put_env(:snakepit, :pool_config, %{pool_size: 2})
+Application.put_env(:snakepit, :grpc_listener, %{mode: :internal})
+Snakepit.Examples.Bootstrap.ensure_grpc_port!()
+
+# Suppress Snakepit internal logs (options: :debug, :info, :warning, :error, :none)
+Application.put_env(:snakepit, :log_level, :error)
+
+defmodule BasicExample do
+  def run do
+    IO.puts("\n=== Basic gRPC Example ===\n")
+
+    # 1. Simple ping command
+    IO.puts("1. Ping command:")
+
+    case Snakepit.execute("ping", %{}) do
+      {:ok, result} -> IO.inspect(result, label: "Ping result")
+      {:error, reason} -> IO.puts("Error: #{Snakepit.Examples.Bootstrap.format_error(reason)}")
+    end
+
+    # 2. Echo command with data
+    IO.puts("\n2. Echo command:")
+    echo_data = %{message: "Hello from gRPC!", timestamp: DateTime.utc_now()}
+
+    case Snakepit.execute("echo", echo_data) do
+      {:ok, result} -> IO.inspect(result, label: "Echo result")
+      {:error, reason} -> IO.puts("Error: #{Snakepit.Examples.Bootstrap.format_error(reason)}")
+    end
+
+    # 3. Add command (simple calculation)
+    IO.puts("\n3. Add command:")
+
+    case Snakepit.execute("add", %{a: 2, b: 2}) do
+      {:ok, result} -> IO.inspect(result, label: "Add result")
+      {:error, reason} -> IO.puts("Error: #{Snakepit.Examples.Bootstrap.format_error(reason)}")
+    end
+
+    # 4. Get adapter info
+    IO.puts("\n4. Adapter info:")
+
+    case Snakepit.execute("adapter_info", %{}) do
+      {:ok, result} -> IO.inspect(result, label: "Adapter info")
+      {:error, reason} -> IO.puts("Error: #{Snakepit.Examples.Bootstrap.format_error(reason)}")
+    end
+
+    # 5. Error handling example
+    IO.puts("\n5. Error handling:")
+
+    case Snakepit.execute("nonexistent_tool", %{}) do
+      {:ok, result} ->
+        IO.inspect(result, label: "Unexpected success")
+
+      {:error, reason} ->
+        IO.puts("Expected error: #{Snakepit.Examples.Bootstrap.format_error(reason)}")
+    end
+  end
+end
+
+# Run the example with proper cleanup
+Snakepit.Examples.Bootstrap.run_example(fn ->
+  BasicExample.run()
+end)

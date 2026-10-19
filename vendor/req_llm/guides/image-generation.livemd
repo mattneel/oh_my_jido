@@ -1,0 +1,229 @@
+# ReqLLM • Image Generation Comparison
+
+[![Run in Livebook](https://livebook.dev/badge/v1/blue.svg)](https://livebook.dev/run?url=https%3A%2F%2Fgithub.com%2Fagentjido%2Freq_llm%2Fblob%2Fmain%2Fguides%2Fimage-generation.livemd)
+
+```elixir
+Mix.install([
+  {:req_llm, "~> 1.18"},
+  {:kino, "~> 0.14.2"}
+])
+```
+
+## Setup
+
+Configure your API keys as standard environment variables or as Livebook secrets named `OPENAI_API_KEY`, `XAI_API_KEY`, and `GOOGLE_API_KEY`. Livebook exposes these secrets to the notebook with an `LB_` prefix.
+
+```elixir
+provider_env_vars = [
+  openai: "OPENAI_API_KEY",
+  xai: "XAI_API_KEY",
+  google: "GOOGLE_API_KEY"
+]
+
+Enum.each(provider_env_vars, fn {provider, env_var} ->
+  case System.get_env("LB_" <> env_var) do
+    key when is_binary(key) and key != "" ->
+      ReqLLM.put_key(ReqLLM.Keys.config_key(provider), key)
+
+    _ ->
+      :ok
+  end
+end)
+
+missing_keys =
+  Enum.flat_map(provider_env_vars, fn {provider, env_var} ->
+    case ReqLLM.Keys.get(provider) do
+      {:ok, _key, _source} -> []
+      {:error, _reason} -> [env_var]
+    end
+  end)
+
+if missing_keys == [] do
+  Kino.Markdown.new("✅ **API keys configured**")
+else
+  Kino.Markdown.new("⚠️ **Missing API keys:** `#{Enum.join(missing_keys, "`, `")}`")
+end
+```
+
+## Image Generation Comparison
+
+Generate images from three different providers in parallel and compare the results.
+
+### Models Used
+
+| Provider | Model                          | Notes                                      |
+| -------- | ------------------------------ | ------------------------------------------ |
+| OpenAI   | `gpt-image-2`                  | High-quality image generation              |
+| xAI      | `grok-imagine-image-quality`   | Grok's quality image model                 |
+| Google   | `gemini-3.1-flash-image`       | Fast generation, good for iteration        |
+
+```elixir
+prompt_input = Kino.Input.textarea("Enter your image prompt",
+  default: "A cozy coffee shop interior with warm lighting, exposed brick walls, and steam rising from ceramic cups"
+)
+```
+
+```elixir
+defmodule ImageGenerator do
+  @doc """
+  Generates an image and returns timing/cost metadata.
+  """
+  def generate(model, prompt, opts \\ []) do
+    start_time = System.monotonic_time(:millisecond)
+
+    result = ReqLLM.generate_image(model, prompt, opts)
+
+    end_time = System.monotonic_time(:millisecond)
+    duration_ms = end_time - start_time
+
+    case result do
+      {:ok, response} ->
+        image_data = ReqLLM.Response.image_data(response)
+        cost = get_in(response.usage || %{}, [:cost, :total]) || 0.0
+
+        {:ok, %{
+          model: model,
+          image_data: image_data,
+          duration_ms: duration_ms,
+          cost: cost,
+          usage: response.usage
+        }}
+
+      {:error, error} ->
+        {:error, %{model: model, error: error, duration_ms: duration_ms}}
+    end
+  end
+
+  @doc """
+  Formats duration in a human-readable way.
+  """
+  def format_duration(ms) when ms < 1000, do: "#{ms}ms"
+  def format_duration(ms), do: "#{Float.round(ms / 1000, 1)}s"
+
+  @doc """
+  Formats cost in USD.
+  """
+  def format_cost(cost) when is_number(cost), do: "$#{Float.round(cost * 1.0, 4)}"
+  def format_cost(_), do: "N/A"
+end
+
+:ok
+```
+
+### Generate Images
+
+Click "Evaluate" to generate images from all three providers in parallel.
+
+```elixir
+prompt = Kino.Input.read(prompt_input)
+
+models = [
+  {"openai:gpt-image-2", [size: "1024x1024"]},
+  {"xai:grok-imagine-image-quality", [aspect_ratio: "1:1"]},
+  {"google:gemini-3.1-flash-image", [aspect_ratio: "1:1"]}
+]
+
+# Run all three generations in parallel
+tasks = Enum.map(models, fn {model, opts} ->
+  Task.async(fn ->
+    ImageGenerator.generate(model, prompt, opts)
+  end)
+end)
+
+# Wait for all tasks to complete (with 2 minute timeout per task)
+results = Task.await_many(tasks, 120_000)
+
+# Display results
+result_widgets = Enum.map(results, fn result ->
+  case result do
+    {:ok, data} ->
+      # Create image widget
+      image = Kino.Image.new(data.image_data, :png)
+
+      # Create metadata markdown
+      metadata = Kino.Markdown.new("""
+      **#{data.model}**
+
+      Time: #{ImageGenerator.format_duration(data.duration_ms)} | Cost: #{ImageGenerator.format_cost(data.cost)}
+      """)
+
+      Kino.Layout.grid([metadata, image], columns: 1)
+
+    {:error, data} ->
+      Kino.Markdown.new("""
+      **#{data.model}**
+
+      Error: #{inspect(data.error)}
+
+      Time: #{ImageGenerator.format_duration(data.duration_ms)}
+      """)
+  end
+end)
+
+Kino.Layout.grid(result_widgets, columns: 3)
+```
+
+## Azure OpenAI (optional)
+
+Azure serves the same GPT Image family, but addresses it through a resource `base_url` and a
+`deployment` name rather than a bare model id. This section is skipped unless both
+`AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_BASE_URL` are configured as Livebook secrets.
+
+Set `AZURE_OPENAI_BASE_URL` to `https://<your-resource>.openai.azure.com/openai`, or to
+`.../openai/v1` to use the v1 GA API. Either works for every gpt-image model.
+Azure supports PNG and JPEG output. ReqLLM rejects WebP before it sends the request.
+
+```elixir
+azure_key = System.get_env("LB_AZURE_OPENAI_API_KEY") || System.get_env("AZURE_OPENAI_API_KEY")
+azure_base_url = System.get_env("LB_AZURE_OPENAI_BASE_URL") || System.get_env("AZURE_OPENAI_BASE_URL")
+
+# Change this to match the deployment name in your Azure resource.
+azure_deployment = "gpt-image-1"
+
+cond do
+  is_nil(azure_key) or azure_key == "" or is_nil(azure_base_url) or azure_base_url == "" ->
+    Kino.Markdown.new("""
+    ⏭️ **Azure section skipped** — set the `AZURE_OPENAI_API_KEY` and `AZURE_OPENAI_BASE_URL`
+    secrets to run it.
+    """)
+
+  true ->
+    prompt = Kino.Input.read(prompt_input)
+
+    result =
+      ImageGenerator.generate("azure:gpt-image-1", prompt,
+        api_key: azure_key,
+        base_url: azure_base_url,
+        deployment: azure_deployment,
+        size: "1024x1024"
+      )
+
+    case result do
+      {:ok, data} ->
+        Kino.Layout.grid(
+          [
+            Kino.Markdown.new("""
+            **azure:gpt-image-1** (deployment: `#{azure_deployment}`)
+
+            Time: #{ImageGenerator.format_duration(data.duration_ms)} | Cost: #{ImageGenerator.format_cost(data.cost)}
+            """),
+            Kino.Image.new(data.image_data, :png)
+          ],
+          columns: 1
+        )
+
+      {:error, data} ->
+        Kino.Markdown.new("""
+        **azure:gpt-image-1** failed after #{ImageGenerator.format_duration(data.duration_ms)}
+
+        ```
+        #{inspect(data.error)}
+        ```
+
+        Most common cause: `azure_deployment` above does not match a deployment on the resource
+        (`DeploymentNotFound`). Deployment names are chosen at creation time and need not match
+        the model id.
+        """)
+    end
+end
+```

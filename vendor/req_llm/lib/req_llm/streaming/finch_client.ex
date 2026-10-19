@@ -1,0 +1,599 @@
+# Modified by Oh-My-Jido contributors, 2026-10-13: opt-in provider error
+# normalization before native observers, logs and propagation. Original ReqLLM
+# 1.28.0 source remains under Apache License 2.0; see LICENSE and UPSTREAM.json.
+defmodule ReqLLM.Streaming.FinchClient do
+  @moduledoc """
+  Finch HTTP client for ReqLLM streaming operations.
+
+  This module handles the Finch HTTP transport layer for streaming requests,
+  forwarding HTTP events to StreamServer for processing. It acts as a bridge
+  between Finch's HTTP streaming and the StreamServer's event processing.
+
+  ## Responsibilities
+
+  - Build Finch.Request using provider-specific stream attachment
+  - Start supervised Task that calls Finch.stream/5 with callback
+  - Forward all HTTP events to StreamServer via GenServer.call
+  - Handle connection errors and forward to StreamServer
+  - Return HTTPContext for fixture capture
+
+  Pools with request connection settings are started before each attempt.
+  Concurrent requests wait for pool startup on the current node.
+  Automatic pool creation at checkout is disabled for these requests. This
+  prevents a stopped pool from being replaced with default connection settings.
+
+  ## HTTPContext
+
+  The HTTPContext struct provides minimal HTTP metadata needed for fixture
+  capture and testing, replacing the more heavyweight Req.Request/Response
+  structs used in non-streaming operations.
+
+  ## Provider Integration
+
+  Uses provider-specific `attach_stream/4` callbacks to build streaming
+  requests with proper authentication, headers, and request body formatting.
+  """
+
+  alias ReqLLM.Streaming.{Failure, Fixtures, Retry}
+  alias ReqLLM.Streaming.Fixtures.HTTPContext
+  alias ReqLLM.StreamServer
+
+  require Logger
+  require ReqLLM.Debug, as: Debug
+
+  @doc """
+  Starts a streaming HTTP request and forwards events to StreamServer.
+
+  ## Parameters
+
+    * `provider_mod` - The provider module (e.g., ReqLLM.Providers.OpenAI)
+    * `model` - The ReqLLM.Model struct
+    * `context` - The ReqLLM.Context with messages to stream
+    * `opts` - Additional options for the request
+    * `stream_server_pid` - PID of the StreamServer GenServer
+    * `finch_name` - Finch process name (defaults to ReqLLM.Finch)
+
+  ## Returns
+
+    * `{:ok, task_pid, http_context, canonical_json}` - Successfully started streaming task
+    * `{:error, reason}` - Failed to start streaming
+
+  The returned task will handle the Finch.stream/5 call and forward all HTTP events
+  to the StreamServer. The HTTPContext provides minimal metadata for fixture capture.
+  """
+  @spec start_stream(
+          module(),
+          LLMDB.Model.t(),
+          ReqLLM.Context.t(),
+          keyword(),
+          pid(),
+          atom()
+        ) :: {:ok, pid(), HTTPContext.t(), any()} | {:error, term()}
+  def start_stream(
+        provider_mod,
+        model,
+        context,
+        opts,
+        stream_server_pid,
+        finch_name \\ ReqLLM.Finch
+      ) do
+    case maybe_replay_fixture(model, opts) do
+      {:fixture, fixture_path} ->
+        Debug.dbug(
+          fn ->
+            test_name = Keyword.get(opts, :fixture, Path.basename(fixture_path, ".json"))
+            "step: model=#{LLMDB.Model.spec(model)}, name=#{test_name}"
+          end,
+          component: :streaming
+        )
+
+        start_fixture_replay(fixture_path, stream_server_pid, model)
+
+      :no_fixture ->
+        with {:ok, finch_request, http_context, canonical_json} <-
+               build_stream_request(provider_mod, model, context, opts, finch_name),
+             {:ok, task_pid} <-
+               start_streaming_task(
+                 finch_request,
+                 stream_server_pid,
+                 finch_name,
+                 http_context,
+                 maybe_capture_fixture(model, opts),
+                 Keyword.put(opts, :provider_error_context, error_context(provider_mod, model, opts))
+               ) do
+          {:ok, task_pid, http_context, canonical_json}
+        end
+    end
+  end
+
+  @doc false
+  def build_stream_request(provider_mod, model, context, opts, finch_name) do
+    alias ReqLLM.Streaming.Fixtures
+
+    with {:ok, finch_request} <- provider_mod.attach_stream(model, context, opts, finch_name),
+         finch_request <- transform_request(finch_request, opts),
+         finch_request <- configure_connection_pool(finch_request, opts, finch_name),
+         :ok <- validate_http2_body_size(finch_request, finch_name) do
+      http_context = Fixtures.HTTPContext.from_finch_request(finch_request)
+      canonical_json = Fixtures.canonical_json_from_finch_request(finch_request)
+
+      {:ok, finch_request, http_context, canonical_json}
+    else
+      {:error, reason} ->
+        build_failure(reason, :provider_build_failed, error_context(provider_mod, model, opts))
+    end
+  rescue
+    error ->
+      build_failure(error, :build_request_failed, error_context(provider_mod, model, opts))
+  end
+
+  # Start fixture replay task
+  defp start_fixture_replay(fixture_path, stream_server_pid, _model) do
+    case Code.ensure_loaded(ReqLLM.Test.VCR) do
+      {:module, ReqLLM.Test.VCR} ->
+        args = [fixture_path, stream_server_pid]
+        # credo:disable-for-next-line Credo.Check.Refactor.Apply
+        {:ok, task_pid} = apply(ReqLLM.Test.VCR, :replay_into_stream_server, args)
+
+        Process.link(task_pid)
+
+        http_context = %HTTPContext{
+          url: "fixture://#{fixture_path}",
+          method: :post,
+          req_headers: %{},
+          status: 200,
+          resp_headers: %{}
+        }
+
+        # credo:disable-for-next-line Credo.Check.Refactor.Apply
+        transcript = apply(ReqLLM.Test.VCR, :load!, [fixture_path])
+        canonical_json = Map.get(transcript.request, :canonical_json, %{})
+
+        {:ok, task_pid, http_context, canonical_json}
+
+      {:error, _} ->
+        {:error, :vcr_not_available}
+    end
+  end
+
+  # Start supervised task for Finch streaming
+  defp start_streaming_task(
+         finch_request,
+         stream_server_pid,
+         finch_name,
+         http_context,
+         fixture_path,
+         opts
+       ) do
+    stream_opts =
+      finch_request
+      |> Fixtures.canonical_json_from_finch_request()
+      |> stream_options(opts)
+      |> Keyword.put(:on_retry, fn retry -> StreamServer.retry_event(stream_server_pid, retry) end)
+
+    error_context = Keyword.get(opts, :provider_error_context)
+    task_pid =
+      Task.Supervisor.async(ReqLLM.TaskSupervisor, fn ->
+        try do
+          observer = fixture_observer(fixture_path, http_context, finch_request)
+          observer.(:request)
+
+          run_stream_with_options(
+            finch_request,
+            stream_server_pid,
+            finch_name,
+            stream_opts,
+            observer,
+            error_context
+          )
+        catch
+          kind, reason ->
+            if Failure.normalizer?(error_context) do
+              forward_stream_failure(stream_server_pid, {kind, reason}, error_context)
+            else
+              :erlang.raise(kind, reason, __STACKTRACE__)
+            end
+        end
+      end)
+
+    {:ok, task_pid.pid}
+  rescue
+    error ->
+      build_failure(error, :task_start_failed, Keyword.get(opts, :provider_error_context))
+  end
+
+  @doc false
+  def run_stream(finch_request, stream_server_pid, finch_name, opts) do
+    stream_opts =
+      finch_request
+      |> Fixtures.canonical_json_from_finch_request()
+      |> stream_options(opts)
+      |> Keyword.put(:on_retry, fn retry -> StreamServer.retry_event(stream_server_pid, retry) end)
+
+    run_stream_with_options(finch_request, stream_server_pid, finch_name, stream_opts, fn _ -> :ok end, Keyword.get(opts, :provider_error_context))
+  end
+
+  defp fixture_observer(nil, _context, _request), do: fn _event -> :ok end
+
+  defp fixture_observer(path, context, request) do
+    backend = ReqLLM.Step.Fixture.Backend
+
+    if Code.ensure_loaded?(backend) and function_exported?(backend, :observe_stream_event, 4) do
+      body = Fixtures.canonical_json_from_finch_request(request)
+
+      fn event ->
+        Function.capture(backend, :observe_stream_event, 4).(path, context, body, event)
+      end
+    else
+      fn _event -> :ok end
+    end
+  end
+
+  defp run_stream_with_options(
+         finch_request,
+         stream_server_pid,
+         finch_name,
+         stream_opts,
+         observer,
+         error_context
+       ) do
+    finch_stream_callback = fn
+      {:status, status}, acc ->
+        observer.({:status, status})
+        safe_http_event(stream_server_pid, {:status, status})
+        acc
+
+      {:headers, headers}, acc ->
+        observer.({:headers, headers})
+        safe_http_event(stream_server_pid, {:headers, headers})
+        acc
+
+      {:data, chunk}, acc ->
+        observer.({:data, chunk})
+        safe_http_event(stream_server_pid, {:data, chunk})
+        acc
+
+      :done, acc ->
+        observer.(:done)
+        safe_http_event(stream_server_pid, :done)
+        acc
+    end
+
+    try do
+      case Retry.stream(
+             finch_request,
+             finch_name,
+             :ok,
+             finch_stream_callback,
+             stream_opts,
+             &stream_with_connection_pool/5
+           ) do
+        {:ok, _} ->
+          :ok
+
+        {:error, reason, _callback_acc} ->
+          forward_stream_failure(stream_server_pid, reason, error_context, observer)
+      end
+    catch
+      :exit, reason -> forward_stream_failure(stream_server_pid, {:exit, reason}, error_context, observer)
+      kind, reason -> forward_stream_failure(stream_server_pid, {kind, reason}, error_context, observer)
+    end
+  end
+
+  defp configure_connection_pool(finch_request, opts, finch_name) do
+    http_options = Map.new(Keyword.get(opts, :req_http_options) || [])
+
+    case Map.get(http_options, :connect_options) do
+      nil ->
+        finch_request
+
+      connect_options ->
+        connect_options = proxy_connection_options(finch_request, connect_options)
+
+        pool_options =
+          finch_request
+          |> configured_pool_options(finch_name)
+          |> Keyword.drop([:conn_opts, :protocols])
+          |> Keyword.merge(Req.Finch.pool_options(%{connect_options: connect_options}))
+
+        hash = :crypto.hash(:sha256, :erlang.term_to_binary(pool_options))
+        pool_tag = {:req_llm, finch_request.pool_tag, hash}
+
+        %{finch_request | pool_tag: pool_tag}
+        |> Finch.Request.put_private(:req_llm_pool_options, pool_options)
+    end
+  end
+
+  defp proxy_connection_options(%{scheme: :http}, connect_options) do
+    case Keyword.get(connect_options, :proxy) do
+      {scheme, address, port, opts} ->
+        Keyword.put(
+          connect_options,
+          :proxy,
+          {scheme, address, port, Keyword.put(opts, :mode, :passive)}
+        )
+
+      _ ->
+        connect_options
+    end
+  end
+
+  defp proxy_connection_options(_request, connect_options), do: connect_options
+
+  defp configured_pool_options(finch_request, finch_name) do
+    config = ReqLLM.Application.get_finch_config()
+
+    if config[:name] == finch_name do
+      config
+      |> Keyword.get(:pools, %{})
+      |> matching_pool_config(finch_request)
+      |> then(&Enum.to_list(&1 || []))
+    else
+      []
+    end
+  end
+
+  defp stream_with_connection_pool(request, finch_name, acc, callback, opts) do
+    {pool_options, private} = Map.pop(request.private, :req_llm_pool_options)
+
+    opts =
+      if pool_options do
+        :ok = ensure_connection_pool(finch_name, request_pool(request), pool_options)
+        Keyword.put(opts, :start_pool?, false)
+      else
+        opts
+      end
+
+    Finch.stream(%{request | private: private}, finch_name, acc, callback, opts)
+  end
+
+  defp ensure_connection_pool(finch_name, pool, pool_options) do
+    case Finch.find_pool(finch_name, pool) do
+      {:ok, _pid} ->
+        :ok
+
+      :error ->
+        :global.trans(
+          {{__MODULE__, finch_name, pool}, self()},
+          fn -> Finch.start_pool(finch_name, pool, pool_options) end,
+          [node()]
+        )
+    end
+  end
+
+  @doc false
+  @spec forward_stream_failure(pid(), term(), {module() | (term(), LLMDB.Model.t() -> term()), LLMDB.Model.t()} | nil, (term() -> term())) ::
+          {:error, term()}
+  def forward_stream_failure(stream_server_pid, reason, error_context \\ nil, observer \\ fn _ -> :ok end) do
+    reason = Failure.normalize(reason, error_context)
+    observer.({:error, reason})
+
+    case Failure.log(reason) do
+      :cancelled ->
+        safe_http_event(stream_server_pid, {:cancelled, reason})
+
+      _classification ->
+        safe_http_event(stream_server_pid, {:error, reason})
+    end
+
+    {:error, reason}
+  end
+
+  defp error_context(provider_mod, model, opts),
+    do: {Keyword.get(opts, :stream_error_normalizer) || provider_mod, model}
+
+  defp build_failure(reason, stage, context) do
+    reason = Failure.normalize(reason, context)
+    Logger.error("Failed to build streaming request: stage=#{stage}, kind=#{Failure.diagnostic_kind(reason)}")
+    if Failure.normalizer?(context), do: {:error, reason}, else: {:error, {stage, reason}}
+  end
+
+  @doc false
+  @spec stream_options(map(), keyword()) :: keyword()
+  def stream_options(canonical, opts) do
+    receive_timeout = Keyword.get(opts, :receive_timeout, default_receive_timeout(canonical))
+    pool_timeout = Keyword.get(opts, :pool_timeout, default_pool_timeout(receive_timeout))
+
+    [
+      pool_timeout: validate_timeout!(pool_timeout, :pool_timeout),
+      receive_timeout: receive_timeout,
+      max_retries: Keyword.get(opts, :max_retries, 3)
+    ]
+    |> maybe_put_option(:request_timeout, Keyword.get(opts, :request_timeout))
+    |> maybe_put_option(:pool_strategy, pool_strategy(opts))
+  end
+
+  # Apply config-level adapter then per-request callback, in that order.
+  defp transform_request(finch_request, opts) do
+    finch_request
+    |> apply_config_adapter()
+    |> apply_per_request_callback(opts)
+  end
+
+  defp apply_config_adapter(finch_request) do
+    case Application.get_env(:req_llm, :finch_request_adapter) do
+      nil -> finch_request
+      adapter -> adapter.call(finch_request)
+    end
+  end
+
+  defp apply_per_request_callback(finch_request, opts) do
+    case Keyword.get(opts, :on_finch_request) do
+      nil -> finch_request
+      fun -> fun.(finch_request)
+    end
+  end
+
+  defp maybe_replay_fixture(model, opts) do
+    case Code.ensure_loaded(ReqLLM.Test.Fixtures) do
+      {:module, mod} -> mod.replay_path(model, opts)
+      {:error, _} -> :no_fixture
+    end
+  end
+
+  defp maybe_capture_fixture(model, opts) do
+    case Code.ensure_loaded(ReqLLM.Test.Fixtures) do
+      {:module, mod} -> mod.capture_path(model, opts)
+      {:error, _} -> nil
+    end
+  end
+
+  defp has_thinking_enabled?(canonical) do
+    case canonical do
+      %{"thinking" => %{"type" => "enabled"}} -> true
+      %{"generationConfig" => %{"thinkingConfig" => _}} -> true
+      _ -> false
+    end
+  end
+
+  defp default_receive_timeout(canonical) do
+    if has_thinking_enabled?(canonical) do
+      Application.get_env(:req_llm, :thinking_timeout, 300_000)
+    else
+      Application.get_env(
+        :req_llm,
+        :stream_receive_timeout,
+        Application.get_env(:req_llm, :receive_timeout, 30_000)
+      )
+    end
+  end
+
+  defp default_pool_timeout(receive_timeout) do
+    case Application.fetch_env(:req_llm, :stream_pool_timeout) do
+      {:ok, timeout} -> timeout
+      :error when receive_timeout == :infinity -> 30_000
+      :error -> receive_timeout
+    end
+  end
+
+  defp validate_timeout!(:infinity, _key), do: :infinity
+
+  defp validate_timeout!(timeout, _key) when is_integer(timeout) and timeout >= 0, do: timeout
+
+  defp validate_timeout!(timeout, key) do
+    raise ReqLLM.Error.Invalid.Parameter.exception(
+            parameter:
+              "#{key} must be a non-negative integer or :infinity, got: #{inspect(timeout)}"
+          )
+  end
+
+  defp maybe_put_option(opts, _key, nil), do: opts
+  defp maybe_put_option(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp safe_http_event(server, event) do
+    StreamServer.http_event(server, event)
+  catch
+    :exit, {:noproc, _} -> :ok
+    :exit, {:normal, _} -> :ok
+    :exit, {:shutdown, _} -> :ok
+    :exit, {{:shutdown, _}, _} -> :ok
+  end
+
+  # Validate that HTTP/2 pools won't fail with large request bodies
+  # See: https://github.com/sneako/finch/issues/265
+  defp validate_http2_body_size(finch_request, finch_name) do
+    body_size = request_body_size(finch_request.body)
+
+    # Only check if body is potentially problematic (>64KB threshold from Finch #265)
+    if body_size > 65_535 do
+      case get_pool_protocols(finch_request, finch_name) do
+        {:ok, protocols} ->
+          if mixed_http2_protocols?(protocols) do
+            {:error, {:http2_body_too_large, body_size, protocols}}
+          else
+            :ok
+          end
+
+        {:error, _} ->
+          # Can't determine pool config, assume it's safe
+          :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  defp mixed_http2_protocols?(protocols) do
+    :http1 in protocols and :http2 in protocols
+  end
+
+  defp get_pool_protocols(%{private: %{req_llm_pool_options: pool_options}}, _finch_name) do
+    {:ok, pool_protocols(pool_options)}
+  end
+
+  defp get_pool_protocols(finch_request, finch_name) do
+    finch_config = ReqLLM.Application.get_finch_config()
+    configured_name = Keyword.get(finch_config, :name, ReqLLM.Finch)
+    pools = Keyword.get(finch_config, :pools, %{})
+
+    cond do
+      configured_name != finch_name ->
+        {:error, :unknown_finch_config}
+
+      is_map(pools) ->
+        case matching_pool_config(pools, finch_request) do
+          nil -> {:error, :no_pool_config}
+          pool_config -> {:ok, pool_protocols(pool_config)}
+        end
+
+      true ->
+        {:error, :no_pool_config}
+    end
+  rescue
+    _ -> {:error, :config_error}
+  end
+
+  defp matching_pool_config(pools, finch_request) do
+    request_pool = request_pool(finch_request)
+
+    Enum.find_value(pools, fn
+      {:default, _pool_config} ->
+        nil
+
+      {destination, pool_config} ->
+        if pool_matches?(destination, request_pool), do: pool_config
+    end) || Map.get(pools, :default)
+  end
+
+  defp request_pool(%Finch.Request{scheme: scheme, unix_socket: unix_socket, pool_tag: tag})
+       when is_binary(unix_socket) do
+    Finch.Pool.from_name({scheme, {:local, unix_socket}, 0, tag})
+  end
+
+  defp request_pool(%Finch.Request{scheme: scheme, host: host, port: port, pool_tag: tag}) do
+    Finch.Pool.from_name({scheme, host, port, tag})
+  end
+
+  defp pool_matches?(%Finch.Pool{} = destination, request_pool), do: destination == request_pool
+
+  defp pool_matches?(destination, request_pool) when is_binary(destination) do
+    Finch.Pool.new(destination) == request_pool
+  rescue
+    _ -> false
+  end
+
+  defp pool_matches?({scheme, {:local, path}}, request_pool)
+       when is_atom(scheme) and is_binary(path) do
+    Finch.Pool.new({scheme, {:local, path}}) == request_pool
+  end
+
+  defp pool_matches?(_destination, _request_pool), do: false
+
+  defp pool_protocols(pool_config) when is_list(pool_config) do
+    Keyword.get(pool_config, :protocols, [:http1])
+  end
+
+  defp pool_protocols(pool_config) when is_map(pool_config) do
+    Map.get(pool_config, :protocols, [:http1])
+  end
+
+  defp pool_protocols(_pool_config), do: [:http1]
+
+  defp pool_strategy(opts) do
+    Keyword.get(opts, :pool_strategy, Application.get_env(:req_llm, :stream_pool_strategy))
+  end
+
+  defp request_body_size(nil), do: 0
+  defp request_body_size({:stream, _}), do: 0
+  defp request_body_size(body), do: IO.iodata_length(body)
+end

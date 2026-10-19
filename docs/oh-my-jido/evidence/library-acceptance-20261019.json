@@ -1,0 +1,91 @@
+{
+  "recorded_date": "2026-10-19",
+  "scope": "Oh-My-Jido library delivery under the explicit user scope override; external Elixos integration/OS generation gates are excluded, not passed",
+  "source_library_sha256": "ef8367d8dc4730caf403bfa6afa59a657039230c9b6499bd2e49b9ddb1fb0e7d",
+  "quality": {
+    "command": "OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "evidence": "artifact://546",
+    "exit_status": 0,
+    "tests_passed": 462,
+    "actual_python_cases": 12,
+    "strict_credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skipped": 0,
+    "ex_dna_clones": 0,
+    "ex_dna_clone_budget": 0,
+    "reach_architecture": "OK",
+    "quality_thresholds_or_suppressions_weakened": false
+  },
+  "independent_embedding": {
+    "project": "examples/plain_mix",
+    "command": "ERL_FLAGS='+S 4:4 +A 2' mix compile --warnings-as-errors && ERL_FLAGS='+S 4:4 +A 2' mix test",
+    "evidence": "bg_115",
+    "warnings_as_errors_compile": "passed",
+    "actual_host_scenarios_passed": 2,
+    "separately_resolved_dependencies_and_build": true
+  },
+  "native_tool_evidence": {
+    "elixir_function_variable_module_spec_preview_apply_and_independent_tests": "artifact://541",
+    "native_conflict_cases_and_preserved_consumers": "artifact://545",
+    "rename_behavior_regressions_passed": 59,
+    "observer_registered_local_action": "artifact://496",
+    "observer_separate_started_otp_application": "artifact://500",
+    "tidewave_reviewed_actual_runtime": "artifact://427",
+    "retained_structural_ast_runtime": "artifact://227",
+    "retained_gdb_and_elixir_dap_runtime": "artifact://259",
+    "retained_unified_elixir_quickbeam_cpython_runtime": "artifact://281",
+    "retained_managed_browser_runtime": "artifact://315"
+  },
+  "subscription_coding": {
+    "native_openai": "openai-subscription-20261018.json",
+    "official_claude_delegation": "claude-coding-20261019.json",
+    "both_actual_coding_sessions_have_independent_failing_before_and_passing_after_tests": true,
+    "claude_read_edit_only_separately_approved": true,
+    "isolated_openai_grants_revoked": true,
+    "existing_official_claude_login_preserved": true,
+    "metered_api_fallback": false
+  },
+  "density": {
+    "report": "../../../bench/results/density-native-tools-20261019.json",
+    "evidence": "artifact://548",
+    "recorded_at": "2026-10-19T12:01:17.041908Z",
+    "populations": [1, 10, 100, 500],
+    "active_ceiling": 8,
+    "rounds": 6,
+    "offered_jobs": 330,
+    "admitted_and_completed_jobs": 312,
+    "capacity_rejected_jobs": 18,
+    "report_errors": 0,
+    "elapsed_ms": 76497.176,
+    "draft_2020_12_schema_and_date_time_format_errors": 0,
+    "all_population_admission_and_resource_bounds_passed": true,
+    "all_populations_removed": true,
+    "runtime_driver_and_supervisor_stopped": true,
+    "disposable_root_removed": true,
+    "host_cwd_environment_preserved": true,
+    "live_descendants_before_and_after": [1, 1],
+    "benchmark_sha256": "fd2315bf483bca51fb295d38b5247ab7193a9769e7e3d04bbf5c60bea5f38448",
+    "model_latency": "simulated native scripted gateway; not provider throughput"
+  },
+  "acceptance_audit": {
+    "in_scope_capability_rows_reviewed": 62,
+    "explicit_external_rows": ["F06", "F07"],
+    "explicit_external_scenario": "T10",
+    "review_findings": [
+      "Claude Read-only proof was insufficient; separately approved actual coding repair now passes524",
+      "Compiler-owned module_info arities could be published; reproduced518 and covered by passing59-case suite541",
+      "Module-scope spec/runtime caller metadata crashed; reproduced527, native signature range/self-definition differences532/536/539 repaired and actual workflow541 passes"
+    ],
+    "unresolved_review_findings": [],
+    "scope_reduced_to_fit_implementation": false
+  },
+  "support_boundary": {
+    "observed_host": "Linux x86_64, Elixir1.20.2, OTP28/ERTS16.4.0.2, four schedulers",
+    "native_elixir_caller_namespace_signature_profile": "audited ElixirLS0.31.1",
+    "observer_process_iterator": "OTP28+; older process-inventory operation fails explicitly",
+    "os_sandbox_claimed": false,
+    "published_hex_release_claimed": false,
+    "production_certification_claimed": false,
+    "external_elixos_guest_packaging_promotion_or_fallback_claimed": false
+  }
+}

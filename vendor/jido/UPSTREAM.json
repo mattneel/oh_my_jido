@@ -1,0 +1,686 @@
+{
+  "package": "jido",
+  "version": "2.4.0",
+  "source": "https://github.com/agentjido/jido",
+  "license": "Apache-2.0",
+  "snapshot_sha256": "d850dbd74d849d3deb1c7a9f8d6a130dbb7d1bc99a05ee0aabc8f81c3ff1e75c",
+  "privacy_boundary_updates": {
+    "date": "2026-10-13",
+    "contributors": "Oh-My-Jido contributors",
+    "modified_upstream_files": [
+      {
+        "path": "lib/jido/agent_server.ex",
+        "change": "Private directive start/stop/exception telemetry omits directive payloads and unconstrained trace metadata; normal agents and directive execution are unchanged."
+      }
+    ],
+    "modified_local_additions": [
+      {
+        "path": "lib/jido/agent_server/private_diagnostics.ex",
+        "change": "Builds explicit private directive metadata and scopes native telemetry emission without changing the execution trace context."
+      }
+    ],
+    "inventory_note": "The files inventory and snapshot_sha256 describe the original upstream snapshot, not the modified runtime files."
+  },
+  "files": [
+    {
+      "path": "LICENSE",
+      "sha256": "5ef76176b7be1574f8006b1060a94f01518fc133ea1fb3136819d0fa7b473c8f",
+      "bytes": 11396
+    },
+    {
+      "path": "README.md",
+      "sha256": "ae210ad28cd08b2e7871eedc0495e1d89f98ce6e094b200249fcced9ca0dc57e",
+      "bytes": 19893
+    },
+    {
+      "path": "hex_metadata.config",
+      "sha256": "181784fb2d5ac3e4334526b70ef7ad668b26b52cfbfa1798ee633ebf0896ffd9",
+      "bytes": 8343
+    },
+    {
+      "path": "lib/jido.ex",
+      "sha256": "0706b78a0f54aafe169fa081778b563289424cb7503ca80bb4a4bf9ca2ee792a",
+      "bytes": 24668
+    },
+    {
+      "path": "lib/jido/actions/control.ex",
+      "sha256": "8175f4fb1a84181c6398d2884d9f570405c00ad34593af84172a8e13ee25c2c1",
+      "bytes": 7099
+    },
+    {
+      "path": "lib/jido/actions/lifecycle.ex",
+      "sha256": "37d22571cf6fed1b6ab7b4d8ce715d88eb0a69a7388b10b2d137b1a1d7defd3c",
+      "bytes": 7058
+    },
+    {
+      "path": "lib/jido/actions/scheduling.ex",
+      "sha256": "69cc9f717313f8190dc38a29662806503952b24245e65ea29c553e92dfa1ae17",
+      "bytes": 5870
+    },
+    {
+      "path": "lib/jido/actions/status.ex",
+      "sha256": "1c33956e3b2a7628b52731043d169e7411349264c0c214ed2f3a7de977e856f7",
+      "bytes": 4117
+    },
+    {
+      "path": "lib/jido/agent.ex",
+      "sha256": "b07273644604470fd8c23a9d7f9d20ee0d61196928f48122fa9b5ab4de42564e",
+      "bytes": 53111
+    },
+    {
+      "path": "lib/jido/agent/default_plugins.ex",
+      "sha256": "701a2b76a1f292741bb8a051403b5cb730edfbae31b510f2552ad5ce4d534296",
+      "bytes": 4793
+    },
+    {
+      "path": "lib/jido/agent/directive.ex",
+      "sha256": "12ccc029f5e1ab2b8ff99c5121c5b8903530c71ebae57da46364d07e4d187edc",
+      "bytes": 34206
+    },
+    {
+      "path": "lib/jido/agent/directive/cron.ex",
+      "sha256": "d0cb023fb3285fe3c429ab2f02ba60fc7efa96e960a308d19013e4c7ce3fb45b",
+      "bytes": 5274
+    },
+    {
+      "path": "lib/jido/agent/directive/cron_cancel.ex",
+      "sha256": "eec7d98486f466bdb753132345f08bb93d6172e1e21ebe5319681f32963105cd",
+      "bytes": 3096
+    },
+    {
+      "path": "lib/jido/agent/identity.ex",
+      "sha256": "356e0357015ab5bc8e36947fad2432b2bb3b1b3c5356afedfec52158fb2a781b",
+      "bytes": 4737
+    },
+    {
+      "path": "lib/jido/agent/identity/actions/evolve.ex",
+      "sha256": "bcfee356308381f51ffbaf1de421973d68391feea3f03cb85ba4de6f480664f2",
+      "bytes": 941
+    },
+    {
+      "path": "lib/jido/agent/identity/agent.ex",
+      "sha256": "226f78e28d2570f643e5bca56326b22c77f0b083a2c8cf74e22eb92022b6c5d0",
+      "bytes": 2060
+    },
+    {
+      "path": "lib/jido/agent/identity/plugin.ex",
+      "sha256": "8444a7180791fa87d4ed575b87c77acbb321688a5324228f58daa249e7d3ecf5",
+      "bytes": 1188
+    },
+    {
+      "path": "lib/jido/agent/identity/profile.ex",
+      "sha256": "154aa1179b36b2bd84be182f325f227324c7f754456184c0c87af555ed022dcd",
+      "bytes": 1177
+    },
+    {
+      "path": "lib/jido/agent/instance_manager.ex",
+      "sha256": "ebea90bff9712cdea17cb134a70299b5fbc7f6b17f989b5b672d44da310f59fa",
+      "bytes": 15709
+    },
+    {
+      "path": "lib/jido/agent/instance_manager/cleanup.ex",
+      "sha256": "5e2dcb076ca08a6de57069ac58caf4a7a305aeb8ded4508773f94aa553a2e672",
+      "bytes": 392
+    },
+    {
+      "path": "lib/jido/agent/schedules.ex",
+      "sha256": "4e1e82409ad3312a4e3e80798cc6ac979cade0b127ff2c5cf2dec9607945fbbd",
+      "bytes": 2475
+    },
+    {
+      "path": "lib/jido/agent/schema.ex",
+      "sha256": "e32de0c317b6703a4a06e494e925cb016544608328e0e50774989fa61240854f",
+      "bytes": 4914
+    },
+    {
+      "path": "lib/jido/agent/state.ex",
+      "sha256": "d841b04cb0fdf6e9db628e7ae12c296d506ca3dffbaa1d19a9d395bd94838309",
+      "bytes": 2613
+    },
+    {
+      "path": "lib/jido/agent/state_budget.ex",
+      "sha256": "5fbd6ce6af56fc47a3b6a7ce02bbc338b008f004e062d2f96494d25834bf8a6c",
+      "bytes": 3571
+    },
+    {
+      "path": "lib/jido/agent/state_op.ex",
+      "sha256": "4179b1b9a57ea11f05d6c92ba1a620f3b2fbc2d3f03d110dbf4b009b70b75346",
+      "bytes": 7075
+    },
+    {
+      "path": "lib/jido/agent/state_ops.ex",
+      "sha256": "b7f11d1a89b2beb439a38fe40affeb4cad367c81ae41bff0daab93fc0d76ac4b",
+      "bytes": 3050
+    },
+    {
+      "path": "lib/jido/agent/strategy.ex",
+      "sha256": "8cdc984b72c0627986a9f5644273eed8a93bf72f9ea5c3cf29c77d886fb209e3",
+      "bytes": 13690
+    },
+    {
+      "path": "lib/jido/agent/strategy/direct.ex",
+      "sha256": "555de22677717bd26c48d51698fd2e2919ebfa8874905a866829a03a32cb1b97",
+      "bytes": 3526
+    },
+    {
+      "path": "lib/jido/agent/strategy/fsm.ex",
+      "sha256": "0bc8358a5b9c2a9da675dc07b05b45b0c3bfdaa7ecb1f31182969c43770745fd",
+      "bytes": 12539
+    },
+    {
+      "path": "lib/jido/agent/strategy/instruction_tracking.ex",
+      "sha256": "479066ec3a4dfc61421621e83ad191764361ebbd2833d832d2c0063b17abe13f",
+      "bytes": 2469
+    },
+    {
+      "path": "lib/jido/agent/strategy/state.ex",
+      "sha256": "f2d7ea49c8639faac8a60fcb9e09385bd42c2e83e4f57d60bb2b58203f45211e",
+      "bytes": 3270
+    },
+    {
+      "path": "lib/jido/agent/worker_pool.ex",
+      "sha256": "979c2dd0d2af8330efcbcbef8cd487799760d0d14376a6db60eae77b8a2e22f6",
+      "bytes": 7623
+    },
+    {
+      "path": "lib/jido/agent_server.ex",
+      "sha256": "46f8f5ea5a04ba7f269925e83dc59a7af24b9e374302e17555f28586e1941d11",
+      "bytes": 110521
+    },
+    {
+      "path": "lib/jido/agent_server/child_info.ex",
+      "sha256": "f668cf5c1375fe667cc7809467be44ea5ab1cad09dcfac07531af45dd903a7d7",
+      "bytes": 1872
+    },
+    {
+      "path": "lib/jido/agent_server/cron_runtime_spec.ex",
+      "sha256": "5cbb445f1447145a090092e902dfb17df5f13b527bb3730e1f51ef381eb0a7f5",
+      "bytes": 1995
+    },
+    {
+      "path": "lib/jido/agent_server/directive_exec.ex",
+      "sha256": "d69a5ee95d1e84d0c001c3ac608951a5a4369fce7e4fd0427baff5cbe895ea18",
+      "bytes": 3067
+    },
+    {
+      "path": "lib/jido/agent_server/directive_executors.ex",
+      "sha256": "4d030eded5e3ac8c1b57eb3495338b0861a60395b2194fc8b7ca22f722036130",
+      "bytes": 13076
+    },
+    {
+      "path": "lib/jido/agent_server/error_policy.ex",
+      "sha256": "79991ba3b59e207df80793d16be4552abcca83fda9ed8b431321279b4b34bb76",
+      "bytes": 4402
+    },
+    {
+      "path": "lib/jido/agent_server/lifecycle.ex",
+      "sha256": "d72127c095f74454f5363b2f7903d0ce1b528b79979f07a49a0dcc8fba1f0e06",
+      "bytes": 876
+    },
+    {
+      "path": "lib/jido/agent_server/lifecycle/keyed.ex",
+      "sha256": "602dbd1e28fbd5cc91f66ea432b4eac2e1d09013a42ac004d3446c2cb7f55628",
+      "bytes": 7985
+    },
+    {
+      "path": "lib/jido/agent_server/lifecycle/noop.ex",
+      "sha256": "8b6de7b061cce5818810bf713a43841f30afe0bda3caeb038c47b8c4f9cd7145",
+      "bytes": 444
+    },
+    {
+      "path": "lib/jido/agent_server/options.ex",
+      "sha256": "6c3d393974700072c960e04d2e4ceb4457c9e447c4f8f56cbfbd24ed1a7a92e4",
+      "bytes": 9032
+    },
+    {
+      "path": "lib/jido/agent_server/parent_ref.ex",
+      "sha256": "667ede20ce0c452ff365d01b2b609a79da1ffe2fc8aa034fe9ac5a4323b796c7",
+      "bytes": 2463
+    },
+    {
+      "path": "lib/jido/agent_server/sensor_lifecycle.ex",
+      "sha256": "31eb9723c2b0d2d0c86e14a2532fe3710220dcfe9c63cd671d7888e2377b9c66",
+      "bytes": 7731
+    },
+    {
+      "path": "lib/jido/agent_server/signal/child_exit.ex",
+      "sha256": "614f620afed90d8160b6837705af57ebb8b9bf081cdbaf7217db1733e101e88c",
+      "bytes": 522
+    },
+    {
+      "path": "lib/jido/agent_server/signal/child_started.ex",
+      "sha256": "f669d58a2060dce810b6c87b42457124fa6aa0f5cf31464e64484584f14307ef",
+      "bytes": 1386
+    },
+    {
+      "path": "lib/jido/agent_server/signal/cron_tick.ex",
+      "sha256": "62840ee6c7cdd2931462e694eece7a59226a878344691528e6b1a8e60939d1b4",
+      "bytes": 412
+    },
+    {
+      "path": "lib/jido/agent_server/signal/orphaned.ex",
+      "sha256": "bed407c79e22855ac9997600f292f717d5e09e7f1310b3967c6f163eb5edd5ea",
+      "bytes": 1359
+    },
+    {
+      "path": "lib/jido/agent_server/signal/scheduled.ex",
+      "sha256": "ea7c53f116024687fb6ece0471bbeabc89bafbc9bf34265f58b5c8dac05c2e38",
+      "bytes": 337
+    },
+    {
+      "path": "lib/jido/agent_server/signal/sensor_exit.ex",
+      "sha256": "901afe366a67b6e797e199bdae5211b05756ff51a8574dd3733cf0e3bd64147d",
+      "bytes": 1464
+    },
+    {
+      "path": "lib/jido/agent_server/signal_router.ex",
+      "sha256": "a42a77b0e5179d614008c4804a280be02044573cc1545f21ca8ccb9359d4dfd4",
+      "bytes": 5107
+    },
+    {
+      "path": "lib/jido/agent_server/state.ex",
+      "sha256": "c1bea47f4dc847f046ab53bfdd380f398f2de7644b814eef6e033e25735a3b5b",
+      "bytes": 16845
+    },
+    {
+      "path": "lib/jido/agent_server/state/lifecycle.ex",
+      "sha256": "7be9faa155ee83bfa98c5563496a15782f40d0383b1bdee58bea4286e8b1f8ee",
+      "bytes": 2122
+    },
+    {
+      "path": "lib/jido/agent_server/status.ex",
+      "sha256": "08d6b6a66d305c7b931b8ab3cd68258cb72eaf4a0f643431d84741764cccffce",
+      "bytes": 4220
+    },
+    {
+      "path": "lib/jido/agent_server/stop_child_runtime.ex",
+      "sha256": "6afcb724791c495cf1ee7b005dbc55ff8c00bad48c3ec4f828f7eab58fdcca37",
+      "bytes": 2073
+    },
+    {
+      "path": "lib/jido/application.ex",
+      "sha256": "4146559cb713e581954f91de84f9e7a8b3baf8f20c9ec5ce412d876ae10edc35",
+      "bytes": 776
+    },
+    {
+      "path": "lib/jido/await.ex",
+      "sha256": "7f4f7221fc8513b4844db3298c640531ec7d8d308421d0d7318a3609dbcca440",
+      "bytes": 12701
+    },
+    {
+      "path": "lib/jido/config/defaults.ex",
+      "sha256": "4d79cb92786839e97d511c2b5cd42b342feb318c4ef0a8945c3b2f612a67550e",
+      "bytes": 4446
+    },
+    {
+      "path": "lib/jido/debug.ex",
+      "sha256": "12d06bc2c26f45d2d664f4070ada8650fd67b08510ddb5ff6e1212374a2268fa",
+      "bytes": 3069
+    },
+    {
+      "path": "lib/jido/discovery.ex",
+      "sha256": "a69d6fc3a34c3eda15525befb67388363dae306a597c084550b4e09b0a925f0c",
+      "bytes": 8738
+    },
+    {
+      "path": "lib/jido/error.ex",
+      "sha256": "70cbc84146339547884586ce01229582047304cff6c2525ec4a1c1d40b8df9ff",
+      "bytes": 29795
+    },
+    {
+      "path": "lib/jido/id.ex",
+      "sha256": "f1e8a7b157d6e0b0b5ef925251d078df2ba34943819afc671d5b65ca9079a090",
+      "bytes": 940
+    },
+    {
+      "path": "lib/jido/igniter/helpers.ex",
+      "sha256": "b79298734a2c90e5de26bbfabb7ed053ed2c51ba4db6dfb6d17d0aec6ed0482a",
+      "bytes": 848
+    },
+    {
+      "path": "lib/jido/igniter/templates.ex",
+      "sha256": "fb9a49ffe70823f52d1fd847ef033a2ba54dc84adccd811ce260f4f2d3872af4",
+      "bytes": 4990
+    },
+    {
+      "path": "lib/jido/memory.ex",
+      "sha256": "415351a15b4022fcc0e3e69b82851873850b7eee5235c1775bf32b188e830d4f",
+      "bytes": 2375
+    },
+    {
+      "path": "lib/jido/memory/agent.ex",
+      "sha256": "627b7eaf5700d8a83687472141231fa34157fef19e7ae9fc15fede1d2c0f3051",
+      "bytes": 7481
+    },
+    {
+      "path": "lib/jido/memory/plugin.ex",
+      "sha256": "cf6899f599bf4a9bd596088cd99d8d62f33c5e93d8293acfb59ae5861035599e",
+      "bytes": 1882
+    },
+    {
+      "path": "lib/jido/memory/space.ex",
+      "sha256": "d0480dd31804400de7d92ea465bed84eaab7f6177a081c4cdce90de7d9da09ff",
+      "bytes": 2605
+    },
+    {
+      "path": "lib/jido/observe.ex",
+      "sha256": "cb0770b42fba87f993db076161b36d4fbbc965a3ea1f79512ec55cef4d8d2ecb",
+      "bytes": 23611
+    },
+    {
+      "path": "lib/jido/observe/config.ex",
+      "sha256": "d689bda8a4f26b51032de992c1c074cf4c459a20a27ab557a82624c7a5df0235",
+      "bytes": 14235
+    },
+    {
+      "path": "lib/jido/observe/event_contract.ex",
+      "sha256": "5ce63efd881f3e0874bd4e9a541100a07c642ea862becefa1946e74221f3a1d5",
+      "bytes": 3371
+    },
+    {
+      "path": "lib/jido/observe/log.ex",
+      "sha256": "b1c1579f5ae14bf71a2219935f0a2081411fc174fda9dfb7d1969b4a6a3fcbea",
+      "bytes": 984
+    },
+    {
+      "path": "lib/jido/observe/noop_tracer.ex",
+      "sha256": "1d4b425b93c09e6b51608d45fd5fe2e4c1458682f606f1d297b2a7b052e4b57f",
+      "bytes": 784
+    },
+    {
+      "path": "lib/jido/observe/span_ctx.ex",
+      "sha256": "46582b854c6a8e0f30c7ddcd7d1a965abda763a652c354bff2ba5c54118500c2",
+      "bytes": 1712
+    },
+    {
+      "path": "lib/jido/observe/tracer.ex",
+      "sha256": "484b51fe23815022c654389184a708f130de73ab8b05f7354b6c9617879842a2",
+      "bytes": 1970
+    },
+    {
+      "path": "lib/jido/persist.ex",
+      "sha256": "f860c6e7de16e656afff15973afce462c86c339a5d48a3fcb39cf9261540cc9e",
+      "bytes": 21990
+    },
+    {
+      "path": "lib/jido/plugin.ex",
+      "sha256": "9a528b0bb1edbcbd6721b892ed4ea57ed36c62469e1682a1c0acad228f29c527",
+      "bytes": 29550
+    },
+    {
+      "path": "lib/jido/plugin/config.ex",
+      "sha256": "ccf2391412108e45f67c43ecbbaa365a616196d734980ba0dd52d7e661f963e3",
+      "bytes": 3446
+    },
+    {
+      "path": "lib/jido/plugin/instance.ex",
+      "sha256": "036c5be587a4daab9fa422cb3a4b3f81ca6196aa0dd4ef532e025bd4c8e17814",
+      "bytes": 5165
+    },
+    {
+      "path": "lib/jido/plugin/manifest.ex",
+      "sha256": "602287d7ef8c160b86f2539c4138f74a26a98171f021d4d02a32cff63607a630",
+      "bytes": 4020
+    },
+    {
+      "path": "lib/jido/plugin/requirements.ex",
+      "sha256": "f27497ebc458ddc2ef42787c51be7849e99a17e2e17c35b2f5135bd8dba95c59",
+      "bytes": 5296
+    },
+    {
+      "path": "lib/jido/plugin/routes.ex",
+      "sha256": "482b7e3b5224f10fbca09fe0532769e3ae436d5af5c023e86a3078d19bc76e7e",
+      "bytes": 7824
+    },
+    {
+      "path": "lib/jido/plugin/schedules.ex",
+      "sha256": "b5320681210b452d1c72a4e25654bf91a662cd0db9c05c518e96629150ed156e",
+      "bytes": 4862
+    },
+    {
+      "path": "lib/jido/plugin/spec.ex",
+      "sha256": "6598d154e40357f7b2af3308d1ad9ae7ee5ab9821d79a38ef50cd1a858fefa08",
+      "bytes": 1585
+    },
+    {
+      "path": "lib/jido/pod.ex",
+      "sha256": "a9d283c6dee7f33b9243699146cf76d6a6033392a544e6431d19dcdb3ba106ce",
+      "bytes": 7633
+    },
+    {
+      "path": "lib/jido/pod/actions/mutate.ex",
+      "sha256": "8bd2a401a3bfcf1b137e02c673a73887025b08c5e796a31f4a9a40b99d69d089",
+      "bytes": 673
+    },
+    {
+      "path": "lib/jido/pod/definition.ex",
+      "sha256": "a2662276a6b59ece03f5fa8cc9a2b58cfe412ba031c982f70265df8dee77c169",
+      "bytes": 4387
+    },
+    {
+      "path": "lib/jido/pod/directive/apply_mutation.ex",
+      "sha256": "44ec6f21033c05fe909ba058107aad38dd8cc06cabe9be79ed97f9da30b1821f",
+      "bytes": 703
+    },
+    {
+      "path": "lib/jido/pod/directive_exec.ex",
+      "sha256": "fbe8d428ac71d585e0df7beabac205e5c75e805a83d704cde3a5fbca5cdc1ddb",
+      "bytes": 273
+    },
+    {
+      "path": "lib/jido/pod/mutable.ex",
+      "sha256": "cab97ae41dde633792f7dcf92c9499b559009072e86f8f8a7a46829511cf7323",
+      "bytes": 6653
+    },
+    {
+      "path": "lib/jido/pod/mutation.ex",
+      "sha256": "ea74c88e8684ac5cfb6645718fa53bb2aec4096a7e696bdfec92533cae7579fd",
+      "bytes": 7804
+    },
+    {
+      "path": "lib/jido/pod/mutation/planner.ex",
+      "sha256": "ed4cba0667ba19c74832dcf426b6222c8c1c75404a62b46e92ea5631229d7aa3",
+      "bytes": 9175
+    },
+    {
+      "path": "lib/jido/pod/plugin.ex",
+      "sha256": "0244e726d96b34308727ad0efe5c1433bc5480c7aca60cf82554369853387ae7",
+      "bytes": 2981
+    },
+    {
+      "path": "lib/jido/pod/runtime.ex",
+      "sha256": "4fc94ee95ab654678db0d4dde7c6d826492ca1823ca30e0c47b7b88ec2de6ca6",
+      "bytes": 39836
+    },
+    {
+      "path": "lib/jido/pod/topology.ex",
+      "sha256": "3801f1d49ee09f309bc17ae988e70101496d0233540aa1fb56854040a9821075",
+      "bytes": 17528
+    },
+    {
+      "path": "lib/jido/pod/topology/link.ex",
+      "sha256": "08d82625282d60ed79edb7b480819373530d0cdbd39d05298dd1c9298d005bda",
+      "bytes": 3298
+    },
+    {
+      "path": "lib/jido/pod/topology/node.ex",
+      "sha256": "ff8de55780ce7eb77e91b9c26de237c4c8bf01078f86aa4d8b7a5a818fbcd4cc",
+      "bytes": 3914
+    },
+    {
+      "path": "lib/jido/pod/topology_state.ex",
+      "sha256": "66961d0d4db8cb89dbc6265a7ed6c6e499a6857f939b56e759d1c2c5fd3a0e5f",
+      "bytes": 5433
+    },
+    {
+      "path": "lib/jido/runtime_store.ex",
+      "sha256": "8fad0d6413182fdeb676681ec8f9031c0d677498e12d8ba380596fcf6b77a81f",
+      "bytes": 4922
+    },
+    {
+      "path": "lib/jido/scheduler.ex",
+      "sha256": "049cb1fe15b574712ec0408aeea8f4a5731d3b5956ca4b88f2ec9fcd66d5ab04",
+      "bytes": 9392
+    },
+    {
+      "path": "lib/jido/scheduler/job.ex",
+      "sha256": "e7b113717f833bc5187e617a1b525fb33eae70c27f90fe180b57d43701a284ca",
+      "bytes": 10933
+    },
+    {
+      "path": "lib/jido/sensor.ex",
+      "sha256": "18b3d27171e73385e0cdf60537304315c101c85101fba750e48efdfe6e43642b",
+      "bytes": 7311
+    },
+    {
+      "path": "lib/jido/sensor/runtime.ex",
+      "sha256": "df4440e0d1f4b337474c25cf388f02de58f527b377ac43ced8eed3425bea2a44",
+      "bytes": 12546
+    },
+    {
+      "path": "lib/jido/sensor/spec.ex",
+      "sha256": "21ee618ed9339aab41ad5d9f8e3fa18437c4e529a62d3c280a75bd3baebe8dca",
+      "bytes": 2655
+    },
+    {
+      "path": "lib/jido/sensors/bus_sensor.ex",
+      "sha256": "672632b4a67637f8bbb7f478a545f9abba4a27b2a2e95718cba1ce27ee5dcef5",
+      "bytes": 7709
+    },
+    {
+      "path": "lib/jido/sensors/heartbeat_sensor.ex",
+      "sha256": "918eb32914a2ded2340e59866e09e49ce843eb41ffddd896e0cd57c524b8aa51",
+      "bytes": 1567
+    },
+    {
+      "path": "lib/jido/storage.ex",
+      "sha256": "fca52720c6d74e85bf4f6741b20c32ec52a6298d56caabdad5f2ba5536770e08",
+      "bytes": 4700
+    },
+    {
+      "path": "lib/jido/storage/ets.ex",
+      "sha256": "1d99068353e9d2f2ddbaead1c1de81256398e73902578e6e4cbbbd01663ea602",
+      "bytes": 8263
+    },
+    {
+      "path": "lib/jido/storage/ets/owner.ex",
+      "sha256": "8a1b2ace7af7191bcac7f968ebcb3e887536d0aefd0fe93eeb0032f7937a9cc4",
+      "bytes": 1067
+    },
+    {
+      "path": "lib/jido/storage/file.ex",
+      "sha256": "fbe23a5bfcd8c90ede137ad73593f8bc68feba4408b4a23d9c3ec4e9e3bc0b53",
+      "bytes": 14450
+    },
+    {
+      "path": "lib/jido/storage/redis.ex",
+      "sha256": "55169b879d61f2eaf322edb449e805fbd01bee00d6ff8be629ec4a034bd9c10c",
+      "bytes": 10125
+    },
+    {
+      "path": "lib/jido/telemetry.ex",
+      "sha256": "ad11eeef44cd174e4b49c262febc6bd690b402faf63916f7c24c7e519040b339",
+      "bytes": 26357
+    },
+    {
+      "path": "lib/jido/telemetry/config.ex",
+      "sha256": "2761d986ea7e6d50c7de0a45cb8bdf952b93b6b7638bf954e89e68e6bb95e9f5",
+      "bytes": 2190
+    },
+    {
+      "path": "lib/jido/telemetry/formatter.ex",
+      "sha256": "f7689dbaf5ee47ab910e4883914c297c888d70a16afd3581f7f4119084d67486",
+      "bytes": 9616
+    },
+    {
+      "path": "lib/jido/thread.ex",
+      "sha256": "1019d87dfc0c4d65038b68fcf4c690baad6819eb439f175fad20c7bf57da5e47",
+      "bytes": 4000
+    },
+    {
+      "path": "lib/jido/thread/agent.ex",
+      "sha256": "ec47d569595e5e5b300d834a29f4acdae06490aa838ead47e4968f65c72e77e2",
+      "bytes": 2094
+    },
+    {
+      "path": "lib/jido/thread/entry.ex",
+      "sha256": "6f51671376306adfead0aa926936656abb7531494ccabaa31c303ed754cd3b86",
+      "bytes": 2420
+    },
+    {
+      "path": "lib/jido/thread/entry_normalizer.ex",
+      "sha256": "d10178dfdd4c31dc28abad84952b458de63b9bc1c40c123efe991c08de062d6e",
+      "bytes": 2074
+    },
+    {
+      "path": "lib/jido/thread/plugin.ex",
+      "sha256": "c2b5108caeaf1fc64e428af536e96970a60dd7e113f897a3335df12f1fcc486c",
+      "bytes": 1277
+    },
+    {
+      "path": "lib/jido/thread/store.ex",
+      "sha256": "87dce46b691523410fe8c3693beb1b344c371144e696c41e824c33999bfd2dc1",
+      "bytes": 4002
+    },
+    {
+      "path": "lib/jido/thread/store/adapters/in_memory.ex",
+      "sha256": "dabccc074a5dde45afbb60aa71f8aa41d052e9dc662ebe163f22eef9c73e0ede",
+      "bytes": 1428
+    },
+    {
+      "path": "lib/jido/thread/store/adapters/journal_backed.ex",
+      "sha256": "9e597aa75d34c5e2d82b14c32dcd3fcafafd15424f87518472e131b26c27fb10",
+      "bytes": 5202
+    },
+    {
+      "path": "lib/jido/tracing/context.ex",
+      "sha256": "7d10093979265970b7a736422ed75ac7b4d22f887dc928b7f5c2fa1a653e1422",
+      "bytes": 3082
+    },
+    {
+      "path": "lib/jido/tracing/trace.ex",
+      "sha256": "aac0353f398593b57f9266e07454eb27380c2997f4c08831bb3e53ee6961b106",
+      "bytes": 1844
+    },
+    {
+      "path": "lib/jido/util.ex",
+      "sha256": "7407f62c5603b7f036f7740056b9a68023eeb84aedbbaf4fcbfebbee454e220a",
+      "bytes": 12994
+    },
+    {
+      "path": "lib/jido/util/deep_merge.ex",
+      "sha256": "9ae781ca06d2a7a70a230d9658d3d288888c31f030971712edead85d9b86270f",
+      "bytes": 933
+    },
+    {
+      "path": "lib/mix/tasks/jido.gen.agent.ex",
+      "sha256": "80c48f4264870f7dc9b48175e14ec6177bcb47ba3c4f39ff8bccb4e383ef8504",
+      "bytes": 1850
+    },
+    {
+      "path": "lib/mix/tasks/jido.gen.plugin.ex",
+      "sha256": "fb2d89807f07c32214d1f426f4b1b70d8a859f5f385e95e595a26f6441a775c9",
+      "bytes": 1815
+    },
+    {
+      "path": "lib/mix/tasks/jido.gen.sensor.ex",
+      "sha256": "1a5178412941f34062eb4ce735dc84dc2c215543447d39163413ec64b67eb340",
+      "bytes": 1757
+    },
+    {
+      "path": "lib/mix/tasks/jido.install.ex",
+      "sha256": "3c2b4e8d17829bb8318d215a15edc54b011a18a164d749aa93cb7aacf7c912c1",
+      "bytes": 2948
+    },
+    {
+      "path": "mix.exs",
+      "sha256": "894961f93db2e8a44c4361408a846d1cdc466bd02e1f0b123e1babf4036b18ee",
+      "bytes": 13343
+    },
+    {
+      "path": "usage-rules.md",
+      "sha256": "66b059a3a6ced3782c012457fb9f4c392dc26292c7f3baea8688cad6390f7061",
+      "bytes": 1545
+    }
+  ]
+}

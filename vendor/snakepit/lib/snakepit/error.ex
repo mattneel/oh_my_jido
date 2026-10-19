@@ -1,0 +1,291 @@
+defmodule Snakepit.Error do
+  @moduledoc """
+  Structured error type for Snakepit operations.
+
+  Provides detailed context for debugging cross-language and distributed system issues.
+  Python exceptions translated from the gRPC bridge are returned as
+  `Snakepit.Error.*` exception structs (see `Snakepit.Error.PythonException`).
+  `Snakepit.Error` remains the structured error type for Snakepit runtime failures.
+
+  ## Error Categories
+
+  - `:worker` - Worker process errors (not found, crashed, etc.)
+  - `:timeout` - Operation timed out
+  - `:python_error` - Exception from Python code
+  - `:grpc_error` - gRPC communication error
+  - `:validation` - Input validation error
+  - `:pool` - Pool management error
+
+  ## Examples
+
+      # Create a worker error
+      error = Snakepit.Error.worker_error("Worker not found", %{worker_id: "w1"})
+
+      # Create a Python exception error
+      error = Snakepit.Error.python_error(
+        "ValueError",
+        "Invalid input",
+        traceback_string,
+        %{function: "process_data"}
+      )
+
+      # Pattern match in your code
+      case Snakepit.execute("command", %{}) do
+        {:ok, result} -> result
+        {:error, %Snakepit.Error{category: :timeout}} -> retry()
+        {:error, %Snakepit.Error{category: :python_error} = error} ->
+          Snakepit.Logger.error("Python error: \#{error.message}")
+          Snakepit.Logger.debug("Traceback: \#{error.python_traceback}")
+        {:error, error} -> {:error, error}
+      end
+  """
+
+  @type category :: :worker | :timeout | :python_error | :grpc_error | :validation | :pool
+
+  @type t :: %__MODULE__{
+          category: category(),
+          message: String.t(),
+          details: map(),
+          python_traceback: String.t() | nil,
+          grpc_status: atom() | nil
+        }
+
+  @enforce_keys [:category, :message, :details]
+  defstruct category: nil, message: nil, details: %{}, python_traceback: nil, grpc_status: nil
+
+  @doc """
+  Creates a worker-related error.
+
+  ## Examples
+
+      iex> Snakepit.Error.worker_error("Worker crashed")
+      %Snakepit.Error{category: :worker, message: "Worker crashed", details: %{}}
+
+      iex> Snakepit.Error.worker_error("Worker not found", %{worker_id: "w1"})
+      %Snakepit.Error{category: :worker, message: "Worker not found", details: %{worker_id: "w1"}}
+  """
+  @spec worker_error(String.t(), map()) :: t()
+  def worker_error(message, details \\ %{}) do
+    %__MODULE__{
+      category: :worker,
+      message: message,
+      details: details
+    }
+  end
+
+  @doc """
+  Creates a timeout error.
+
+  ## Examples
+
+      iex> Snakepit.Error.timeout_error("Request timed out", %{timeout_ms: 5000})
+      %Snakepit.Error{category: :timeout, message: "Request timed out", details: %{timeout_ms: 5000}}
+  """
+  @spec timeout_error(String.t(), map()) :: t()
+  def timeout_error(message, details \\ %{}) do
+    %__MODULE__{
+      category: :timeout,
+      message: message,
+      details: details
+    }
+  end
+
+  @doc """
+  Creates a Python exception error with traceback.
+
+  ## Examples
+
+      iex> Snakepit.Error.python_error("ValueError", "Invalid input", "Traceback...")
+      %Snakepit.Error{
+        category: :python_error,
+        message: "ValueError: Invalid input",
+        python_traceback: "Traceback...",
+        details: %{exception_type: "ValueError"}
+      }
+  """
+  @spec python_error(String.t(), String.t(), String.t(), map()) :: t()
+  def python_error(exception_type, message, traceback, details \\ %{}) do
+    %__MODULE__{
+      category: :python_error,
+      message: "#{exception_type}: #{message}",
+      details: Map.put(details, :exception_type, exception_type),
+      python_traceback: traceback
+    }
+  end
+
+  @doc """
+  Creates a gRPC communication error.
+
+  ## Examples
+
+      iex> Snakepit.Error.grpc_error(:unavailable, "Service unavailable")
+      %Snakepit.Error{
+        category: :grpc_error,
+        message: "Service unavailable",
+        grpc_status: :unavailable
+      }
+  """
+  @spec grpc_error(atom(), String.t(), map()) :: t()
+  def grpc_error(status, message, details \\ %{}) do
+    %__MODULE__{
+      category: :grpc_error,
+      message: message,
+      grpc_status: status,
+      details: details
+    }
+  end
+
+  @doc """
+  Creates a pool management error.
+
+  ## Examples
+
+      iex> Snakepit.Error.pool_error("Pool not found", %{pool_name: :test})
+      %Snakepit.Error{category: :pool, message: "Pool not found", details: %{pool_name: :test}}
+  """
+  @spec pool_error(String.t(), map()) :: t()
+  def pool_error(message, details \\ %{}) do
+    %__MODULE__{
+      category: :pool,
+      message: message,
+      details: details
+    }
+  end
+
+  @doc """
+  Creates a validation error.
+
+  ## Examples
+
+      iex> Snakepit.Error.validation_error("Invalid field", %{field: "user_id"})
+      %Snakepit.Error{category: :validation, message: "Invalid field", details: %{field: "user_id"}}
+  """
+  @spec validation_error(String.t(), map()) :: t()
+  def validation_error(message, details \\ %{}) do
+    %__MODULE__{
+      category: :validation,
+      message: message,
+      details: details
+    }
+  end
+
+  @doc """
+  Normalizes public API error tuples to `%Snakepit.Error{}`.
+
+  Internal control-flow atoms/tuples remain unchanged internally and are converted
+  only at public boundaries.
+  """
+  @spec normalize_public_result(:ok | {:ok, term()} | {:error, term()}, map()) ::
+          :ok | {:ok, term()} | {:error, t() | Exception.t()}
+  def normalize_public_result(result, metadata \\ %{})
+
+  def normalize_public_result(:ok, _metadata), do: :ok
+  def normalize_public_result({:ok, _} = result, _metadata), do: result
+
+  def normalize_public_result({:error, %__MODULE__{} = error}, _metadata) do
+    {:error, error}
+  end
+
+  def normalize_public_result({:error, exception}, _metadata) when is_exception(exception) do
+    {:error, exception}
+  end
+
+  def normalize_public_result({:error, reason}, metadata) do
+    {:error, normalize_public_error(reason, metadata)}
+  end
+
+  @spec normalize_public_error(term(), map()) :: t() | Exception.t()
+  def normalize_public_error(reason, metadata \\ %{})
+
+  def normalize_public_error(%__MODULE__{} = error, _metadata), do: error
+  def normalize_public_error(exception, _metadata) when is_exception(exception), do: exception
+
+  def normalize_public_error(reason, metadata) when reason in [:queue_timeout, :worker_timeout] do
+    timeout_error(timeout_message(reason), Map.put(metadata, :reason, reason))
+  end
+
+  def normalize_public_error(:pool_not_found, metadata) do
+    pool_error("Pool not found", Map.put(metadata, :reason, :pool_not_found))
+  end
+
+  def normalize_public_error({:pool_not_found, pool_name}, metadata) do
+    pool_error(
+      "Pool not found",
+      metadata
+      |> Map.put(:reason, :pool_not_found)
+      |> Map.put(:pool_name, pool_name)
+    )
+  end
+
+  def normalize_public_error(reason, metadata)
+      when reason in [
+             :pool_not_initialized,
+             :pool_saturated,
+             :worker_busy,
+             :session_worker_unavailable
+           ] do
+    pool_error(pool_reason_message(reason), Map.put(metadata, :reason, reason))
+  end
+
+  def normalize_public_error(:no_workers_available, metadata) do
+    pool_error("No workers available", Map.put(metadata, :reason, :no_workers_available))
+  end
+
+  def normalize_public_error({:worker_exit, exit_reason}, metadata) do
+    worker_error(
+      "Worker process exited",
+      metadata
+      |> Map.put(:reason, :worker_exit)
+      |> Map.put(:exit_reason, exit_reason)
+    )
+  end
+
+  def normalize_public_error(reason, metadata) when is_atom(reason) do
+    pool_error("Pool request failed", Map.put(metadata, :reason, reason))
+  end
+
+  def normalize_public_error(reason, metadata) when is_tuple(reason) do
+    pool_error("Pool request failed", Map.put(metadata, :reason, reason))
+  end
+
+  def normalize_public_error(reason, metadata) do
+    worker_error("Request failed", Map.put(metadata, :reason, reason))
+  end
+
+  defp timeout_message(:queue_timeout), do: "Request timed out in queue"
+  defp timeout_message(:worker_timeout), do: "Worker execution timed out"
+
+  defp pool_reason_message(:pool_not_initialized), do: "Pool not initialized"
+  defp pool_reason_message(:pool_saturated), do: "Pool is saturated"
+  defp pool_reason_message(:worker_busy), do: "Preferred worker is busy"
+  defp pool_reason_message(:session_worker_unavailable), do: "Session worker unavailable"
+
+  defimpl String.Chars do
+    def to_string(%Snakepit.Error{} = error) do
+      base = "[#{error.category}] #{error.message}"
+
+      details_str =
+        if map_size(error.details) > 0 do
+          "\nDetails: #{inspect(error.details)}"
+        else
+          ""
+        end
+
+      traceback_str =
+        if error.python_traceback do
+          "\n\nPython Traceback:\n#{error.python_traceback}"
+        else
+          ""
+        end
+
+      grpc_str =
+        if error.grpc_status do
+          "\ngRPC Status: #{error.grpc_status}"
+        else
+          ""
+        end
+
+      base <> details_str <> grpc_str <> traceback_str
+    end
+  end
+end

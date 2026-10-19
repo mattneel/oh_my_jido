@@ -1,0 +1,511 @@
+# Modified by Oh-My-Jido contributors, 2026-10-13: preserve opt-in safe failures
+# through native streaming, metadata handles and lazy enumeration. Original
+# ReqLLM 1.28.0 source remains under Apache License 2.0; see LICENSE/UPSTREAM.json.
+defmodule ReqLLM.Streaming do
+  @moduledoc """
+  Main orchestration for ReqLLM streaming operations.
+
+  This module coordinates StreamServer, transport clients, and StreamResponse to provide
+  a cohesive streaming system. It serves as the entry point for all streaming
+  operations and handles the complex coordination between components.
+
+  ## Architecture
+
+  The streaming system consists of three main components:
+
+  - `StreamServer` - GenServer managing stream state and event processing
+  - `FinchClient` - HTTP transport layer using Finch for streaming requests
+  - `InProcessClient` - Provider-owned transport for canonical StreamChunk values
+  - `StreamResponse` - User-facing API providing streams and metadata tasks
+
+  ## Flow
+
+  1. `start_stream/4` creates StreamServer with provider configuration
+  2. FinchClient builds provider-specific HTTP request and starts streaming
+  3. HTTP task is attached to StreamServer for monitoring and cleanup
+  4. StreamResponse provides lazy stream using `Stream.resource/3`
+  5. Metadata task runs concurrently to collect usage and finish_reason
+  6. Cancel function provides cleanup of all components
+
+  ## Example
+
+      {:ok, stream_response} = ReqLLM.Streaming.start_stream(
+        ReqLLM.Providers.Anthropic,
+        %LLMDB.Model{provider: :anthropic, name: "claude-3-sonnet"},
+        ReqLLM.Context.new("Hello!"),
+        []
+      )
+
+      # Stream tokens
+      stream_response.stream
+      |> ReqLLM.StreamResponse.tokens()
+      |> Stream.each(&IO.write/1)
+      |> Stream.run()
+
+      # Get metadata
+      usage = ReqLLM.StreamResponse.usage(stream_response)
+
+  """
+
+  alias ReqLLM.{Context, StreamResponse, StreamResponse.MetadataHandle, StreamServer}
+
+  require Logger
+
+  @doc """
+  Start a streaming session with coordinated StreamServer, FinchClient, and StreamResponse.
+
+  This is the main entry point for streaming operations. It orchestrates all components
+  to provide a cohesive streaming experience with concurrent metadata collection.
+
+  ## Parameters
+
+    * `provider_mod` - Provider module (e.g., `ReqLLM.Providers.Anthropic`)
+    * `model` - Model configuration struct
+    * `context` - Conversation context with messages
+    * `opts` - Additional options (timeout, fixture_path, etc.)
+
+  ## Returns
+
+    * `{:ok, stream_response}` - StreamResponse with stream and metadata_handle
+    * `{:error, reason}` - Failed to start streaming components
+
+  ## Options
+
+    * `:receive_timeout` - Provider transport inactivity timeout in milliseconds
+    * `:total_timeout` - Optional total model-call timeout, including retries
+    * `:stream_idle_timeout` - Optional timeout between semantic stream updates
+    * `:metadata_timeout` - Maximum metadata inactivity in milliseconds, or `:infinity`
+    * `:fixture_path` - Path for test fixture capture (testing only)
+    * `:finch_name` - Finch pool name (default: ReqLLM.Finch)
+
+  ## Examples
+
+      # Basic streaming
+      {:ok, stream_response} = ReqLLM.Streaming.start_stream(
+        ReqLLM.Providers.Anthropic,
+        model,
+        context,
+        []
+      )
+
+      # With options
+      {:ok, stream_response} = ReqLLM.Streaming.start_stream(
+        provider_mod,
+        model,
+        context,
+        total_timeout: 60_000,
+        fixture_path: "/tmp/test_fixture.json"
+      )
+
+  ## Error Cases
+
+  The function can fail at several points:
+
+  - StreamServer fails to start
+  - Provider's build_stream_request/4 fails
+  - HTTP streaming task fails to start
+  - Task attachment fails
+
+  All failures return `{:error, reason}` with descriptive error information.
+  """
+  @spec start_stream(module(), LLMDB.Model.t(), Context.t(), keyword()) ::
+          {:ok, StreamResponse.t()} | {:error, term()}
+  def start_stream(provider_mod, model, context, opts \\ []) do
+    transport = stream_transport(provider_mod, model, opts)
+    total_timeout = ReqLLM.TimeoutBudget.total_timeout(opts)
+    total_timeout_deadline = ReqLLM.TimeoutBudget.deadline(opts)
+    stream_idle_timeout = ReqLLM.TimeoutBudget.stream_idle_timeout(opts)
+
+    with :ok <- ReqLLM.ProviderFileReference.validate_context(context, model.provider),
+         {:ok, server_pid} <-
+           start_stream_server(
+             provider_mod,
+             model,
+             transport,
+             opts,
+             total_timeout,
+             total_timeout_deadline,
+             stream_idle_timeout
+           ) do
+      build_stream_response(
+        provider_mod,
+        model,
+        context,
+        opts,
+        transport,
+        server_pid,
+        stream_idle_timeout
+      )
+    else
+      {:error, reason} ->
+        reason = ReqLLM.Streaming.Failure.normalize(reason, error_context(provider_mod, model, opts))
+        Logger.error("Failed to start streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        {:error, reason}
+    end
+  end
+
+  defp build_stream_response(
+         provider_mod,
+         model,
+         context,
+         opts,
+         transport,
+         server_pid,
+         stream_idle_timeout
+       ) do
+    with {:ok, _http_task_pid, http_context, canonical_json} <-
+           start_transport_streaming(
+             transport,
+             provider_mod,
+             model,
+             context,
+             Keyword.delete(opts, :pricing_context),
+             server_pid
+           ),
+         :ok <- set_fixture_context_if_needed(server_pid, http_context, canonical_json) do
+      stream_context =
+        model
+        |> ReqLLM.Telemetry.new_context(
+          Keyword.put_new(opts, :context, context),
+          mode: :stream,
+          transport: telemetry_transport(transport),
+          operation: Keyword.get(opts, :operation, :chat),
+          reasoning_contract:
+            ReqLLM.Telemetry.reasoning_contract_for(
+              model,
+              Keyword.put_new(opts, :context, context),
+              canonical_json
+            )
+        )
+        |> ReqLLM.Telemetry.put_server_from_source(http_context)
+        |> ReqLLM.Telemetry.start_request(canonical_json)
+
+      :ok = StreamServer.set_telemetry_context(server_pid, stream_context)
+
+      default_timeout =
+        Application.get_env(
+          :req_llm,
+          :stream_receive_timeout,
+          Application.get_env(:req_llm, :receive_timeout, 30_000)
+        )
+
+      receive_timeout = Keyword.get(opts, :receive_timeout, default_timeout)
+      next_timeout = stream_next_timeout(stream_idle_timeout, receive_timeout)
+      error_context = error_context(provider_mod, model, opts)
+      metadata_handle = start_metadata_handle(server_pid, opts, error_context)
+      cancel_fn = fn -> cancel_stream(server_pid, metadata_handle) end
+      stream = create_lazy_stream(server_pid, next_timeout, cancel_fn, transport == :in_process, error_context)
+
+      stream_response = %StreamResponse{
+        stream: stream,
+        metadata_handle: metadata_handle,
+        cancel: cancel_fn,
+        model: model,
+        context: context
+      }
+
+      {:ok, stream_response}
+    else
+      {:error, reason} ->
+        cancel_failed_setup(server_pid)
+        reason = ReqLLM.Streaming.Failure.normalize(reason, error_context(provider_mod, model, opts))
+        Logger.error("Failed to start streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        {:error, reason}
+    end
+  rescue
+    error ->
+      cancel_failed_setup(server_pid)
+      if ReqLLM.Streaming.Failure.normalizer?(error_context(provider_mod, model, opts)),
+        do: {:error, ReqLLM.Streaming.Failure.normalize(error, error_context(provider_mod, model, opts))},
+        else: reraise(error, __STACKTRACE__)
+  catch
+    kind, reason ->
+      cancel_failed_setup(server_pid)
+      if ReqLLM.Streaming.Failure.normalizer?(error_context(provider_mod, model, opts)),
+        do: {:error, ReqLLM.Streaming.Failure.normalize({kind, reason}, error_context(provider_mod, model, opts))},
+        else: :erlang.raise(kind, reason, __STACKTRACE__)
+  end
+
+  defp cancel_failed_setup(server_pid) do
+    StreamServer.cancel(server_pid)
+  rescue
+    _error -> :ok
+  catch
+    _kind, _reason -> :ok
+  end
+
+  # Start StreamServer with provider configuration
+  defp start_stream_server(
+         provider_mod,
+         model,
+         transport,
+         opts,
+         total_timeout,
+         total_timeout_deadline,
+         stream_idle_timeout
+       ) do
+    server_opts = [
+      provider_mod: provider_mod,
+      model: model,
+      stream_error_normalizer: Keyword.get(opts, :stream_error_normalizer),
+      pricing_context: Keyword.get(opts, :pricing_context),
+      protocol_parser:
+        protocol_parser_for_transport(transport) ||
+          provider_protocol_parser(provider_mod, model, opts),
+      fixture_path: maybe_capture_fixture(model, opts),
+      total_timeout: total_timeout,
+      total_timeout_deadline: total_timeout_deadline,
+      stream_idle_timeout: configured_stream_idle_timeout(stream_idle_timeout),
+      canonical_stream?: transport == :in_process,
+      completion_cleanup_after:
+        Keyword.get(
+          opts,
+          :completion_cleanup_after,
+          Application.get_env(:req_llm, :stream_completion_cleanup_after, 30_000)
+        ),
+      high_watermark: Keyword.get(opts, :high_watermark, 500)
+    ]
+
+    genserver_opts = Keyword.take(opts, [:name, :timeout, :debug, :spawn_opt, :hibernate_after])
+    all_opts = Keyword.merge(server_opts, genserver_opts)
+
+    case StreamServer.start_link(all_opts) do
+      {:ok, pid} ->
+        {:ok, pid}
+
+      {:error, reason} ->
+        Logger.error("Failed to start StreamServer: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        {:error, {:stream_server_failed, reason}}
+    end
+  end
+
+  defp start_transport_streaming(
+         :websocket,
+         provider_mod,
+         model,
+         context,
+         opts,
+         stream_server_pid
+       ) do
+    case StreamServer.start_http(
+           stream_server_pid,
+           provider_mod,
+           model,
+           context,
+           opts
+           |> Keyword.put(:stream_transport, :websocket)
+           |> Keyword.put(:defer_http_events_until_telemetry?, true),
+           ReqLLM.Finch
+         ) do
+      {:ok, task_pid, http_context, canonical_json} ->
+        {:ok, task_pid, http_context, canonical_json}
+
+      {:error, reason} ->
+        Logger.error("Failed to start WebSocket streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        {:error, {:websocket_streaming_failed, reason}}
+    end
+  end
+
+  defp start_transport_streaming(:http, provider_mod, model, context, opts, stream_server_pid) do
+    start_http_streaming(provider_mod, model, context, opts, stream_server_pid)
+  end
+
+  defp start_transport_streaming(
+         :in_process,
+         provider_mod,
+         model,
+         context,
+         opts,
+         stream_server_pid
+       ) do
+    case StreamServer.start_in_process(
+           stream_server_pid,
+           provider_mod,
+           model,
+           context,
+           Keyword.put(opts, :defer_http_events_until_telemetry?, true)
+         ) do
+      {:ok, task_pid, stream_context, canonical_request} ->
+        {:ok, task_pid, stream_context, canonical_request}
+
+      {:error, reason} ->
+        Logger.error("Failed to start in-process streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        {:error, {:in_process_streaming_failed, reason}}
+    end
+  end
+
+  # Start HTTP streaming through StreamServer
+  defp start_http_streaming(provider_mod, model, context, opts, stream_server_pid) do
+    finch_name = Keyword.get(opts, :finch_name, ReqLLM.Finch)
+
+    case StreamServer.start_http(
+           stream_server_pid,
+           provider_mod,
+           model,
+           context,
+           Keyword.put(opts, :defer_http_events_until_telemetry?, true),
+           finch_name
+         ) do
+      {:ok, task_pid, http_context, canonical_json} ->
+        {:ok, task_pid, http_context, canonical_json}
+
+      {:error, {:provider_build_failed, {:http2_body_too_large, body_size, protocols}}} ->
+        message = format_http2_error_message(body_size, protocols)
+        Logger.error(message)
+        {:error, {:http2_body_too_large, message}}
+
+      {:error, reason} ->
+        Logger.error("Failed to start HTTP streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        {:error, {:http_streaming_failed, reason}}
+    end
+  end
+
+  defp stream_transport(provider_mod, model, opts) do
+    if function_exported?(provider_mod, :stream_transport, 2) do
+      provider_mod.stream_transport(model, opts)
+    else
+      :http
+    end
+  end
+
+  defp provider_protocol_parser(provider_mod, model, opts) do
+    if function_exported?(provider_mod, :stream_protocol_parser, 2) do
+      provider_mod.stream_protocol_parser(model, opts)
+    end
+  end
+
+  defp configured_stream_idle_timeout({:configured, timeout}), do: timeout
+  defp configured_stream_idle_timeout(:legacy), do: nil
+
+  defp stream_next_timeout({:configured, _timeout}, _receive_timeout), do: :infinity
+  defp stream_next_timeout(:legacy, receive_timeout), do: receive_timeout
+
+  defp telemetry_transport(:websocket), do: :websocket
+  defp telemetry_transport(:in_process), do: :in_process
+  defp telemetry_transport(_transport), do: :finch
+
+  defp protocol_parser_for_transport(:websocket),
+    do: &ReqLLM.Streaming.WebSocketProtocol.parse_message/2
+
+  defp protocol_parser_for_transport(_transport), do: nil
+
+  defp format_http2_error_message(body_size, protocols) do
+    size_kb = div(body_size, 1024)
+
+    """
+    Request body (#{size_kb}KB) exceeds safe limit for mixed HTTP/1+HTTP/2 Finch pools (64KB).
+
+    This is due to a known issue in Finch's mixed-protocol ALPN implementation:
+    https://github.com/sneako/finch/issues/265
+
+    Your current pool configuration uses: #{inspect(protocols)}
+
+    To fix this, configure ReqLLM to use HTTP/1-only pools (recommended default):
+
+        config :req_llm,
+          stream_pool_protocols: [:http1]
+
+    If you know all target providers support HTTP/2, HTTP/2-only pools are also supported:
+
+        config :req_llm,
+          stream_pool_protocols: [:http2]
+
+    See the ReqLLM README section "HTTP/2 Configuration (Advanced)" for more details:
+    https://github.com/agentjido/req_llm#http2-configuration-advanced
+    """
+  end
+
+  defp maybe_capture_fixture(model, opts) do
+    case Code.ensure_loaded(ReqLLM.Test.Fixtures) do
+      {:module, mod} -> mod.capture_path(model, opts)
+      {:error, _} -> nil
+    end
+  end
+
+  defp set_fixture_context_if_needed(server_pid, http_context, canonical_json) do
+    if fixture_mode() == :record do
+      ReqLLM.StreamServer.set_fixture_context(server_pid, http_context, canonical_json)
+    else
+      :ok
+    end
+  end
+
+  defp fixture_mode do
+    case Code.ensure_loaded(ReqLLM.Test.Fixtures) do
+      {:module, mod} -> mod.mode()
+      {:error, _} -> :replay
+    end
+  end
+
+  # Create lazy stream using Stream.resource that calls StreamServer.next/2
+  defp create_lazy_stream(server_pid, timeout, cancel, cancel_on_timeout?, error_context) do
+    Stream.resource(
+      fn ->
+        :ok = StreamServer.monitor_consumer(server_pid, self())
+        failure_ref = make_ref()
+        %{server: server_pid, exhausted?: false, failure_ref: failure_ref}
+      end,
+      fn %{server: server} = state ->
+        case StreamServer.next(server, timeout) do
+          {:ok, chunk} ->
+            {[chunk], state}
+
+          :halt ->
+            {:halt, %{state | exhausted?: true}}
+
+          {:error, reason} ->
+            if reason != :timeout or not cancel_on_timeout? do
+              Process.put(state.failure_ref, true)
+            end
+
+            if ReqLLM.Streaming.Failure.normalizer?(error_context) do
+              raise ReqLLM.Streaming.Failure.normalize(reason, error_context)
+            else
+              raise %ReqLLM.Error.API.Stream{
+                reason: "Stream failed",
+                cause: reason
+              }
+            end
+        end
+      end,
+      fn state ->
+        failed? = Process.delete(state.failure_ref) == true
+
+        if not state.exhausted? and not failed? do
+          cancel.()
+        end
+      end
+    )
+  end
+
+  defp cancel_stream(server_pid, metadata_handle) do
+    StreamServer.cancel(server_pid)
+  after
+    MetadataHandle.stop(metadata_handle)
+  end
+
+  defp start_metadata_handle(server_pid, opts, error_context) do
+    default_metadata_timeout = Application.get_env(:req_llm, :metadata_timeout, 300_000)
+    metadata_timeout = Keyword.get(opts, :metadata_timeout, default_metadata_timeout)
+
+    fetch_fun = fn ->
+      case StreamServer.await_metadata(server_pid, metadata_timeout) do
+        {:ok, metadata} ->
+          metadata
+
+        {:error, reason} ->
+          reason = ReqLLM.Streaming.Failure.normalize(reason, error_context)
+          Logger.warning("Metadata collection failed: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+          %{error: reason, finish_reason: :error}
+      end
+    end
+
+    case MetadataHandle.start_link(fetch_fun, error_context) do
+      {:ok, handle} -> handle
+      {:error, _reason} -> raise "Failed to start metadata handle"
+    end
+  end
+
+  defp error_context(provider_mod, model, opts),
+    do: {Keyword.get(opts, :stream_error_normalizer) || provider_mod, model}
+end

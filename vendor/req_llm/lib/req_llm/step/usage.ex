@@ -1,0 +1,226 @@
+defmodule ReqLLM.Step.Usage do
+  @moduledoc """
+  Centralized Req step that extracts token usage from provider responses,
+  normalizes usage values across providers, computes costs, and emits telemetry.
+
+  This step:
+  * Extracts token usage numbers from provider responses
+  * Normalizes usage data across different provider formats
+  * Calculates costs using ReqLLM.Model cost metadata
+  * Stores usage data in `response.private[:req_llm][:usage]`
+  * Emits telemetry events for monitoring
+
+  ## Usage
+
+      request
+      |> ReqLLM.Step.Usage.attach(model)
+
+  ## Telemetry Events
+
+  Emits `[:req_llm, :token_usage]` events with:
+  * Measurements: `%{tokens: %{input: 123, output: 456, reasoning: 64}, cost: 0.0123}`
+  * Metadata: `%{model: %LLMDB.Model{}}`
+  """
+
+  alias ReqLLM.Usage.Cost
+
+  @doc """
+  Attaches the Usage step to a Req request.
+
+  ## Parameters
+
+  - `req` - The Req.Request struct
+  - `model` - Optional ReqLLM.Model struct for cost calculation
+  - `opts` - Optional placement settings. `:before` inserts the step before a
+    named response step and appends it when that name is absent.
+
+  ## Examples
+
+      request
+      |> ReqLLM.Step.Usage.attach(model)
+
+      request
+      |> ReqLLM.Step.Usage.attach(model, before: :llm_telemetry_stop)
+
+  """
+  @spec attach(Req.Request.t(), LLMDB.Model.t() | nil, keyword()) :: Req.Request.t()
+  def attach(%Req.Request{} = req, model \\ nil, opts \\ []) do
+    req
+    |> attach_response_step(Keyword.get(opts, :before))
+    |> then(fn r ->
+      if model, do: Req.Request.put_private(r, :req_llm_model, model), else: r
+    end)
+  end
+
+  defp attach_response_step(req, nil) do
+    Req.Request.append_response_steps(req, llm_usage: &__MODULE__.handle/1)
+  end
+
+  defp attach_response_step(req, before) when is_atom(before) do
+    {leading, trailing} =
+      Enum.split_while(req.response_steps, fn {name, _step} -> name != before end)
+
+    %{req | response_steps: leading ++ [llm_usage: &__MODULE__.handle/1] ++ trailing}
+  end
+
+  @doc false
+  @spec handle({Req.Request.t(), Req.Response.t()}) :: {Req.Request.t(), Req.Response.t()}
+  def handle({req, resp}) do
+    with {:ok, model} <- fetch_model(req),
+         provider_module = provider_module_from_model(model),
+         {:ok, usage} <- extract_usage(resp.body, provider_module, model),
+         usage <- complete_operation_usage(usage, req.options[:operation]),
+         {:ok, cost_breakdown} <-
+           Cost.breakdown(usage, model, pricing_context(req, resp.body, model)) do
+      total_cost = cost_breakdown && Map.get(cost_breakdown, :total_cost)
+
+      pricing =
+        if cost_breakdown,
+          do: cost_breakdown.pricing,
+          else: %{status: :unknown}
+
+      meta = %{tokens: usage, cost: total_cost, pricing: pricing}
+
+      meta =
+        if total_cost do
+          Map.merge(meta, %{
+            input_cost: cost_breakdown.input_cost,
+            output_cost: cost_breakdown.output_cost,
+            reasoning_cost: cost_breakdown.reasoning_cost,
+            total_cost: cost_breakdown.total_cost
+          })
+        else
+          meta
+        end
+
+      ReqLLM.Telemetry.emit_token_usage(
+        model,
+        meta,
+        request_id: req.private[:req_llm_request_id],
+        operation: req.options[:operation] || :chat,
+        mode: :sync,
+        provider: model.provider,
+        transport: :req
+      )
+
+      req_llm_data = Map.get(resp.private, :req_llm, %{})
+      updated_req_llm_data = Map.put(req_llm_data, :usage, meta)
+
+      updated_resp =
+        case resp.body do
+          %ReqLLM.Response{usage: response_usage} when is_map(response_usage) ->
+            cached_read_tokens = usage[:cached_input] || 0
+            cache_creation_tokens = usage[:cache_creation] || 0
+
+            augmented_usage =
+              response_usage
+              |> Map.put_new(:input_tokens, usage.input)
+              |> Map.put_new(:output_tokens, usage.output)
+              |> maybe_put_total_tokens(usage.total_tokens)
+              |> Map.put(:reasoning_tokens, usage.reasoning)
+              |> Map.put(:cached_tokens, cached_read_tokens)
+              |> Map.put(:cache_creation_tokens, cache_creation_tokens)
+              |> Map.put(:tool_usage, usage.tool_usage)
+              |> Map.put(:image_usage, usage.image_usage)
+              |> Cost.merge(cost_breakdown)
+
+            updated_body = %{resp.body | usage: augmented_usage}
+            %{resp | body: updated_body}
+
+          _ ->
+            resp
+        end
+
+      updated_resp = %{
+        updated_resp
+        | private: Map.put(updated_resp.private, :req_llm, updated_req_llm_data)
+      }
+
+      {req, updated_resp}
+    else
+      _ -> {req, resp}
+    end
+  end
+
+  defp pricing_context(req, body, %LLMDB.Model{provider: :openai}) do
+    metadata =
+      case body do
+        %ReqLLM.Response{provider_meta: meta} -> meta
+        data when is_map(data) -> data
+        _ -> nil
+      end
+
+    ReqLLM.PricingContext.from_openai(
+      req.url,
+      metadata,
+      req.private[:req_llm_pricing_context]
+    )
+  end
+
+  defp pricing_context(req, _body, _model), do: req.private[:req_llm_pricing_context]
+
+  defp complete_operation_usage(%{usage_reported: reported} = usage, operation)
+       when operation in [:rerank, :embedding] do
+    %{usage | usage_reported: Map.put(reported, :output, true)}
+  end
+
+  defp complete_operation_usage(usage, _operation), do: usage
+
+  @spec provider_module_from_model(LLMDB.Model.t()) :: module() | nil
+  defp provider_module_from_model(%LLMDB.Model{provider: provider_id}) do
+    case ReqLLM.provider(provider_id) do
+      {:ok, module} -> module
+      _ -> nil
+    end
+  end
+
+  @spec extract_usage(any, module() | nil, LLMDB.Model.t() | nil) :: {:ok, map()} | :error
+  defp extract_usage(body, provider_module, model) do
+    case provider_module do
+      nil -> fallback_extract_usage(body)
+      module -> provider_extract_usage(body, module, model) || fallback_extract_usage(body)
+    end
+  end
+
+  defp provider_extract_usage(body, module, model) when is_atom(module) do
+    if function_exported?(module, :extract_usage, 2) do
+      case module.extract_usage(body, model) do
+        {:ok, usage} -> {:ok, ReqLLM.Usage.normalize(usage)}
+        _ -> nil
+      end
+    end
+  end
+
+  @spec fallback_extract_usage(any) :: {:ok, map()} | :error
+  defp fallback_extract_usage(%{"usage" => usage}) when is_map(usage) do
+    {:ok, ReqLLM.Usage.normalize(usage)}
+  end
+
+  defp fallback_extract_usage(%{"prompt_tokens" => input, "completion_tokens" => output}) do
+    {:ok, ReqLLM.Usage.normalize(%{input: input, output: output})}
+  end
+
+  defp fallback_extract_usage(%{"input_tokens" => input, "output_tokens" => output}) do
+    {:ok, ReqLLM.Usage.normalize(%{input: input, output: output})}
+  end
+
+  defp fallback_extract_usage(%ReqLLM.Response{usage: usage}) when is_map(usage) do
+    {:ok, ReqLLM.Usage.normalize(usage)}
+  end
+
+  defp fallback_extract_usage(_), do: :error
+
+  defp maybe_put_total_tokens(map, total) when is_number(total) do
+    Map.put_new(map, :total_tokens, total)
+  end
+
+  defp maybe_put_total_tokens(map, _total), do: map
+
+  @spec fetch_model(Req.Request.t()) :: {:ok, LLMDB.Model.t()} | :error
+  defp fetch_model(%Req.Request{private: private, options: options}) do
+    case private[:req_llm_model] || options[:model] do
+      %LLMDB.Model{} = model -> {:ok, model}
+      _ -> :error
+    end
+  end
+end

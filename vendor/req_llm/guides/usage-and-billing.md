@@ -1,0 +1,520 @@
+# Usage & Billing
+
+## Overview
+
+ReqLLM provides normalized usage tracking and best-effort cost calculation for API requests. Every response includes usage data that works consistently across providers, with detailed breakdowns for tokens, tools, and images when the provider exposes enough information.
+
+## Pricing Policy
+
+ReqLLM currently targets **"some assistance, no guarantees"** for pricing.
+
+In practice, that means:
+
+- `response.usage` is intended to be useful for product analytics, tenant attribution, dashboards, and rough billing estimates
+- token, tool, image, and caching costs are calculated from provider usage data plus model pricing metadata when those inputs exist
+- the resulting USD totals are not guaranteed to match provider invoices exactly
+
+When exact billing matters, treat ReqLLM usage as a helpful estimate and reconcile against provider-side reporting. For the full contract, known gaps, and production guidance, see the [Pricing Policy](pricing-policy.md) guide.
+
+## The Usage Structure
+
+Every `ReqLLM.Response` includes a `usage` map with normalized metrics:
+
+```elixir
+{:ok, response} = ReqLLM.generate_text("anthropic:claude-haiku-4-5", "Hello")
+
+response.usage
+#=> %{
+#     # Token counts
+#     input_tokens: 8,
+#     output_tokens: 12,
+#     total_tokens: 20,
+#
+#     # Cost summary (USD)
+#     pricing: %{status: :priced, currency: "USD", total: 0.0006},
+#     input_cost: 0.00024,
+#     output_cost: 0.00036,
+#     total_cost: 0.0006,
+#
+#     # Detailed cost breakdown
+#     cost: %{
+#       tokens: 0.0006,
+#       tools: 0.0,
+#       images: 0.0,
+#       total: 0.0006
+#     }
+#   }
+```
+
+## Conditional tariffs and unknown pricing
+
+Pass confirmed billing facts through `pricing_context` for conditional tariffs:
+
+```elixir
+{:ok, response} = ReqLLM.generate_text("openai:gpt-6-sol", prompt,
+  pricing_context: %{
+    api: "responses",
+    service_tier: "default",
+    regional_processing: false
+  }
+)
+
+response.usage.pricing
+#=> %{status: :priced, currency: "USD", total: 0.012345}
+```
+
+The same option works with `stream_text/3`; read the final value with
+`ReqLLM.StreamResponse.usage/1`. The context is local billing input. ReqLLM
+derives the prompt size from returned usage, including cached prompt tokens,
+then uses LLMDB's component selector. It charges uncached input, cache reads,
+cache writes, output, and storage through separate meters. A selected context
+tier applies to the whole request when LLMDB marks it `full_request`.
+
+For OpenAI, ReqLLM uses the physical endpoint and the returned service tier
+for both buffered and streamed prices. The returned tier replaces
+`pricing_context.service_tier`; a missing, invalid, or `"auto"` returned tier
+does not confirm a billed tier. Known OpenAI hosts confirm global or regional
+processing. Other hosts require an independently confirmed processing fact.
+Standalone compact and Decisions endpoints do not establish a Responses
+tariff.
+
+For other providers, supply the actual billed service tier after any provider
+fallback. `"auto"` does not confirm one. Time-dependent tariffs require an explicit
+`pricing_period: "peak"` or `"off_peak"` chosen by the caller from provider
+billing evidence; ReqLLM does not choose a period from a clock or response
+timestamp. For a current Coding Plan credit tariff, also supply
+`billing_product: "coding_plan"` and `plan_generation: "token_credits"`.
+Cache writes with mixed durations use reported
+`cache_write_tokens_by_ttl: %{"5m" => count, "1h" => count}` usage; if the
+durations cannot be reconciled with the total, pricing stays unknown.
+ReqLLM requires LLMDB 2026.10.2 or later for the reviewed Anthropic cache
+tariffs. This includes Haiku 5.5's separate five-minute and one-hour rates,
+its full-prompt threshold, and the Sonnet 5.5 one-hour rate.
+
+When the tariff or usage is incomplete, `usage.pricing` is
+`%{status: :unknown}` and ReqLLM omits `total_cost`, `input_cost`,
+`output_cost`, `reasoning_cost`, and `cost`. This includes missing token counts,
+unresolved conditions, unsupported modifiers, incomplete bands, missing
+cache/storage rates, and unpriced gateway usage. A zero charge is reported only
+when a complete selected tariff and usage establish zero billable quantity.
+If a provider returns no usage payload at all, `response.usage` may remain
+`nil`; that also means the price is unknown.
+The legacy flat `cost` map remains a model metadata summary; it does not select
+a conditional period or supply a missing rate.
+
+For non-USD tariffs, `usage.pricing` carries the denomination and amount. For
+example, Coding Plan returns `currency: "credits"` and never populates the USD
+`*_cost` fields. Existing clients reading `total_cost` continue to receive a
+number for complete USD flat tariffs. Clients should check
+`usage.pricing.status` before treating a missing `total_cost` as free usage.
+
+## Token Usage
+
+### Standard Tokens
+
+All providers report basic token counts:
+
+| Field | Description |
+|-------|-------------|
+| `input_tokens` | Tokens in the request (prompt, context, tools) |
+| `output_tokens` | Tokens generated by the model |
+| `total_tokens` | Sum of input and output tokens |
+
+### Reasoning Tokens
+
+For reasoning models (OpenAI o1/o3/gpt-5, Anthropic extended thinking, Google thinking):
+
+```elixir
+{:ok, response} = ReqLLM.generate_text("openai:o3-mini", prompt)
+
+response.usage.reasoning_tokens
+#=> 1250  # Tokens used for internal reasoning
+```
+
+The `reasoning_tokens` field tracks tokens used for chain-of-thought reasoning. These may be billed differently than standard tokens depending on the provider.
+
+### Cached Tokens
+
+For providers that support prompt caching (Amazon Bedrock, Anthropic, OpenAI):
+
+```elixir
+response.usage.cache_read_tokens
+#=> 500  # Input tokens served from cache
+
+response.usage.cache_write_tokens
+#=> 0    # Tokens used to create new cache entries
+```
+
+Cache reads and writes have separate counters because providers can bill them at different rates. The `cached_tokens` and `cache_creation_tokens` fields remain as compatibility aliases. See [Anthropic Prompt Caching](anthropic.md#anthropic_prompt_cache) for details.
+
+## Tool Usage
+
+When using tools like web search, usage is tracked in `tool_usage`:
+
+```elixir
+response.usage.tool_usage
+#=> %{
+#     web_search: %{count: 2, unit: "call"}
+#   }
+```
+
+### Web Search
+
+Each provider has slightly different web search tracking:
+
+| Provider | Unit | Notes |
+|----------|------|-------|
+| Anthropic | `"call"` | $10 per 1,000 searches |
+| OpenAI | `"call"` | Responses API models only |
+| xAI | `"call"` or `"source"` | Varies by response format |
+| Google | `"query"` | Grounding queries |
+
+**Anthropic Example:**
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "anthropic:claude-sonnet-4-5",
+  "What's happening in AI today?",
+  provider_options: [web_search: %{max_uses: 5}]
+)
+
+response.usage.tool_usage.web_search
+#=> %{count: 3, unit: "call"}
+```
+
+**xAI Example:**
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "xai:grok-4-1-fast-reasoning",
+  "Latest tech news",
+  xai_tools: [%{type: "web_search"}]
+)
+
+response.usage.tool_usage.web_search
+#=> %{count: 5, unit: "call"}
+```
+
+**Google Grounding Example:**
+```elixir
+{:ok, response} = ReqLLM.generate_text(
+  "google:gemini-3-flash-preview",
+  "Current stock market trends",
+  provider_options: [google_grounding: %{enable: true}]
+)
+
+response.usage.tool_usage.web_search
+#=> %{count: 2, unit: "query"}
+```
+
+## Image Usage
+
+For image generation, usage is tracked in `image_usage`:
+
+```elixir
+{:ok, response} = ReqLLM.generate_image("openai:gpt-image-1", prompt)
+
+response.usage.image_usage
+#=> %{
+#     generated: %{count: 1, size_class: "1024x1024"}
+#   }
+```
+
+### Size Classes
+
+Image costs vary by resolution:
+
+| Provider | Size Classes |
+|----------|-------------|
+| OpenAI GPT Image | `"1024x1024"`, `"1536x1024"`, `"1024x1536"`, `"auto"` |
+| OpenAI DALL-E 3 | `"1024x1024"`, `"1792x1024"`, `"1024x1792"` |
+| Google | Based on aspect ratio |
+
+### Multiple Images
+
+```elixir
+{:ok, response} = ReqLLM.generate_image("openai:dall-e-2", prompt, n: 3)
+
+response.usage.image_usage.generated
+#=> %{count: 3, size_class: "1024x1024"}
+```
+
+## Cost Breakdown
+
+The `cost` map provides a detailed breakdown by category:
+
+```elixir
+response.usage.cost
+#=> %{
+#     tokens: 0.001,    # Token-based costs (input + output)
+#     tools: 0.02,      # Web search and tool costs
+#     images: 0.04,     # Image generation costs
+#     total: 0.061,     # Sum of all costs
+#     line_items: [...]  # Per-component details
+#   }
+```
+
+### Line Items
+
+For detailed billing analysis, `line_items` provides per-component costs:
+
+```elixir
+response.usage.cost.line_items
+#=> [
+#     %{component: "token.input", cost: 0.0003, quantity: 100},
+#     %{component: "token.output", cost: 0.0007, quantity: 50},
+#     %{component: "tool.web_search", cost: 0.02, quantity: 2}
+#   ]
+```
+
+## Provider-Specific Notes
+
+### Anthropic
+
+- **Web search**: $10 per 1,000 searches
+- **Prompt caching**: Reduced rates for cached tokens
+- **Extended thinking**: Reasoning tokens tracked separately
+
+### OpenAI
+
+- **Responses API**: Web search available for o1, o3, gpt-5 models
+- **Chat Completions API**: No built-in web search
+- **Image generation**: Costs vary by model and size
+
+### xAI
+
+- **Web search**: Via `xai_tools` option
+- **Deprecated**: `live_search` is no longer supported
+- **Units**: May report as `"call"` or `"source"`
+
+### Google
+
+- **Grounding**: Search via `google_grounding` option
+- **Units**: Reports as `"query"`
+- **Image generation**: Gemini image models supported
+
+## Known Limits
+
+ReqLLM does not currently guarantee support for every provider billing surface. In particular:
+
+- realtime audio/text billing is not modeled yet
+- video generation billing is not modeled yet
+- account-specific discounts, taxes, and prices beyond an explicitly modeled tariff are outside the public contract
+
+## Telemetry
+
+ReqLLM now emits three telemetry families:
+
+- `[:req_llm, :request, :start | :stop | :exception]` for lifecycle timing, request and response summaries, usage, and standardized reasoning metadata
+- `[:req_llm, :reasoning, :start | :update | :stop]` for provider-neutral thinking and reasoning milestones
+- `[:req_llm, :token_usage]` for backwards-compatible token and cost tracking
+
+For billing and tenant attribution, use `[:req_llm, :request, :stop]` as the source of truth. It includes duration in measurements plus `request_id`, `usage`, `finish_reason`, and normalized `reasoning` metadata in the event metadata. The token usage event remains useful if you only want token and cost totals.
+
+When you audit reasoning-heavy workloads, prefer the normalized `reasoning` snapshot on the request lifecycle events over raw provider payloads. It captures both the originally requested reasoning settings and the effective translated request, so you can see when a provider rewrites or disables a reasoning configuration before you attribute cost or behavior to a tenant.
+
+```elixir
+:telemetry.attach_many(
+  "my-req-llm-billing",
+  [
+    [:req_llm, :request, :stop],
+    [:req_llm, :request, :exception],
+    [:req_llm, :token_usage]
+  ],
+  fn event, measurements, metadata, _config ->
+    case event do
+      [:req_llm, :request, :stop] ->
+        duration_ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
+
+        IO.inspect(
+          %{
+            request_id: metadata.request_id,
+            duration_ms: duration_ms,
+            finish_reason: metadata.finish_reason,
+            usage: metadata.usage,
+            reasoning: metadata.reasoning
+          },
+          label: "Request"
+        )
+
+      [:req_llm, :request, :exception] ->
+        IO.inspect(metadata, label: "Failed request")
+
+      [:req_llm, :token_usage] ->
+        IO.inspect(%{measurements: measurements, metadata: metadata}, label: "Usage")
+    end
+  end,
+  nil
+)
+```
+
+`[:req_llm, :token_usage]` remains available on every request, including streaming:
+
+```elixir
+:telemetry.attach(
+  "my-usage-handler",
+  [:req_llm, :token_usage],
+  fn _event, measurements, metadata, _config ->
+    IO.inspect(measurements, label: "Usage")
+    IO.inspect(metadata, label: "Metadata")
+  end,
+  nil
+)
+```
+
+Event measurements include:
+
+- `tokens` — the normalized token map, including `input`, `output`,
+  `total_tokens`, and `reasoning` when available
+- `cost` — total USD cost or `nil`
+- `input_cost`, `output_cost`, `reasoning_cost`, and `total_cost` when model
+  pricing is available
+
+See the [Telemetry Guide](telemetry.md) for the full event contract, reasoning lifecycle, milestone semantics, and payload capture options.
+
+## Example: Complete Usage Tracking
+
+```elixir
+defmodule UsageTracker do
+  def track_request(model, prompt, opts \\ []) do
+    {duration_us, result} = :timer.tc(fn ->
+      ReqLLM.generate_text(model, prompt, opts)
+    end)
+
+    case result do
+      {:ok, response} ->
+        usage = response.usage
+
+        IO.puts("""
+        Request completed in #{duration_us / 1000}ms
+
+        Tokens:
+          Input: #{usage.input_tokens}
+          Output: #{usage.output_tokens}
+          Total: #{usage.total_tokens}
+          #{if usage.reasoning_tokens, do: "Reasoning: #{usage.reasoning_tokens}", else: ""}
+
+        Cost:
+          Input: $#{format_cost(usage.input_cost)}
+          Output: $#{format_cost(usage.output_cost)}
+          Total: $#{format_cost(usage.total_cost)}
+
+        #{format_tool_usage(usage.tool_usage)}
+        #{format_image_usage(usage.image_usage)}
+        """)
+
+        {:ok, response}
+
+      error ->
+        error
+    end
+  end
+
+  defp format_cost(nil), do: "n/a"
+  defp format_cost(cost), do: :erlang.float_to_binary(cost, decimals: 6)
+
+  defp format_tool_usage(nil), do: ""
+  defp format_tool_usage(tool_usage) do
+    Enum.map_join(tool_usage, "\n", fn {tool, %{count: count, unit: unit}} ->
+      "Tool Usage: #{tool} = #{count} #{unit}(s)"
+    end)
+  end
+
+  defp format_image_usage(nil), do: ""
+  defp format_image_usage(%{generated: %{count: count, size_class: size}}) do
+    "Image Usage: #{count} image(s) at #{size}"
+  end
+  defp format_image_usage(_), do: ""
+end
+```
+
+## See Also
+
+- [Data Structures](data-structures.md) - Response structure details
+- [Anthropic Guide](anthropic.md) - Web search and prompt caching
+- [OpenAI Guide](openai.md) - Responses API and image generation
+- [xAI Guide](xai.md) - Grok web search
+- [Google Guide](google.md) - Grounding and search
+- [Image Generation Guide](image-generation.md) - Image costs
+
+## Billing validation suite
+
+ExUnit owns billing assertions. The `req_llm.billing` Mix task selects cases,
+records provider evidence, and exports independent calculation worksheets.
+Normal tests and `check` are offline. Live recording requires explicit limits.
+After a successful live run, `record` runs an offline ExUnit audit of its saved
+capture. This second check makes no provider calls.
+
+```sh
+mix test --only billing
+mix req_llm.billing list
+mix req_llm.billing check
+mix req_llm.billing check --case mixed_cache_ttl --layer pricing
+mix req_llm.billing record --model openai:gpt-6-luna --case basic_usage --budget-usd 0.50 --max-requests 2
+mix req_llm.billing audit --run tmp/billing/RUN
+mix req_llm.billing promote --run tmp/billing/RUN --case basic_usage
+```
+
+The suite has capture, normalization, pricing, pipeline, and adversarial layers.
+Stable case IDs include `basic_usage`, `cache_5m`, `cache_1h`, `mixed_cache_ttl`,
+`client_function`, `hosted_web_search`, `returned_service_tier`, `long_context`,
+`compact_unknown`, and `websocket_usage`. `list` shows provider and phase support.
+For recording and audit, use `--mode buffered`, `streamed`, or `both`; compact is buffered only and the
+native session case is streamed only. The first rate book supports selected
+OpenAI and Anthropic models and the OpenRouter GPT-4.1 Mini gateway case.
+
+A live run writes a new directory under `tmp/billing/`. It retains failed
+attempts and disables credential fallback and automatic retries. The USD limit
+controls admission using conservative estimates; it is not a supplier invoice
+limit. Each actual model call has its own attempt ID. Confirmed usage can
+reconcile its reservation. Failed calls retain their reservation.
+
+| Artifact | Review purpose |
+|---|---|
+| `manifest.json` | Selection, limits, rate-book and model metadata snapshots, code/catalog identity, and attempt state |
+| `raw.jsonl` | Encoded request JSON, provider response JSON, HTTP metadata, and attempt events |
+| `stream_events.jsonl` | Ordered source chunks and provider events, or native session frames |
+| `observed.jsonl` | ReqLLM usage, costs, provider metadata, reported gateway charges, and telemetry |
+| `billing.jsonl` | Raw source pointers, quantities, documented rates, formulas, exact fractions, expected charges, and observed values |
+| `transcripts/` | VCR source files used by offline replay |
+| `summary.md` | Per-case and per-layer results |
+
+The raw representation is provider-shaped JSON before ReqLLM response and usage
+normalization. JSON serialization can change whitespace or key order. Stream
+source bytes remain available as base64 chunks. Credentials are redacted.
+Legacy captures without a date remain legacy; export time does not prove a new
+provider call. Native session observations are labeled `native_session_replay`
+because the public session API returns provider events rather than a priced
+`ReqLLM.Response`.
+
+Reference calculations read provider counters and reviewed decimal rates from
+`test/support/billing/rates/book.json`. They do not use the production billing
+engine or the LLMDB rate selector as their expected-result calculator. Worksheets
+retain unrounded amounts and fractions as well as six-decimal totals. For
+example, an output charge of `39 * 0.50 / 1_000_000` is exactly `0.0000195` USD.
+ReqLLM uses float arithmetic, so the check reports and permits at most one
+microdollar of rounding difference per active line when quantities and effective
+rates agree. A larger difference, wrong quantity, wrong rate, or false known
+price fails. Equivalent per-call and per-thousand rates are compared by units.
+
+Review rate sources and routing before recording. OpenAI context-band tests use
+the supplier's returned input count. Separate live calls can have different
+outputs and cache states. Exact mode agreement uses the same source data in
+replay. Mixed Anthropic cache entries put the one-hour prefix first and repeat
+each cold prefix for a warm check. A zero cache hit does not pass a warm case.
+One-hour and mixed cache recording requires a duration-specific one-hour catalog
+rule. A generic five-minute write rate is not sufficient. ReqLLM requires
+LLMDB 2026.10.2 or later, which includes the Haiku 5.5 duration rules and its
+full-prompt context band, plus the reviewed Anthropic model tariffs. The saved
+Haiku 5.5 calls originally failed against LLMDB 2026.10.1. Their recorded price
+and failed result remain unchanged. Small response extracts replay those calls
+against the independent reference in CI; they are not promoted live baselines.
+
+Recording never overwrites committed fixtures. Inspect the raw and calculation
+records, run `audit`, and then explicitly `promote` selected cases. Promotion
+rejects incomplete or synthetic source captures and existing targets. Selected
+transcripts and their independent rate/calculation sidecars become default CI
+baselines. Each sidecar stores one calculation, one model's frozen rates, the
+source hash, and the code/catalog identity. CI checks the source hash and the
+frozen calculation before comparing current ReqLLM pricing.
+The full capture directory remains outside Git. Large context-band
+request bodies can remain as local evidence instead of enlarging the fixture
+repository.

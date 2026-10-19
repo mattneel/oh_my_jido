@@ -49,6 +49,8 @@ Update row status in `PROGRESS.md`. Preserve a blocker if access or provider pol
 | C10 | Test-driven edits | Agent executes and interprets tests, repairs failures, and reports evidence |
 | C11 | Image/artifact inputs | Agent can inspect relevant image or generated artifacts through approved host tools |
 | C12 | Security and review | Agent reviews diffs, identifies risk, and requests approval for sensitive operations |
+| C13 | Headless live Observer | Explicitly granted target exposes bounded OTP/system, application, process, supervision and ETS metadata without GUI, state/dictionaries/messages or table contents |
+| C14 | Live runtime tools | Approved actual-app docs, source locations and logs; explicitly authorized last-resort live evaluation/RPC stays distinct from isolated Eval, with target binding, denial and uncertain-effect evidence |
 
 ## D. Delegation, memory, and extensions
 

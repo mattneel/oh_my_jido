@@ -1,0 +1,40 @@
+{
+  "recorded_date": "2026-10-19",
+  "evidence": "artifact://524",
+  "earlier_incomplete_coding_attempt": "artifact://519",
+  "human_approval": "Explicit Read + Edit only in a disposable fixture; no Bash/MCP/network tools or login changes",
+  "provider": "Anthropic",
+  "access": "Unmodified official Claude Code subscription delegation",
+  "official_version": "2.1.282",
+  "official_binary_sha256": "3afe8535c0cc33f0e24f7b25dab7a1727b8b592196f8496a8bc302ba2161eed3",
+  "selected_official_model_alias": "fable",
+  "tools": ["Read", "Edit"],
+  "native_tool_permission_allowlist": ["Read", "Edit"],
+  "bash_mcp_and_network_tools": false,
+  "native_jido_loop": false,
+  "verified_code_repair": true,
+  "independent_failing_before_exit": 2,
+  "independent_passing_after_exit": 0,
+  "unpredictable_fixture_challenge_read": true,
+  "tests_config_and_challenge_unchanged": true,
+  "existing_claude_ai_login_preserved": true,
+  "no_login_or_raw_credential_access": true,
+  "api_fallback": false,
+  "host_cwd_environment_preserved": true,
+  "owned_fixture_removed": true,
+  "approved_effects": ["verify_official_binary", "claude_auth_status", "claude_delegate"],
+  "usage": {
+    "input_tokens": 66,
+    "output_tokens": 570,
+    "cache_read_input_tokens": 15979,
+    "cache_creation_input_tokens": 988
+  },
+  "library_snapshot": "3cb220378a1392fe22f1f0d5c0b6ecb44cd549740d52eea7174faeefaf7b89c5",
+  "limitations": [
+    "Official delegated agent, not native Jido Claude subscription inference or token brokerage",
+    "Restricted CLI mode is not an OS sandbox; host isolation and administrator policy still apply",
+    "Auth method and cleared API overrides establish the exercised subscription route, not future pricing/eligibility",
+    "Earlier delegation completed and read the challenge but left code unchanged; its exact native denial cause was not retained",
+    "Final integrated quality and density gates are tracked separately in PROGRESS"
+  ]
+}

@@ -1,0 +1,119 @@
+{
+  "recorded_at": "2026-10-19T16:23:57.251948+00:00",
+  "result": "passed",
+  "scope": "Approved stable-Jido usability delivery; historical core/live-provider acceptance remains separately recorded.",
+  "source_fingerprints": {
+    "library_sha256": "bc6c610a3dccf1c9380ed27b8b85de6df171071098aba504bdc145376c7c01d2",
+    "benchmark_sha256": "fd2315bf483bca51fb295d38b5247ab7193a9769e7e3d04bbf5c60bea5f38448",
+    "mix_project_sha256": "dbc63c3c4b15766b039c28135c49b42dfcfa4ea18e76c9188a7d42086774663f",
+    "mix_lock_sha256": "f398864718ced0fcb8ff777487f287419945f5501c841e03250f39c29a770488"
+  },
+  "native_versions": {
+    "oh_my_jido": "0.1.0",
+    "req_llm": "1.28.0",
+    "jido_action": "2.4.0",
+    "jido": "2.4.0",
+    "jido_ai": "2.4.0"
+  },
+  "quality": {
+    "command": "OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "tests_passed": 516,
+    "actual_python_cases": 12,
+    "strict_credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skips": 0,
+    "clone_budget": "0/0",
+    "reach": "OK",
+    "evidence": "artifact://625"
+  },
+  "independent_consumers": {
+    "plain_mix": {
+      "wae_compile": "passed",
+      "tests_passed": 2,
+      "evidence": "artifact://644",
+      "formatter": "passed"
+    },
+    "own_jido_agents": {
+      "wae_compile": "passed",
+      "tests_passed": 4,
+      "evidence_job": "bg_136",
+      "formatter": "passed"
+    },
+    "generated_production": {
+      "installer_apply": "passed",
+      "wae_compile": "passed",
+      "actual_read": "passed",
+      "igniter_loaded": false,
+      "runtime_started": false,
+      "evidence": [
+        "artifact://598",
+        "artifact://631"
+      ]
+    }
+  },
+  "actual_program_smokes": {
+    "managed": "Grant denial; real Read/Edit; stale conflict; durable bundle restore; cleanup.",
+    "native_agents": "User-owned plain/AI modules; actual domain/Read/Edit; native ask/await; no Runtime/context leakage.",
+    "native_policy": "Configured transformer preserved; explicit nil denied; retention <= configured3; native terminal stream before provider/tool calls; cleanup.",
+    "evidence": "artifact://631"
+  },
+  "installer_safety": {
+    "standalone_poisoned_configuration": "No target execution; only mix.exs changed on explicit apply.",
+    "macro_reproduction": "Pre-fix environment-aware discovery executed an owned marker; pure literal-AST discovery does not.",
+    "regression": "Isolated preview/apply/idempotence with authored macro and absent Rewrite supervisor; included in full suite.",
+    "native_tooling": "Igniter0.8.4; native Rewrite starts on apply; actual plain diff is noninteractive.",
+    "direct_mix_task_limit": "Normal Mix target loading precedes task dispatch; standalone no-evaluation guarantee is not assigned to normal Mix."
+  },
+  "review_closure": [
+    "Literal-AST discovery removes target macro expansion.",
+    "Absent and explicit nil transformer options are distinguished.",
+    "Native bounded request start and rejecting native transformer replace synthetic unknown-request failure insertion."
+  ],
+  "density": {
+    "path": "../../../bench/results/density-usability-20261019.json",
+    "recorded_at": "2026-10-19T16:22:00.288166Z",
+    "populations": [
+      1,
+      10,
+      100,
+      500
+    ],
+    "offered": 330,
+    "completed": 312,
+    "capacity_rejected": 18,
+    "errors": [],
+    "elapsed_ms": 77599.652,
+    "schema_errors": 0,
+    "cleanup": {
+      "supervisor_stopped": true,
+      "runtime_stopped": true,
+      "driver_supervisor_stopped": true,
+      "disposable_root_removed": true,
+      "host_cwd_unchanged": true,
+      "host_environment_unchanged": true,
+      "os_live_descendants_before": 1,
+      "os_live_descendants_after": 1,
+      "os_descendants_returned_to_baseline": true
+    },
+    "evidence": "artifact://628"
+  },
+  "documentation": {
+    "local_markdown_targets_missing": 0,
+    "checked_documents": 24
+  },
+  "limits": [
+    "No stable dependency upgrade, publication or new paid-provider claim.",
+    "No external Elixos/guest actions.",
+    "No managed journal/recovery/approval UI implied by lightweight plugin.",
+    "Known upstream optional Python/native graph medium cowlib2.21.0/gun2.4.1 advisory CVE-2026-43966; no warnings suppressed."
+  ],
+  "branch": {
+    "target": "jido-v3-preview",
+    "state": "Pending verified stable commit and local branch creation."
+  },
+  "cleanup": {
+    "owned_temporary_consumer_workspaces_and_scripts_removed": true,
+    "existing_python_provisioning_and_host_identity_preserved": true,
+    "native_owned_supervisors_stopped": true
+  }
+}
