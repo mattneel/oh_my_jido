@@ -108,8 +108,13 @@
     "Known upstream optional Python/native graph medium cowlib2.21.0/gun2.4.1 advisory CVE-2026-43966; no warnings suppressed."
   ],
   "branch": {
-    "target": "jido-v3-preview",
-    "state": "Pending verified stable commit and local branch creation."
+    "name": "jido-v3-preview",
+    "state": "created",
+    "stable_source_base": "6cb6a03eb04cfd0d4880dbdb97244bac7b80ec32",
+    "dependency_upgrade": false,
+    "publication": false,
+    "working_checkout": "master",
+    "provenance_followup": "Metadata-only record shared by stable and preview branches."
   },
   "cleanup": {
     "owned_temporary_consumer_workspaces_and_scripts_removed": true,
