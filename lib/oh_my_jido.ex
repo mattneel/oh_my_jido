@@ -139,6 +139,41 @@ defmodule OhMyJido do
   def checkpoint(session), do: Session.call(session, :checkpoint)
 
   @doc """
+  Records explicit operator reconciliation of a restored interrupted execution.
+
+  This is a trusted-host operation, not a model tool or a replacement for
+  `stop_session/1`. The operator must first independently stop/reconcile the
+  original owned workers, OS groups and external resources. Actor or caller
+  death alone is not that evidence.
+
+  The current owner must be idle or suspended with no active run, stop,
+  registered resources or cleanup work. The run and complete expected pending
+  effect-ID set must match the original restore-time interrupted eligibility;
+  later work, stale sets and partial sets are rejected without mutation.
+
+  The durable `execution_settlement` is explicitly `source: :operator` and
+  `native_stop_confirmed: false`. It preserves the uncertain outcome, existing
+  history and missing result/`completed_at`; no native SDK closure or successful
+  effect is invented. Late results cannot overwrite this boundary. Reconciliation
+  makes no model call and does not replay the interrupted continuation.
+
+  Do not expose this acknowledgement through browser, model-tool or MCP inputs.
+  """
+  @spec reconcile_interrupted(
+          SessionRef.t(),
+          String.t(),
+          [String.t()],
+          :orphan_resources_reconciled
+        ) :: :ok | {:error, term()}
+  def reconcile_interrupted(session, run_id, expected_effect_ids, :orphan_resources_reconciled)
+      when is_binary(run_id) and is_list(expected_effect_ids) do
+    Session.call(session, {:reconcile_interrupted, run_id, expected_effect_ids})
+  end
+
+  def reconcile_interrupted(_session, _run_id, _expected_effect_ids, _acknowledgement),
+    do: {:error, :invalid_reconciliation}
+
+  @doc """
   Seals admission and stops a session only after native effects and resources settle.
 
   `:ok` confirms cleanup before the exact session child is terminated; it does

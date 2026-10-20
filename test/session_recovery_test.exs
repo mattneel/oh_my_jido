@@ -354,6 +354,271 @@ defmodule OhMyJido.SessionRecoveryTest do
              Tool.execute(host_context, "eval", %{language: "elixir", source: "40 + 3"})
   end
 
+  test "explicit reconciliation retains uncertainty while a restored session runs real new work",
+       %{
+         root: root
+       } do
+    File.write!(Path.join(root, "receipt.txt"), "real restored read\n")
+
+    session =
+      session(root,
+        models: %{roles: %{coding: "anthropic:claude-haiku-4-5"}},
+        context_policy: [max_messages: 80, keep_recent: 80, max_bytes: 256_000]
+      )
+
+    original =
+      expect_react do
+        user("Hold one interrupted execution")
+        call("read", %{path: "receipt.txt"}, id: "prior-native-read")
+        call("recovery_wait", %{}, id: "interrupted-effect")
+        answer("This interrupted continuation must not replay")
+      end
+
+    assert {:ok, old_run} =
+             OhMyJido.prompt(session, "Hold one interrupted execution", react_opts(original))
+
+    assert_receive {:waiting_effect, old_worker}, 10_000
+    monitor = Process.monitor(old_worker)
+    on_exit(fn -> send(old_worker, :release) end)
+    assert {:ok, options} = Runtime.config(__MODULE__.Host)
+    options = Keyword.put(options, :name, __MODULE__.Host)
+    assert :ok = stop_supervised(__MODULE__.Host)
+
+    # Independently finish any surviving fixture worker before the explicit
+    # operator attestation. A dead actor alone is never the cleanup evidence.
+    send(old_worker, :release)
+    assert_receive {:DOWN, ^monitor, :process, ^old_worker, _reason}, 10_000
+    start_supervised!(Supervisor.child_spec({Runtime, options}, shutdown: 10_000))
+    assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
+    assert {:ok, restored} = OhMyJido.inspect_session(session)
+    assert restored.effects["prior-native-read"].status == :completed
+    assert restored.runs[old_run].status == :interrupted
+    assert restored.effects["interrupted-effect"].status == :uncertain
+    refute Map.has_key?(restored.effects["interrupted-effect"], :completed_at)
+    refute Map.has_key?(restored.effects["interrupted-effect"], :result)
+
+    for {run_id, ids} <- [
+          {old_run <> "-wrong", ["interrupted-effect"]},
+          {old_run, []},
+          {old_run, ["missing-effect"]},
+          {old_run, ["interrupted-effect", "missing-effect"]},
+          {old_run, ["interrupted-effect", "prior-native-read"]},
+          {old_run, ["interrupted-effect", "interrupted-effect"]}
+        ] do
+      assert {:error, :reconciliation_mismatch} =
+               OhMyJido.reconcile_interrupted(
+                 session,
+                 run_id,
+                 ids,
+                 :orphan_resources_reconciled
+               )
+
+      assert {:ok, ^restored} = OhMyJido.inspect_session(session)
+    end
+
+    assert :ok =
+             OhMyJido.reconcile_interrupted(
+               session,
+               old_run,
+               ["interrupted-effect"],
+               :orphan_resources_reconciled
+             )
+
+    assert {:ok, reconciled} = OhMyJido.inspect_session(session)
+    uncertain = reconciled.effects["interrupted-effect"]
+
+    assert %{
+             status: :uncertain,
+             execution_settlement: %{
+               source: :operator,
+               execution: :stopped,
+               effect: :uncertain,
+               native_stop_confirmed: false
+             }
+           } = uncertain
+
+    refute Map.has_key?(uncertain, :completed_at)
+    refute Map.has_key?(uncertain, :result)
+
+    assert {:error, :effect_not_active} =
+             OhMyJido.Session.effect_finished(
+               session,
+               old_run,
+               "interrupted-effect",
+               {:ok, %{late_result: "must not overwrite the operator boundary"}}
+             )
+
+    assert {:error, :reconciliation_mismatch} =
+             OhMyJido.reconcile_interrupted(
+               session,
+               old_run,
+               ["interrupted-effect"],
+               :orphan_resources_reconciled
+             )
+
+    assert {:ok, ^reconciled} = OhMyJido.inspect_session(session)
+
+    continuation =
+      expect_react do
+        user("Read the real file after reconciliation")
+        call("read", %{path: "receipt.txt"}, id: "new-native-read")
+        answer("The real file was read without replay")
+      end
+
+    continuation = reconciliation_script(continuation, reconciled.conversation)
+
+    assert {:ok, read_run} =
+             OhMyJido.prompt(
+               session,
+               "Read the real file after reconciliation",
+               react_opts(continuation)
+             )
+
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, read_run, timeout: 10_000)
+
+    assert_receive {:model_request, "Read the real file after reconciliation", _native, projected}
+
+    assert Enum.any?(projected, fn message ->
+             message.role == :tool and message.tool_call_id == "prior-native-read" and
+               Jido.AI.Turn.extract_from_content(message.content) =~ "real restored read"
+           end)
+
+    refute Enum.any?(projected, fn message ->
+             message.role == :tool and message.tool_call_id == "interrupted-effect"
+           end)
+
+    assert {:ok, after_read} = OhMyJido.inspect_session(session)
+    assert after_read.effects["new-native-read"].status == :completed
+    assert elem(after_read.effects["new-native-read"].result, 0) == :ok
+    assert elem(after_read.effects["new-native-read"].result, 1).content == "real restored read\n"
+    assert after_read.effects["interrupted-effect"] == uncertain
+    refute_receive {:waiting_effect, _replayed}, 0
+
+    later =
+      expect_react do
+        user("Hold later native work")
+        call("recovery_wait", %{}, id: "later-effect")
+        answer("The later native execution really completed")
+      end
+
+    later = reconciliation_script(later, after_read.conversation)
+
+    assert {:ok, later_run} =
+             OhMyJido.prompt(session, "Hold later native work", react_opts(later))
+
+    assert_receive {:waiting_effect, later_worker}, 10_000
+    on_exit(fn -> send(later_worker, :release) end)
+    assert {:ok, live} = OhMyJido.inspect_session(session)
+
+    for {run_id, ids} <- [
+          {old_run, ["interrupted-effect"]},
+          {later_run, ["later-effect"]}
+        ] do
+      assert {:error, :execution_not_quiescent} =
+               OhMyJido.reconcile_interrupted(
+                 session,
+                 run_id,
+                 ids,
+                 :orphan_resources_reconciled
+               )
+    end
+
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert effects == live.effects
+    refute Map.has_key?(effects["later-effect"], :execution_settlement)
+    send(later_worker, :release)
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, later_run, timeout: 10_000)
+
+    assert {:error, :reconciliation_mismatch} =
+             OhMyJido.reconcile_interrupted(
+               session,
+               later_run,
+               ["later-effect"],
+               :orphan_resources_reconciled
+             )
+
+    assert :ok = OhMyJido.checkpoint(session)
+    assert :ok = OhMyJido.stop_session(session)
+    assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
+    assert {:ok, %{effects: retained}} = OhMyJido.inspect_session(session)
+    assert retained["interrupted-effect"] == uncertain
+    assert :ok = OhMyJido.stop_session(session)
+  end
+
+  test "a malformed restored effect cannot acquire closure through native stop or reconciliation",
+       %{root: root} do
+    File.write!(Path.join(root, "receipt.txt"), "actual checkpoint read\n")
+    session = session(root, models: %{roles: %{coding: "anthropic:claude-haiku-4-5"}})
+
+    script =
+      expect_react do
+        user("Read before the checkpoint is corrupted")
+        call("read", %{path: "receipt.txt"})
+        answer("Inspect the actual receipt.")
+      end
+
+    assert {:ok, run} = OhMyJido.prompt(session, script.user, react_opts(script))
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, run)
+    assert :ok = OhMyJido.checkpoint(session)
+    assert :ok = OhMyJido.stop_session(session)
+    assert {:ok, config} = Runtime.config(__MODULE__.Host)
+    {adapter, opts} = Jido.Storage.normalize_storage(config[:storage])
+    assert {:ok, saved} = adapter.get_checkpoint({__MODULE__.Host, session.id}, opts)
+    [{effect_id, effect}] = Map.to_list(saved.effects)
+    assert {:ok, %{content: "actual checkpoint read\n"}, _directives} = effect.result
+    malformed = Map.drop(effect, [:status, :result, :completed_at])
+
+    corrupted = %{
+      saved
+      | effects: %{effect_id => malformed},
+        runs: Map.update!(saved.runs, run, &Map.put(&1, :status, :running))
+    }
+
+    assert :ok = adapter.put_checkpoint({__MODULE__.Host, session.id}, corrupted, opts)
+    assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
+
+    assert {:error, :reconciliation_mismatch} =
+             OhMyJido.reconcile_interrupted(
+               session,
+               run,
+               [effect_id],
+               :orphan_resources_reconciled
+             )
+
+    assert {:error, %{reason: :cleanup_uncertain, pending_effects: [^effect_id]}} =
+             OhMyJido.stop_session(session)
+  end
+
+  defp reconciliation_script(script, conversation) do
+    prefix = Enum.flat_map(conversation, &reconciliation_history_turn/1)
+    %{script | turns: prefix ++ script.turns}
+  end
+
+  defp reconciliation_history_turn(%{role: role, tool_calls: [_ | _] = calls})
+       when role in [:assistant, "assistant"] do
+    [%{type: :tool_call, tool_calls: Enum.map(calls, &reconciliation_history_call/1)}]
+  end
+
+  defp reconciliation_history_turn(_message), do: []
+
+  defp reconciliation_history_call(call) do
+    function = reconciliation_field(call, :function, %{}) || %{}
+
+    arguments =
+      reconciliation_field(call, :arguments, reconciliation_field(function, :arguments, %{}))
+
+    arguments = if is_binary(arguments), do: Jason.decode!(arguments), else: arguments
+
+    %{
+      id: reconciliation_field(call, :id),
+      name: reconciliation_field(call, :name, reconciliation_field(function, :name)),
+      arguments: arguments
+    }
+  end
+
+  defp reconciliation_field(map, key, default \\ nil),
+    do: Map.get(map, key, Map.get(map, Atom.to_string(key), default))
+
   defp session(root, opts \\ []) do
     runtime_opts =
       Keyword.merge(
