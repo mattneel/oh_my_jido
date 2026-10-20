@@ -1,0 +1,264 @@
+defmodule Jido.Flow.Expression do
+  @moduledoc """
+  Defines the canonical Flow expression data union.
+
+  An expression is portable literal data, a nested list or map of expressions,
+  a `Jido.Flow.Ref`, or a `Jido.Expr` operation.
+  """
+
+  alias Jido.Action
+  alias Jido.Expr
+  alias Jido.Flow.Error
+  alias Jido.Flow.Data
+  alias Jido.Flow.Ref
+
+  @typedoc "Canonical portable expression data."
+  @type t ::
+          Data.scalar()
+          | [t()]
+          | %{optional(Data.key()) => t()}
+          | Ref.t()
+          | Expr.t()
+
+  @doc false
+  @spec normalize(term()) :: {:ok, term()} | {:error, Exception.t()}
+  def normalize(expression), do: do_normalize(expression, [])
+
+  @doc false
+  @spec validate(term(), Ref.scope()) :: :ok | {:error, Exception.t()}
+  def validate(expression, scope \\ :flow), do: do_validate(expression, [], scope)
+
+  @doc false
+  @spec prepare(term(), Ref.scope()) :: {:ok, term()} | {:error, Exception.t()}
+  def prepare(expression, scope \\ :flow) do
+    with {:ok, expression} <- normalize(expression),
+         :ok <- validate(expression, scope) do
+      {:ok, expression}
+    end
+  end
+
+  @doc false
+  @spec condition(term(), Ref.scope()) :: {:ok, Expr.t()} | {:error, Exception.t()}
+  def condition(%Expr{} = expression, scope), do: prepare(expression, scope)
+
+  def condition(value, scope) when is_struct(value, Ref) or is_boolean(value),
+    do: condition(Expr.new!(:all, [value]), scope)
+
+  def condition(_value, _scope),
+    do:
+      {:error,
+       Error.validation_error("condition must be a Boolean, Flow reference, or Jido.Expr", %{
+         path: []
+       })}
+
+  @doc false
+  @spec to_map(term()) :: term()
+  def to_map(%Ref{} = ref), do: Ref.to_map(ref)
+
+  # Keep the struct tag distinct from a literal map with operator fields.
+  def to_map(%Expr{} = expr), do: %{expr | operands: Enum.map(expr.operands, &to_map/1)}
+
+  def to_map(%{} = map) do
+    Map.new(map, fn {key, value} -> {key, to_map(value)} end)
+  end
+
+  def to_map(list) when is_list(list), do: Enum.map(list, &to_map/1)
+  def to_map(value), do: value
+
+  @doc false
+  @spec result_refs(term()) :: [String.t()]
+  def result_refs(%Ref{source: :result, component: component}), do: [component]
+  def result_refs(%Ref{}), do: []
+  def result_refs(%Expr{operands: operands}), do: Enum.flat_map(operands, &result_refs/1)
+
+  def result_refs(%{} = map) do
+    map
+    |> Map.values()
+    |> Enum.flat_map(&result_refs/1)
+  end
+
+  def result_refs(list) when is_list(list), do: Enum.flat_map(list, &result_refs/1)
+  def result_refs(_value), do: []
+
+  defp do_validate(value, path, scope, operation_checked? \\ false)
+
+  defp do_validate(%Expr{} = expr, path, scope, operation_checked?) do
+    # Check the complete operation budget once. The following host-data walk
+    # checks Flow keys, UTF-8, and reference scope without subtree revalidation.
+    with :ok <- validate_operation(expr, path, operation_checked?) do
+      do_validate(expr.operands, path ++ [:operands], scope, true)
+    end
+  end
+
+  defp do_validate(%Ref{} = ref, path, scope, _operation_checked?) do
+    case Ref.validate(ref, scope) do
+      :ok ->
+        :ok
+
+      {:error, %{details: %{reason: :path, segment: segment}}} ->
+        {:error,
+         Error.validation_error("flow expression contains an invalid reference path", %{
+           path: path,
+           segment: segment
+         })}
+
+      {:error, %{details: %{reason: :scope, source: type, scope: invalid_scope}}} ->
+        {:error,
+         Error.validation_error(
+           "flow expression contains a scoped ref outside its valid scope",
+           %{path: path, ref_type: type, scope: invalid_scope}
+         )}
+
+      {:error, _error} ->
+        invalid_ref_error(ref.source, path)
+    end
+  end
+
+  defp do_validate(%{} = map, path, scope, operation_checked?) when not is_struct(map) do
+    Enum.reduce_while(map, :ok, fn {key, value}, :ok ->
+      case Data.validate_key(key) do
+        :ok ->
+          case do_validate(value, path ++ [key], scope, operation_checked?) do
+            :ok -> {:cont, :ok}
+            {:error, error} -> {:halt, {:error, error}}
+          end
+
+        {:error, error} ->
+          {:halt, {:error, Error.prefix_path(error, path)}}
+      end
+    end)
+  end
+
+  defp do_validate(list, path, scope, operation_checked?) when is_list(list) do
+    if List.improper?(list) do
+      improper_list_error(path)
+    else
+      validate_proper_list(list, path, scope, operation_checked?)
+    end
+  end
+
+  defp do_validate(%{__struct__: module}, path, _scope, _operation_checked?) do
+    {:error,
+     Error.validation_error("flow expression contains an unsupported value", %{
+       path: path,
+       expression: module
+     })}
+  end
+
+  defp do_validate(value, path, _scope, _operation_checked?) do
+    case Data.validate(value) do
+      :ok -> :ok
+      {:error, error} -> {:error, Error.prefix_path(error, path)}
+    end
+  end
+
+  defp validate_operation(_expr, _path, true), do: :ok
+
+  defp validate_operation(expr, path, false) do
+    expr
+    |> Expr.validate(validate_leaf: fn _ -> :ok end)
+    |> operation_result(path)
+  end
+
+  defp do_normalize(%Expr{} = expression, path) do
+    expression
+    |> Jido.Expr.Runtime.normalize(
+      normalize_leaf: &do_normalize/2,
+      validate_leaf: &do_validate(&1, &2, :any)
+    )
+    |> operation_result(path)
+  end
+
+  defp do_normalize(%Ref{source: :result, component: component} = ref, path)
+       when (is_atom(component) and not is_nil(component)) or is_binary(component) do
+    case normalize_name(component) do
+      {:ok, component} -> {:ok, %{ref | component: component}}
+      {:error, error} -> {:error, Error.prefix_path(error, path)}
+    end
+  end
+
+  defp do_normalize(%Ref{} = ref, _path), do: {:ok, ref}
+
+  defp do_normalize(%{} = map, path) when not is_struct(map) do
+    Enum.reduce_while(map, {:ok, %{}}, fn {key, value}, {:ok, acc} ->
+      case do_normalize(value, path ++ [key]) do
+        {:ok, value} -> {:cont, {:ok, Map.put(acc, key, value)}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
+
+  defp do_normalize(list, path) when is_list(list) do
+    if List.improper?(list) do
+      improper_list_error(path)
+    else
+      normalize_proper_list(list, path)
+    end
+  end
+
+  defp do_normalize(value, _path), do: {:ok, value}
+
+  defp validate_proper_list(list, path, scope, operation_checked?),
+    do: validate_list(list, path, scope, operation_checked?, 0)
+
+  defp validate_list([], _path, _scope, _operation_checked?, _index), do: :ok
+
+  defp validate_list([value | rest], path, scope, operation_checked?, index) do
+    with :ok <- do_validate(value, path ++ [index], scope, operation_checked?) do
+      validate_list(rest, path, scope, operation_checked?, index + 1)
+    end
+  end
+
+  defp normalize_proper_list(list, path), do: normalize_list(list, path, 0, [])
+
+  defp normalize_list([], _path, _index, values), do: {:ok, Enum.reverse(values)}
+
+  defp normalize_list([value | rest], path, index, values) do
+    with {:ok, value} <- do_normalize(value, path ++ [index]) do
+      normalize_list(rest, path, index + 1, [value | values])
+    end
+  end
+
+  defp normalize_name(name) when is_atom(name) and not is_nil(name) do
+    name |> Atom.to_string() |> normalize_name()
+  end
+
+  defp normalize_name(name) when is_binary(name) do
+    case Action.validate_name(name) do
+      :ok -> {:ok, name}
+      {:error, message} -> {:error, Error.validation_error(message)}
+    end
+  end
+
+  defp normalize_name(_name) do
+    {:error, Error.validation_error("component name must be a non-empty string or atom")}
+  end
+
+  defp invalid_ref_error(type, path) do
+    {:error,
+     Error.validation_error("flow expression contains an invalid reference", %{
+       path: path,
+       ref_type: type
+     })}
+  end
+
+  defp improper_list_error(path) do
+    {:error,
+     Error.validation_error("flow expression must be a proper list", %{
+       path: path,
+       reason: :improper_list
+     })}
+  end
+
+  defp operation_result({:error, %Expr.Error{} = error}, path) do
+    {:error,
+     Error.validation_error("invalid Flow expression", %{
+       path: path ++ error.path,
+       operator: error.operator,
+       reason: error.reason
+     })}
+  end
+
+  defp operation_result({:error, error}, path), do: {:error, Error.prefix_path(error, path)}
+  defp operation_result(result, _path), do: result
+end

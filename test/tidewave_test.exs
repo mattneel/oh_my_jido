@@ -308,7 +308,12 @@ defmodule OhMyJido.TidewaveTest do
     monitor = Process.monitor(server)
 
     assert {:error,
-            %{details: %{reason: :mcp_tool_outcome_unknown, effect: :uncertain, cause: _cause}}} =
+            %{
+              details: %{
+                reason: %{reason: :mcp_tool_outcome_unknown, effect: :uncertain, cause: _cause},
+                retry: false
+              }
+            }} =
              run(context, %{
                operation: "call_tool",
                name: "project_eval",
@@ -388,11 +393,7 @@ defmodule OhMyJido.TidewaveTest do
     do: %{operation: :call_tool, name: "project_eval", arguments: %{"code" => ":ok"}}
 
   defp run(context, params),
-    do:
-      Jido.Exec.run(OhMyJido.Tools.MCP, params, %{oh_my_jido: context},
-        max_retries: 0,
-        timeout: 15_000
-      )
+    do: Jido.Exec.run(OhMyJido.Tools.MCP, params, %{oh_my_jido: context}, timeout: 15_000)
 
   defp digest(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)
   defp calls(context), do: Enum.filter(messages(context), &(&1["method"] == "tools/call"))

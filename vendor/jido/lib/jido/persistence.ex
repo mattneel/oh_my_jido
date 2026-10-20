@@ -1,0 +1,533 @@
+defmodule Jido.Persistence do
+  @moduledoc """
+  Saves and restores portable Agent checkpoints through a persistence adapter.
+
+  This module owns Agent record keys, encoding, and validation.
+  `Jido.Persistence.Store` contains byte-adapter faults and write outcomes.
+  Adapters only store binary keys and values.
+
+  Durable values are versioned active records or compact tombstones. An active
+  record does not prove that an Agent process is live. Normal deletion writes a
+  tombstone by compare-and-swap so a delayed writer cannot recreate the same
+  record lifetime. Loading a tombstone returns `{:error, :deleted}`.
+
+  Agent Servers create revision zero before a new persistent activation reports
+  ready. They store later `state_version` values as the record revision. Each
+  successful Turn writes one new revision, including an identical-state result.
+  A failure before commit leaves the stored revision unchanged. A failure in
+  post-commit work does not undo the stored revision. Restore retains it.
+  Direct `save_agent/3` calls use the revision supplied in their options.
+
+  Caller execution context is not part of the checkpoint. Live Agent state
+  contains domain fields and Plugin-owned fields and must match its schema.
+  Custom Agent or Plugin conversion runs before Jido checks the complete
+  stored representation for portability. Restore checks the stored record
+  before conversion, then validates the reconstructed live state and identity.
+
+  A Plugin Persistence facet can convert only its paired owned-state value in
+  the default checkpoint path. Complete custom Agent checkpoints bypass this
+  conversion and keep their opaque callback contract.
+
+  Each durable Agent uses one exact `{namespace, partition, id}` Ref key and
+  record format 3. Supply `:namespace`, or use the namespace of a live Jido
+  `:instance`. The Agent module is checked in the record, but is not part of
+  its key. `:instance` also supplies checkpoint callback context.
+
+  Formats 1 and 2 and their instance-based keys require an offline migration
+  before this version starts. See the persistence guide for the cutover steps.
+  """
+
+  alias Jido.Agent
+  alias Jido.Agent.Ref
+  alias Jido.Error
+  alias Jido.Persistence.{AdapterOps, Checkpoint, Identity, Record, Source, Store}
+  alias Jido.Telemetry.Persistence, as: PersistenceTelemetry
+  alias Jido.PortableTerm
+
+  @type adapter_config :: {module(), keyword()} | module() | nil | false
+
+  @doc "Normalizes an adapter declaration."
+  @spec normalize_adapter(adapter_config()) :: {module(), keyword()} | nil
+  defdelegate normalize_adapter(config), to: Source
+
+  @doc """
+  Resolves and validates a persistence adapter configuration.
+
+  Pass an adapter module or `{adapter, options}` for an explicit configuration.
+  Pass `:inherit` with a Jido instance name to use that instance's configuration.
+  A running instance's configuration takes priority over its module default.
+  Pass `nil` or `false` to disable persistence. A disabled or unconfigured source
+  returns `{:ok, nil}`.
+
+  The result is a normalized `{adapter, options}` tuple or `nil`. This function
+  checks required adapter callbacks and options. It does not start the adapter
+  or confirm that its storage is durable or shared across nodes.
+  """
+  @spec resolve_config(:inherit | adapter_config(), atom() | nil) ::
+          {:ok, {module(), keyword()} | nil} | {:error, term()}
+  defdelegate resolve_config(config, jido), to: Source
+
+  @doc """
+  Saves one Agent checkpoint with an atomic revision check.
+
+  `:revision` defaults to zero. A stored revision cannot decrease. At the same
+  revision, only the same record can be saved again. Changed state needs a
+  greater revision. Conflicting writes return `{:error, :conflict}`.
+
+  Set `:expected_revision` to the revision read by the caller to reject writes
+  based on stale state, even when the proposed revision is greater. Zero also
+  accepts a missing record for the first commit. Without this option, a direct
+  save accepts any older stored revision, or a missing record.
+
+  The Server always supplies its current revision as `:expected_revision`.
+  A failed check does not replace the stored record. A tombstone preserves the
+  revision barrier after logical deletion. This check is not a writer lease.
+  """
+  @spec save_agent(adapter_config() | atom(), Agent.t(), keyword()) ::
+          :ok | {:error, term()}
+  def save_agent(source, agent, opts \\ [])
+
+  def save_agent(source, %Agent{} = agent, opts) do
+    PersistenceTelemetry.observe(:compare_and_swap, source, agent.module, agent.id, opts, fn ->
+      AdapterOps.protect(:compare_and_swap, fn ->
+        with :ok <- Source.validate_operation_options(opts),
+             {:ok, {adapter, adapter_opts}, instance} <- Source.resolve(source, opts),
+             {:ok, ref} <- Identity.resolve(instance, agent.id, opts),
+             {:ok, record} <- build_record(agent, instance, opts, ref),
+             {:ok, expected_revision} <- expected_revision(opts),
+             {:ok, expected_value} <-
+               current_value(adapter, adapter_opts, record, ref, expected_revision),
+             {:ok, value} <- Record.encode(record),
+             :ok <-
+               Store.compare_and_swap(
+                 {adapter, adapter_opts},
+                 Identity.agent_key(ref),
+                 expected_value,
+                 value
+               ) do
+          :ok
+        end
+      end)
+    end)
+  end
+
+  def save_agent(_source, agent, _opts),
+    do: invalid_public_input(:save_agent, %{agent: agent})
+
+  @doc false
+  @spec replace_agent(adapter_config() | atom(), Agent.t(), Agent.t(), keyword()) ::
+          :ok | {:error, term()}
+  def replace_agent(source, %Agent{} = current_agent, %Agent{} = target_agent, opts \\ []) do
+    PersistenceTelemetry.observe(
+      :compare_and_swap,
+      source,
+      target_agent.module,
+      target_agent.id,
+      opts,
+      fn ->
+        AdapterOps.protect(:compare_and_swap, fn ->
+          with :ok <- Source.validate_operation_options(opts),
+               :ok <- validate_replacement_agents(current_agent, target_agent),
+               {:ok, {adapter, adapter_opts}, instance} <- Source.resolve(source, opts),
+               {:ok, ref} <- Identity.resolve(instance, current_agent.id, opts),
+               {:ok, record} <- build_record(target_agent, instance, opts, ref),
+               {:ok, expected_revision} <- expected_revision(opts),
+               {:ok, expected_value} <-
+                 current_replacement_value(
+                   adapter,
+                   adapter_opts,
+                   current_agent,
+                   record,
+                   ref,
+                   expected_revision
+                 ),
+               {:ok, value} <- Record.encode(record),
+               :ok <-
+                 Store.compare_and_swap(
+                   {adapter, adapter_opts},
+                   Identity.agent_key(ref),
+                   expected_value,
+                   value
+                 ) do
+            :ok
+          end
+        end)
+      end
+    )
+  end
+
+  @doc false
+  @spec prepare_agent(
+          adapter_config() | atom(),
+          Agent.definition(),
+          Agent.instance(),
+          :preserve | :reset,
+          keyword()
+        ) ::
+          :ok | {:error, term()}
+  def prepare_agent(source, source_definition, candidate, policy, opts \\ [])
+
+  def prepare_agent(source, %Agent{} = source_definition, %Agent{} = candidate, policy, opts)
+      when policy in [:preserve, :reset] do
+    with :ok <- validate_preparation_agents(source_definition, candidate) do
+      case load_agent_with_revision(source, source_definition.module, candidate.id, opts) do
+        {:ok, saved, revision} ->
+          prepare_loaded_agent(source, saved, candidate, revision, policy, opts)
+
+        {:error, :not_found} ->
+          prepare_missing_agent(source, candidate, policy, opts)
+
+        {:error, _reason} = error ->
+          error
+      end
+    end
+  end
+
+  def prepare_agent(_source, _source_definition, _candidate, policy, _opts),
+    do: {:error, {:unsupported_definition_policy, policy}}
+
+  @doc false
+  @spec create_agent(adapter_config() | atom(), Agent.t(), keyword()) ::
+          :ok | {:error, term()}
+  def create_agent(source, %Agent{} = agent, opts \\ []) do
+    PersistenceTelemetry.observe(:compare_and_swap, source, agent.module, agent.id, opts, fn ->
+      AdapterOps.protect(:compare_and_swap, fn ->
+        with :ok <- Source.validate_operation_options(opts),
+             {:ok, {adapter, adapter_opts}, instance} <- Source.resolve(source, opts),
+             :ok <- validate_initial_revision(opts),
+             {:ok, ref} <- Identity.resolve(instance, agent.id, opts),
+             {:ok, record} <-
+               build_record(agent, instance, Keyword.put(opts, :revision, 0), ref),
+             {:ok, value} <- Record.encode(record),
+             :ok <-
+               Store.compare_and_swap(
+                 {adapter, adapter_opts},
+                 Identity.agent_key(ref),
+                 :not_found,
+                 value
+               ) do
+          :ok
+        end
+      end)
+    end)
+  end
+
+  @doc "Loads and restores one Agent value."
+  @spec load_agent(adapter_config() | atom(), module(), String.t(), keyword()) ::
+          {:ok, Agent.t()} | {:error, term()}
+  def load_agent(source, agent_module, agent_id, opts \\ [])
+
+  def load_agent(source, agent_module, agent_id, opts)
+      when is_atom(agent_module) and is_binary(agent_id) do
+    case load_agent_with_revision(source, agent_module, agent_id, opts) do
+      {:ok, agent, _revision} -> {:ok, agent}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  def load_agent(_source, agent_module, agent_id, _opts),
+    do: invalid_public_input(:load_agent, %{agent_module: agent_module, agent_id: agent_id})
+
+  @doc false
+  @spec load_agent_with_revision(adapter_config() | atom(), module(), String.t(), keyword()) ::
+          {:ok, Agent.t(), non_neg_integer()} | {:error, term()}
+  def load_agent_with_revision(source, agent_module, agent_id, opts \\ [])
+
+  def load_agent_with_revision(source, agent_module, agent_id, opts)
+      when is_atom(agent_module) and is_binary(agent_id) do
+    PersistenceTelemetry.observe(:load, source, agent_module, agent_id, opts, fn ->
+      AdapterOps.protect(:get, fn ->
+        with :ok <- Source.validate_operation_options(opts),
+             {:ok, {adapter, adapter_opts}, instance} <- Source.resolve(source, opts),
+             {:ok, ref} <- Identity.resolve(instance, agent_id, opts),
+             {:ok, value, _condition} <-
+               Store.read({adapter, adapter_opts}, Identity.agent_key(ref)),
+             {:ok, record} <- decode_record(value, agent_module),
+             :ok <- Record.validate(record, ref, agent_module),
+             :ok <- Record.require_active(record),
+             {:ok, agent} <- Checkpoint.restore_agent(record, agent_module, agent_id, instance) do
+          {:ok, agent, Record.revision(record)}
+        end
+      end)
+    end)
+  end
+
+  def load_agent_with_revision(_source, agent_module, agent_id, _opts),
+    do:
+      invalid_public_input(:load_agent_with_revision, %{
+        agent_module: agent_module,
+        agent_id: agent_id
+      })
+
+  @doc "Logically deletes one Agent record with a compare-and-swap tombstone."
+  @spec delete_agent(adapter_config() | atom(), module(), String.t(), keyword()) ::
+          :ok | {:error, term()}
+  def delete_agent(source, agent_module, agent_id, opts \\ [])
+
+  def delete_agent(source, agent_module, agent_id, opts)
+      when is_atom(agent_module) and is_binary(agent_id) do
+    PersistenceTelemetry.observe(:delete, source, agent_module, agent_id, opts, fn ->
+      AdapterOps.protect(:delete, fn ->
+        with :ok <- Source.validate_operation_options(opts),
+             {:ok, {adapter, adapter_opts}, instance} <- Source.resolve(source, opts),
+             {:ok, ref} <- Identity.resolve(instance, agent_id, opts) do
+          delete_current(adapter, adapter_opts, ref, agent_module)
+        end
+      end)
+    end)
+  end
+
+  def delete_agent(_source, agent_module, agent_id, _opts),
+    do: invalid_public_input(:delete_agent, %{agent_module: agent_module, agent_id: agent_id})
+
+  defp invalid_public_input(operation, details) do
+    {:error,
+     Error.validation_error("Persistence input is invalid",
+       kind: :input,
+       subject: __MODULE__,
+       details: Map.put(details, :operation, operation)
+     )}
+  end
+
+  @doc false
+  @spec agent_key(Ref.t()) :: binary()
+  def agent_key(%Ref{} = ref), do: Identity.agent_key(ref)
+
+  defp expected_revision(opts) do
+    case Keyword.fetch(opts, :expected_revision) do
+      :error -> {:ok, :any}
+      {:ok, revision} when is_integer(revision) and revision >= 0 -> {:ok, revision}
+      {:ok, revision} -> {:error, {:invalid_expected_revision, revision}}
+    end
+  end
+
+  defp validate_initial_revision(opts) do
+    case Keyword.get(opts, :revision, 0) do
+      0 -> :ok
+      revision -> {:error, {:invalid_initial_revision, revision}}
+    end
+  end
+
+  defp current_value(adapter, opts, record, ref, expected_revision) do
+    case Store.read({adapter, opts}, Identity.agent_key(ref)) do
+      {:error, :not_found} when expected_revision in [:any, 0] ->
+        {:ok, :not_found}
+
+      {:error, :not_found} ->
+        {:error, :conflict}
+
+      {:ok, value, condition} ->
+        with {:ok, current} <- decode_record(value, record.agent_module),
+             :ok <- Record.validate(current, ref, record.agent_module),
+             :ok <- Record.require_active_for_write(current),
+             :ok <- check_revision(current, record, expected_revision) do
+          {:ok, condition}
+        end
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp current_replacement_value(
+         adapter,
+         opts,
+         current_agent,
+         target_record,
+         ref,
+         expected_revision
+       ) do
+    case Store.read({adapter, opts}, Identity.agent_key(ref)) do
+      {:ok, value, condition} ->
+        with {:ok, current_record} <- decode_record(value, current_agent.module),
+             :ok <- Record.validate(current_record, ref, current_agent.module),
+             :ok <- Record.require_active_for_write(current_record),
+             :ok <- check_revision(current_record, target_record, expected_revision) do
+          {:ok, condition}
+        end
+
+      {:error, :not_found} ->
+        {:error, :conflict}
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp validate_replacement_agents(
+         %Agent{id: id} = current_agent,
+         %Agent{id: id} = target_agent
+       )
+       when is_binary(id) do
+    with {:ok, _current} <- Agent.validate_instance(current_agent),
+         {:ok, _target} <- Agent.validate_instance(target_agent),
+         do: :ok
+  end
+
+  defp validate_replacement_agents(_current_agent, _target_agent),
+    do: {:error, :agent_identity_mismatch}
+
+  defp validate_preparation_agents(
+         %Agent{id: nil, state: nil, module: module},
+         %Agent{id: id, state: state, module: module}
+       )
+       when is_binary(id) and is_map(state) and not is_struct(state),
+       do: :ok
+
+  defp validate_preparation_agents(%Agent{module: source}, %Agent{module: candidate})
+       when source != candidate,
+       do: {:error, {:agent_module_mismatch, source, candidate}}
+
+  defp validate_preparation_agents(_source, _candidate),
+    do: {:error, :invalid_definition_preparation_agents}
+
+  defp prepare_loaded_agent(_source, saved, candidate, _revision, :preserve, _opts) do
+    validate_preserved_state(saved, candidate)
+  end
+
+  defp prepare_loaded_agent(_source, candidate, candidate, _revision, :reset, _opts), do: :ok
+
+  defp prepare_loaded_agent(source, saved, candidate, revision, :reset, opts) do
+    write_opts =
+      opts
+      |> Keyword.put(:revision, revision + 1)
+      |> Keyword.put(:expected_revision, revision)
+      |> Keyword.put(:reason, :definition_preparation)
+
+    case replace_agent(source, saved, candidate, write_opts) do
+      :ok -> :ok
+      {:error, :conflict} -> exact_prepared_agent(source, candidate, opts)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp prepare_missing_agent(_source, _candidate, :preserve, _opts), do: :ok
+
+  defp prepare_missing_agent(source, candidate, :reset, opts) do
+    create_opts =
+      opts |> Keyword.put(:revision, 0) |> Keyword.put(:reason, :definition_preparation)
+
+    case create_agent(source, candidate, create_opts) do
+      :ok -> :ok
+      {:error, :conflict} -> exact_prepared_agent(source, candidate, opts)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp exact_prepared_agent(source, candidate, opts) do
+    case load_agent(source, candidate.module, candidate.id, opts) do
+      {:ok, ^candidate} -> :ok
+      {:ok, _other} -> {:error, :conflict}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_preserved_state(
+         %Agent{id: id, module: module, state: state},
+         %Agent{id: id, module: module} = candidate
+       ) do
+    with {:ok, _validated} <- Agent.validate_instance(%{candidate | state: state}), do: :ok
+  end
+
+  defp validate_preserved_state(_saved, _candidate),
+    do: {:error, :saved_agent_identity_mismatch}
+
+  defp check_revision(current, record, expected_revision) do
+    cond do
+      expected_revision != :any and Record.revision(current) != expected_revision ->
+        {:error, :conflict}
+
+      Record.revision(record) > Record.revision(current) ->
+        :ok
+
+      record === current ->
+        :ok
+
+      true ->
+        {:error, :conflict}
+    end
+  end
+
+  defp build_record(agent, instance, opts, ref) do
+    partition = Keyword.get(opts, :partition)
+    revision = Keyword.get(opts, :revision, 0)
+    reason = Keyword.get(opts, :reason, :manual)
+    record_format = Record.format_version()
+
+    context = %{
+      instance: instance,
+      partition: partition,
+      revision: revision,
+      reason: reason
+    }
+
+    with true <- is_integer(revision) and revision >= 0,
+         {:ok, checkpoint} <- Checkpoint.dump(agent, context, record_format, reason),
+         {:ok, record} <- Record.build_active(agent, ref, revision, checkpoint) do
+      {:ok, record}
+    else
+      false -> {:error, {:invalid_checkpoint, :shape}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp delete_current(adapter, adapter_opts, ref, agent_module) do
+    case read_for_delete({adapter, adapter_opts}, Identity.agent_key(ref)) do
+      {:error, :not_found} ->
+        with {:ok, tombstone} <- Record.build_tombstone(ref, agent_module, 0),
+             {:ok, value} <- Record.encode(tombstone) do
+          Store.compare_and_swap(
+            {adapter, adapter_opts},
+            Identity.agent_key(ref),
+            :not_found,
+            value
+          )
+        end
+
+      {:ok, expected_value, condition} ->
+        with {:ok, current} <- decode_record(expected_value, agent_module),
+             :ok <- Record.validate(current, ref, agent_module) do
+          case Record.kind(current) do
+            :tombstone ->
+              :ok
+
+            :active ->
+              with {:ok, tombstone} <-
+                     Record.build_tombstone(ref, agent_module, Record.revision(current)),
+                   {:ok, value} <- Record.encode(tombstone) do
+                Store.compare_and_swap(
+                  {adapter, adapter_opts},
+                  Identity.agent_key(ref),
+                  condition,
+                  value
+                )
+              end
+          end
+        end
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp decode_record(value, agent_module) do
+    # Only the caller-supplied module can provide atoms before safe decoding.
+    _ = Code.ensure_loaded?(agent_module)
+    Record.decode(value)
+  end
+
+  defp read_for_delete(config, key) do
+    case Store.read(config, key) do
+      {:error,
+       %Error.ExecutionError{details: %{code: :persistence_callback_failed} = details} = error} ->
+        {:error, %{error | details: Map.put(details, :operation, :delete)}}
+
+      result ->
+        result
+    end
+  end
+
+  @doc false
+  @spec portable_term?(term()) :: boolean()
+  def portable_term?(term), do: PortableTerm.valid?(term)
+end

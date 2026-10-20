@@ -5,8 +5,6 @@ defmodule OhMyJido.Tools.Shell do
     name: "shell",
     description:
       "Run an approved executable with scoped cwd/env, separate stdout/stderr, exit status, bounded output and a deadline. Use executable sh and explicit -c args only when a shell is needed.",
-    category: "coding",
-    tags: ["shell", "process"],
     schema:
       Zoi.object(%{
         executable: Zoi.string() |> Zoi.min(1),
@@ -16,6 +14,12 @@ defmodule OhMyJido.Tools.Shell do
         timeout_ms: Zoi.integer() |> Zoi.positive() |> Zoi.optional(),
         max_output_bytes: Zoi.integer() |> Zoi.min(0) |> Zoi.optional()
       })
+
+  @doc "Returns the Action category."
+  def category, do: "coding"
+
+  @doc "Returns tags that classify this Action."
+  def tags, do: ["shell", "process"]
 
   @doc false
   def capability, do: :exec

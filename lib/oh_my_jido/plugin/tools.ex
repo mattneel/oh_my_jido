@@ -44,8 +44,7 @@ defmodule OhMyJido.Plugin.Tools do
       use Jido.Action,
         name: @action.name(),
         description: @action.description(),
-        schema: @action.schema(),
-        output_schema: @action.output_schema()
+        schema: @action.schema()
 
       @spec capability() :: atom()
       def capability, do: @action.capability()

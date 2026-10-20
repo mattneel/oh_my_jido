@@ -35,7 +35,7 @@ defmodule OhMyJido.MemoryWorkflowTest do
        allow_test_scripts: true,
        request_transformer: ObservedProjection,
        context_policy: [max_messages: 3, keep_recent: 2],
-       storage: {Jido.Storage.File, path: Path.join(root, ".store")},
+       storage: {Jido.Persistence.File, path: Path.join(root, ".store")},
        tools: [OhMyJido.Tools.Memory],
        metadata: %{observer: self()}}
     )

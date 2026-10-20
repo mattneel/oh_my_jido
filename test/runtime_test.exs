@@ -16,7 +16,7 @@ defmodule OhMyJido.RuntimeTest do
       {Runtime,
        name: __MODULE__.Host,
        allow_test_scripts: true,
-       storage: {Jido.Storage.File, path: Path.join(root, ".store")}}
+       storage: {Jido.Persistence.File, path: Path.join(root, ".store")}}
     )
 
     {:ok, session} =
@@ -41,17 +41,30 @@ defmodule OhMyJido.RuntimeTest do
     assert_receive {:oh_my_jido, %Event{session_id: id}}
     assert id == session.id
     assert {:ok, %{agent_pid: agent}} = OhMyJido.inspect_session(session)
-    assert {:ok, _status} = Jido.AgentServer.status(agent)
+    assert %{agent_id: ^id} = Jido.AgentServer.status(agent)
     :ok = OhMyJido.checkpoint(session)
     :ok = OhMyJido.stop_session(session)
     assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Host, session.id)
     assert {:ok, %{conversation: conversation}} = OhMyJido.inspect_session(session)
-    assert Enum.any?(conversation, &(Map.get(&1, :content) == "No edits were needed."))
+
+    assert Enum.any?(
+             conversation,
+             &(Jido.AI.Model.Response.extract_from_content(Map.get(&1, :content)) ==
+                 "No edits were needed.")
+           )
   end
 
-  test "a multi-turn native run reports total usage and actual tool outcomes", %{workspace: root} do
+  test "native usage and tool identities survive summary projection and a host restart",
+       %{workspace: root} do
     File.write!(Path.join(root, "input.txt"), "observed input")
-    start_supervised!({Runtime, name: __MODULE__.Usage, allow_test_scripts: true})
+
+    options = [
+      name: __MODULE__.Usage,
+      allow_test_scripts: true,
+      storage: {Jido.Persistence.File, path: Path.join(root, ".store")}
+    ]
+
+    start_supervised!({Runtime, options})
 
     {:ok, session} =
       OhMyJido.start_session(__MODULE__.Usage, workspace: root, permissions: [:read])
@@ -60,12 +73,10 @@ defmodule OhMyJido.RuntimeTest do
       expect_react do
         user("Inspect input")
 
-        call("read", %{path: "input.txt"},
-          usage: %{input_tokens: 11, output_tokens: 3, total_cost: 0.02}
-        )
+        call("read", %{path: "input.txt"}, usage: %{input_tokens: 11, output_tokens: 3})
 
         answer("Input was inspected.",
-          usage: %{input_tokens: 17, output_tokens: 5, total_cost: 0.04}
+          usage: %{input_tokens: 17, output_tokens: 5}
         )
       end
 
@@ -73,9 +84,73 @@ defmodule OhMyJido.RuntimeTest do
     assert {:ok, result} = OhMyJido.await(session, run)
     assert result.usage.input_tokens == 28
     assert result.usage.output_tokens == 8
-    assert_in_delta result.usage.total_cost, 0.06, 0.000001
+    assert result.usage.total_tokens == 36
+
+    turns =
+      for %Event{kind: :llm_completed, payload: %{usage: usage}} <- OhMyJido.events(session),
+          do: usage
+
+    assert Enum.map(turns, &{&1.input_tokens, &1.output_tokens}) == [{11, 3}, {17, 5}]
+
+    # ReActScript sends token counters over real HTTP/SSE. ReqLLM derives cost
+    # from its mock model's billing metadata; scripts cannot set provider cost.
+    costs = Enum.map(turns, & &1.total_cost)
+    assert Enum.all?(costs, &(is_number(&1) and &1 >= 0))
+    assert_in_delta result.usage.total_cost, Enum.sum(costs), 1.0e-12
     assert [%{name: "read", status: :completed}] = result.tools
     assert File.read!(Path.join(root, "input.txt")) == "observed input"
+
+    assert {:ok, %{conversation: before, agent_pid: agent}} = OhMyJido.inspect_session(session)
+    assert Enum.any?(before, &match?(%{metadata: %{oh_my_jido_context_summary: _}}, &1))
+
+    assert [%{role: :assistant, refs: refs} = terminal] =
+             Enum.filter(before, fn message ->
+               Jido.AI.Model.Response.extract_from_content(message.content) ==
+                 "Input was inspected."
+             end)
+
+    assert is_binary(refs.request_id)
+    assert is_binary(refs.run_id)
+    refute Map.has_key?(refs, :context)
+    assert [call] = Enum.flat_map(before, &List.wrap(Map.get(&1, :tool_calls)))
+    call_data = ReqLLM.ToolCall.to_map(call)
+    assert %{name: "read", id: call_id} = call_data
+    assert [%{tool_call_id: ^call_id}] = Enum.filter(before, &(&1.role == :tool))
+
+    native = Jido.AgentServer.agent(agent).state.conversation
+    assert {:ok, native_messages} = Jido.AI.Thread.Projection.project(native)
+    assert List.last(native_messages).refs == terminal.refs
+
+    assert Enum.map(
+             Enum.flat_map(native_messages, &List.wrap(Map.get(&1, :tool_calls))),
+             &ReqLLM.ToolCall.to_map/1
+           ) == [call_data]
+
+    assert List.last(native_messages).content == terminal.content
+
+    assert :ok = OhMyJido.checkpoint(session)
+    assert :ok = OhMyJido.stop_session(session)
+    assert :ok = stop_supervised(__MODULE__.Usage)
+    start_supervised!({Runtime, options})
+    assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Usage, session.id)
+
+    assert {:ok, %{conversation: ^before, agent_pid: restored}} =
+             OhMyJido.inspect_session(session)
+
+    assert {:ok, restored_messages} =
+             Jido.AI.Thread.Projection.project(
+               Jido.AgentServer.agent(restored).state.conversation
+             )
+
+    assert List.last(restored_messages).refs == terminal.refs
+    assert List.last(restored_messages).content == terminal.content
+
+    assert Enum.map(
+             Enum.flat_map(restored_messages, &List.wrap(Map.get(&1, :tool_calls))),
+             &ReqLLM.ToolCall.to_map/1
+           ) == [call_data]
+
+    assert [%{tool_call_id: ^call_id}] = Enum.filter(restored_messages, &(&1.role == :tool))
   end
 
   test "session listing excludes dead registrations before native Registry cleanup",
@@ -113,7 +188,7 @@ defmodule OhMyJido.RuntimeTest do
         {Runtime,
          name: name,
          allow_test_scripts: true,
-         storage: {Jido.Storage.File, path: Path.join(root, Atom.to_string(name))}}
+         storage: {Jido.Persistence.File, path: Path.join(root, Atom.to_string(name))}}
       )
     end
 

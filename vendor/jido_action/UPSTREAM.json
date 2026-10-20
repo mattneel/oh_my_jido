@@ -1,0 +1,454 @@
+{
+  "package": "jido_action",
+  "source": "https://github.com/agentjido/jido_action",
+  "ref": "19c77f94e5c2513b2e684a289857fcd568f7eb29",
+  "upstream_version": "3.0.0-beta.12",
+  "license": "Apache-2.0",
+  "purpose": "Native V3 Action and Exec source explicitly pinned by native JidoAI1f19ff26; minimal private diagnostics and execution-group lifecycle boundaries.",
+  "inventory_note": "files describe original upstream source bytes before explicit local boundary_patches.",
+  "boundary_patches": [
+    {
+      "date": "2026-10-19",
+      "contributors": "Oh-My-Jido contributors",
+      "purpose": "Explicit opt-in private diagnostics on the unchanged native V3 execution path.",
+      "modified_upstream_files": [
+        "lib/jido_exec.ex",
+        "lib/jido_exec/options.ex",
+        "lib/jido_exec/controller.ex",
+        "lib/jido_exec/worker.ex",
+        "lib/jido_exec/telemetry.ex"
+      ],
+      "added_files": [
+        "lib/jido_exec/private_diagnostics.ex"
+      ],
+      "change": "Inherits a caller-owned diagnostic projector before native control/worker callbacks and telemetry; private Tasks hide process introspection and report escaping failures with projected diagnostics and argument-free frames. Action results, native execution ownership, ordinary callers, and zero-retry behavior remain unchanged."
+    },
+    {
+      "date": "2026-10-19",
+      "contributors": "Oh-My-Jido contributors",
+      "purpose": "Opt-in native execution-group admission and synchronous worker-shutdown receipts for truthful consumer stop.",
+      "modified_upstream_files": [
+        "lib/jido_exec.ex",
+        "lib/jido_exec/options.ex",
+        "lib/jido_exec/controller.ex",
+        "lib/jido_exec/worker.ex"
+      ],
+      "added_files": [
+        "lib/jido_exec/lifecycle_observer.ex"
+      ],
+      "change": "Calls the trusted observer from the actual existing control after its private Task.Supervisor exists and before user dispatch; inherits the accepted opaque token as the sticky parent scope in native controls and workers. Halted admissions shut down without user work. Stopped callbacks receive the original identity proof plus workers_stopped: true only after synchronous supervisor/link shutdown barriers completed; failed or skipped cleanup and forced control death provide no affirmative receipt. Callback failures and invalid returns remain contained without callback values in Task errors. Existing native process trees, owner/deadline semantics, results, and ordinary unobserved execution remain unchanged."
+    }
+  ],
+  "files": [
+    {
+      "path": ".formatter.exs",
+      "bytes": 663,
+      "sha256": "97291a8c53fef04eab7cf5f7d2374efc274195d93f7370c0564bdebc893726a9"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11396,
+      "sha256": "5ef76176b7be1574f8006b1060a94f01518fc133ea1fb3136819d0fa7b473c8f"
+    },
+    {
+      "path": "README.md",
+      "bytes": 18913,
+      "sha256": "ab378882606040a80d50f8f7250119158182d79fab122f5109cd28dfdcde2d4e"
+    },
+    {
+      "path": "lib/jido_action/application.ex",
+      "bytes": 292,
+      "sha256": "bfe45f86bd476daaa44927f9b47dd5679588f3d3888d1b9d8b0c878aa786ebce"
+    },
+    {
+      "path": "lib/jido_action/error.ex",
+      "bytes": 8545,
+      "sha256": "ec20dd4d52ffb56db8309b6e78dab604418befb27df3ec6eed50f7f203bf34f9"
+    },
+    {
+      "path": "lib/jido_action/inline/compiler.ex",
+      "bytes": 6767,
+      "sha256": "ad8c13c562108e9470d0eb476de83fa82a9f480cd54417ebe888f24f72208add"
+    },
+    {
+      "path": "lib/jido_action/inline/owner.ex",
+      "bytes": 5850,
+      "sha256": "d12271a7945e0f0e32b1353b7adffced9ea8ef44c3c321dcbc3f9c450b399135"
+    },
+    {
+      "path": "lib/jido_action/inline/parser.ex",
+      "bytes": 10161,
+      "sha256": "bb86ac44dade3668a4dadf9aa73a681c746f16728bb52d0ff480a1ff82bc665f"
+    },
+    {
+      "path": "lib/jido_action/inline.ex",
+      "bytes": 9229,
+      "sha256": "0db3d97714a203214bea4e0db8dc0877ecd6d82b6cbac71657bfab9aa6cbbb90"
+    },
+    {
+      "path": "lib/jido_action/output.ex",
+      "bytes": 4053,
+      "sha256": "61780b1827f099ab508dce38f87f5c4ce6f05b603e3739e4d56067ac80b27f70"
+    },
+    {
+      "path": "lib/jido_action/validation.ex",
+      "bytes": 6259,
+      "sha256": "99a0fcd05d09e35465c16896dce0203a0d5b833b666376f6f5b97039ed9b5214"
+    },
+    {
+      "path": "lib/jido_action.ex",
+      "bytes": 19477,
+      "sha256": "7368853d7626e63ecb2cc089dc76aefd2c0b40626120268a0363846c4d2b1996"
+    },
+    {
+      "path": "lib/jido_exec/action/adapter.ex",
+      "bytes": 2290,
+      "sha256": "41b02fbcca063a0a42e9f602850c34731cff82c3f70ba440ab6416d7c42e7c79"
+    },
+    {
+      "path": "lib/jido_exec/action/runner.ex",
+      "bytes": 7622,
+      "sha256": "7bbe9ff214eb997d491d9d6dbe25fd8165e86be5325e316746918055b43c0a7a"
+    },
+    {
+      "path": "lib/jido_exec/budget.ex",
+      "bytes": 1764,
+      "sha256": "2e45b38097a79093e1ea4f30e9aca0b419940710f2028f70f42da76e2baf9deb"
+    },
+    {
+      "path": "lib/jido_exec/controller.ex",
+      "bytes": 19536,
+      "sha256": "f1f9bbf82dc630fd35463c5150e6e00e55e8549e7fa32ce85100e5733ca77df4"
+    },
+    {
+      "path": "lib/jido_exec/effects.ex",
+      "bytes": 394,
+      "sha256": "a817fe5c2028e64bbaea39be7bd69abef17ac04aaf96a6e62f476ceea7fcf0e4"
+    },
+    {
+      "path": "lib/jido_exec/error.ex",
+      "bytes": 5350,
+      "sha256": "b68a31df54efc58f27ccea3d21d215db17434a4f9e4573203c477910a5695341"
+    },
+    {
+      "path": "lib/jido_exec/execution.ex",
+      "bytes": 1963,
+      "sha256": "d1ab8fd907a7422ab24a765a97a11319a4f8e86c4eba5126b71a4e9df987bbc5"
+    },
+    {
+      "path": "lib/jido_exec/execution_guard.ex",
+      "bytes": 5653,
+      "sha256": "5773f98e1a3b746ac8e9b9c4ce37fcbf1dfc015f7dcdf8f800b39aff60b4e6c9"
+    },
+    {
+      "path": "lib/jido_exec/flow/adapter.ex",
+      "bytes": 9816,
+      "sha256": "6a429b45ff5d0e515c01f7f0caf4ec98b1fa1bbaebb5c92492582557e4606855"
+    },
+    {
+      "path": "lib/jido_exec/flow/collection_telemetry.ex",
+      "bytes": 951,
+      "sha256": "83e3ec8c571540753c16cbb28d36281e807e155c6ffc07a95469819a3769922e"
+    },
+    {
+      "path": "lib/jido_exec/flow/engine.ex",
+      "bytes": 15355,
+      "sha256": "eac564be0635305680250638b3f0894c598bc867239b0bffe25dc7bd68bc406f"
+    },
+    {
+      "path": "lib/jido_exec/flow/inspection.ex",
+      "bytes": 1624,
+      "sha256": "d20b7595b6107f3a6db80f32afcbd6ea7d8e01389860e814238a0bd063d23baa"
+    },
+    {
+      "path": "lib/jido_exec/flow/runnable_executor.ex",
+      "bytes": 12305,
+      "sha256": "294e5cd53376dbf311e64b9bc56fc8ccad3ddf89b0effc2df5751022d90b3c5c"
+    },
+    {
+      "path": "lib/jido_exec/flow/target_runner.ex",
+      "bytes": 1876,
+      "sha256": "5cd50a7029c9150724d48225e020db6ca5bae65974594db0e1a31ff9b61ac2f2"
+    },
+    {
+      "path": "lib/jido_exec/options.ex",
+      "bytes": 6286,
+      "sha256": "a07fa108fac54aa534b593c315de39e50cbf2c314bb2ceb003df62a3ce5b9843"
+    },
+    {
+      "path": "lib/jido_exec/runtime.ex",
+      "bytes": 3642,
+      "sha256": "eedf086fcb9264ae5eb9d59eaa47a3b1e78dde813311fc429cea5013ff6f9b71"
+    },
+    {
+      "path": "lib/jido_exec/telemetry.ex",
+      "bytes": 5970,
+      "sha256": "cfefdc8e68a15c7d143cd915ea34045b64ad2b5c6d7e36081c7cd5baeafb6cb6"
+    },
+    {
+      "path": "lib/jido_exec/transition.ex",
+      "bytes": 635,
+      "sha256": "c6f7405c653b1cd5b12fa442281367ca82fb7a7b23e41528bc4cdbe73840475b"
+    },
+    {
+      "path": "lib/jido_exec/work.ex",
+      "bytes": 3098,
+      "sha256": "2fccb3f70b11533fdc323d7065d4f7970ba1430ed2eb6ee109f33769bb5bfc69"
+    },
+    {
+      "path": "lib/jido_exec/worker.ex",
+      "bytes": 2224,
+      "sha256": "45f69c41eb7040ad53fa1f73a186f2fb9833229b59590c582de04bcece748b52"
+    },
+    {
+      "path": "lib/jido_exec.ex",
+      "bytes": 24623,
+      "sha256": "36172882d016879e6e632fe1c365da22e0bef8dc8bad456f201aec88b4ed7444"
+    },
+    {
+      "path": "lib/jido_executable.ex",
+      "bytes": 6932,
+      "sha256": "0e5a96b1754c21f4f1de8eef283b19b79b279651db745fcc1f515610547068fb"
+    },
+    {
+      "path": "lib/jido_expr/error.ex",
+      "bytes": 866,
+      "sha256": "d5d5f6caf4f115375566f579f0a589ffb6393d5e2974081e021ac513b88d839c"
+    },
+    {
+      "path": "lib/jido_expr/limits.ex",
+      "bytes": 3225,
+      "sha256": "9a773399077e684b194adc416afb62af5399ecb4ac8d217cc9b291fc6bc962ed"
+    },
+    {
+      "path": "lib/jido_expr/parser.ex",
+      "bytes": 5955,
+      "sha256": "401e301550c6300839d8246c181b74abdbfe797a1131111f7857f09bc9202413"
+    },
+    {
+      "path": "lib/jido_expr/runtime.ex",
+      "bytes": 17733,
+      "sha256": "bf2dcfcdd60eef80dc95e6a3b2058a40cccfc67c8e00f1eebadd6b6c9b3919cd"
+    },
+    {
+      "path": "lib/jido_expr.ex",
+      "bytes": 7797,
+      "sha256": "78b7d5343f3759a4fd869bc19d541f78a48bc31385cb4b60084071326337764a"
+    },
+    {
+      "path": "lib/jido_flow/choice.ex",
+      "bytes": 9706,
+      "sha256": "c572548a5f69831e2970e225dbf5d9cbeb07b8e36afd105e2d192f34f2697b56"
+    },
+    {
+      "path": "lib/jido_flow/codec.ex",
+      "bytes": 54274,
+      "sha256": "906f65e4bdbb794a83b1cc17ce5d733fb07500ff01fda33be13fa332d01ae428"
+    },
+    {
+      "path": "lib/jido_flow/compiled.ex",
+      "bytes": 1367,
+      "sha256": "71341ad0d4baa5626834d1f1740279a54c8e1a3a1a7d5a51ffc20728ebf94c17"
+    },
+    {
+      "path": "lib/jido_flow/compiler/choice.ex",
+      "bytes": 1065,
+      "sha256": "c968f6852d721a4452224835d7c7925f3b18856af75787cd1cfa789afe888ef2"
+    },
+    {
+      "path": "lib/jido_flow/compiler/collection.ex",
+      "bytes": 9039,
+      "sha256": "012db768cc3d67ded2cab33995e7403cf28d5e70cefe6925f747d7f441215c1f"
+    },
+    {
+      "path": "lib/jido_flow/compiler/expression.ex",
+      "bytes": 7340,
+      "sha256": "4ada84e29dc8b3cb34e48169deea2e333189ebf8433fb5054c9a6b570c9a7387"
+    },
+    {
+      "path": "lib/jido_flow/compiler/frame.ex",
+      "bytes": 1767,
+      "sha256": "5e9ba6886471f7c8bd4a1882e2f74b7b65b4e138221b38e6069c03d4713f828e"
+    },
+    {
+      "path": "lib/jido_flow/compiler/iterator.ex",
+      "bytes": 8844,
+      "sha256": "657332ee231f585fd790c9b7198bc7a35d1b601d4f9a3f88df675f26b70e0b14"
+    },
+    {
+      "path": "lib/jido_flow/compiler/payload.ex",
+      "bytes": 989,
+      "sha256": "c444e72dff177d510842f8010990d2d677578b6a8095351118f080db6e09efdd"
+    },
+    {
+      "path": "lib/jido_flow/compiler/source_map.ex",
+      "bytes": 4145,
+      "sha256": "9127f3536f6eb963c1d8130abfde529f4c1bb7a64e46262b9033cff2f87c6f4a"
+    },
+    {
+      "path": "lib/jido_flow/compiler/target.ex",
+      "bytes": 8139,
+      "sha256": "1b2a8975f7066872df6b5ee244273795a12384fa8f2a9fade2ba18c5cf0cc1c8"
+    },
+    {
+      "path": "lib/jido_flow/compiler.ex",
+      "bytes": 29326,
+      "sha256": "ce97c122b069923316a2f1f3e7795f8da4a31e85c172d7aca5acc2f302a8b034"
+    },
+    {
+      "path": "lib/jido_flow/component/fields.ex",
+      "bytes": 2311,
+      "sha256": "13a64a9e0ec943c7117d73096db0dcac6cfe6833999b6f5648c68141ee8825fd"
+    },
+    {
+      "path": "lib/jido_flow/component.ex",
+      "bytes": 6014,
+      "sha256": "f917843bb2302d6bbc6048e52d69609b4f8214e4050471594bf0dc926cfb1bbb"
+    },
+    {
+      "path": "lib/jido_flow/data.ex",
+      "bytes": 3446,
+      "sha256": "0a4ed02262e1b6cdb83b67b394183fdaba5520d124c0b495ac58365b15a0bdcd"
+    },
+    {
+      "path": "lib/jido_flow/dispatch.ex",
+      "bytes": 3686,
+      "sha256": "b132b6dcf4edf47459d4287215c2d27a0edbef06549179f1ff9cec037ef91d33"
+    },
+    {
+      "path": "lib/jido_flow/dsl/entities.ex",
+      "bytes": 4739,
+      "sha256": "475f22abd2da635c9c589c550f6b2761b933e61fd245aed23ed3b4a000d040ed"
+    },
+    {
+      "path": "lib/jido_flow/dsl/expression.ex",
+      "bytes": 6474,
+      "sha256": "224af90cdd02cce7adaac2745a93df778fd3347aaa69dd1920a8f8de28c24c19"
+    },
+    {
+      "path": "lib/jido_flow/dsl/extension.ex",
+      "bytes": 612,
+      "sha256": "6e8273abc6c8e106c67e9df7bb94105f87d4a3b582dc4ff497c2c9ffe5dfc82f"
+    },
+    {
+      "path": "lib/jido_flow/dsl/inline_step.ex",
+      "bytes": 5857,
+      "sha256": "7a900ed01100bc2893a8ba6b4933cf22e9ae280d90e8151fb1e7b90a67c89a72"
+    },
+    {
+      "path": "lib/jido_flow/dsl/lowerer.ex",
+      "bytes": 14153,
+      "sha256": "26e98819001338d0e2349c6cb512ce7186203f7b4bb5e54b09ac79e1e2a2ea75"
+    },
+    {
+      "path": "lib/jido_flow/dsl/macros.ex",
+      "bytes": 8565,
+      "sha256": "0eabd57669552c787989ef7a3385b60690495fe15ec4ae132cec485565eda254"
+    },
+    {
+      "path": "lib/jido_flow/dsl/module_compiler.ex",
+      "bytes": 12707,
+      "sha256": "0b00cd532c68b87ed9c94965f21fa9614c08d7a8cdba79558754ad4b4c8ed51e"
+    },
+    {
+      "path": "lib/jido_flow/dsl/schema.ex",
+      "bytes": 10597,
+      "sha256": "de85f43d5f0e0cf5db848f485a00992277976bc3692f4873ecc596c494c27124"
+    },
+    {
+      "path": "lib/jido_flow/error.ex",
+      "bytes": 11049,
+      "sha256": "e0be7fdcf57b091556f2f6e2fa50652c90cb20b5631c91706cf46518a0efe25b"
+    },
+    {
+      "path": "lib/jido_flow/expression.ex",
+      "bytes": 8352,
+      "sha256": "87636a2ff4191be7227a87e0cab20ef9cdd13319ebff692df39c3f8bc3210045"
+    },
+    {
+      "path": "lib/jido_flow/extension.ex",
+      "bytes": 2079,
+      "sha256": "0849fe4910d2075152c0cb78b4dec66ce282bdb4fcf55f1f037050ebf605db9b"
+    },
+    {
+      "path": "lib/jido_flow/graph.ex",
+      "bytes": 2570,
+      "sha256": "c5148d8bd599b09eff75f0b86826a1c1f090870f6a3127ccb676159bb713a03b"
+    },
+    {
+      "path": "lib/jido_flow/identity.ex",
+      "bytes": 3702,
+      "sha256": "54985b40053825e1b767052127b35fedf0125b4ba0e835bd908f2bbc42fbc8df"
+    },
+    {
+      "path": "lib/jido_flow/iterate.ex",
+      "bytes": 7037,
+      "sha256": "b6c44a3693ce746f955d6969bd75cd430bb38193a185352dae6f3d7b6ab9c31b"
+    },
+    {
+      "path": "lib/jido_flow/map.ex",
+      "bytes": 4599,
+      "sha256": "ddfabc644531d88b99f445f00f42e2bf4135c2c61efd1478a823a4c8733b69a0"
+    },
+    {
+      "path": "lib/jido_flow/reduce.ex",
+      "bytes": 4350,
+      "sha256": "1bd08b044da6f73bc5a0fc3c4ca532dda707116326f47639125385a64ac58253"
+    },
+    {
+      "path": "lib/jido_flow/ref.ex",
+      "bytes": 6448,
+      "sha256": "e205c44b6f63f617f52d14c4144d872a2dc859fc5fed6817884ce63a31eac678"
+    },
+    {
+      "path": "lib/jido_flow/registry/deriver.ex",
+      "bytes": 4833,
+      "sha256": "b5462acfc182c8f5c8f39362f7d8d8a1fb78c13e864b74c1438c3f501f676b18"
+    },
+    {
+      "path": "lib/jido_flow/registry.ex",
+      "bytes": 9654,
+      "sha256": "30eec3227371454030a8da354f4b5fef054b69b9f50a80e862e38a8c107a6fd2"
+    },
+    {
+      "path": "lib/jido_flow/step.ex",
+      "bytes": 2594,
+      "sha256": "19ae5f66d257712dc1e182e0342595506e431aa5f4d4c54f72cc31a32834a34c"
+    },
+    {
+      "path": "lib/jido_flow/subflow.ex",
+      "bytes": 2548,
+      "sha256": "fd3366211ea57d9eef7a074ab0a9d049393d5bac33056d4e31add064db77e4eb"
+    },
+    {
+      "path": "lib/jido_flow/validation.ex",
+      "bytes": 16296,
+      "sha256": "81c5f5de50dc19d2afa829a17ad1842655c60c2fd4d9178f5c44cbd7a7ad9c86"
+    },
+    {
+      "path": "lib/jido_flow.ex",
+      "bytes": 12858,
+      "sha256": "0bb22f83e21eb7a174d4a507a8292d7cd66b23e9f6e2f2d64fc851458fdb9078"
+    },
+    {
+      "path": "lib/jido_instruction.ex",
+      "bytes": 7780,
+      "sha256": "35c3d70989df2789786a69796d718b08eef67c10ab533fbec83f7996a95c7b5c"
+    },
+    {
+      "path": "mix.exs",
+      "bytes": 11768,
+      "sha256": "fbd58e9ff85cc46efe076c7ed60b806e504667446ea03db2bf81dceadae49ba0"
+    },
+    {
+      "path": "mix.lock",
+      "bytes": 12335,
+      "sha256": "222f7e4d9545fdf023b33299a5cade3c7a6541b74676ff4dd2f50e0d2fab3246"
+    },
+    {
+      "path": "usage-rules.md",
+      "bytes": 12268,
+      "sha256": "abad9f39599019bf6c72a23d46b0b1cc4cfa34cd3d67d17ebdd9568784fd9c5e"
+    }
+  ]
+}

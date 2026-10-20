@@ -17,11 +17,11 @@ This is a **shallow keyword merge**, not a recursive configuration merger. A chi
 ```elixir
 import Config
 
-config :req_llm, debug: false
+config :req_llm, debug: false, load_dotenv: false
 
 config :jido_ai,
   model_aliases: %{
-    capable: "anthropic:claude-sonnet-4-20250514",
+    capable: "anthropic:claude-sonnet-4-6",
     fast: "anthropic:claude-haiku-4-5"
   }
 
@@ -37,7 +37,7 @@ config :oh_my_jido,
   }
 ```
 
-The role/alias part is the repository's current `config/config.exs`. The explicit debug setting makes credential-bearing native calls admissible even when `REQ_LLM_DEBUG` is set in the environment. Keep native debugging off; the production transformer requires `ReqLLM.Debug.enabled?() == false` **before** it resolves credentials.
+The role/alias part is the repository's `config/config.exs`. Explicit debug:false makes credential-bearing native calls admissible even when `REQ_LLM_DEBUG` is set; the production transformer checks it before resolving credentials. Explicit load_dotenv:false prevents ReqLLM's startup default from importing a source `.env` into the process environment. Dependency application-level settings belong to the host; do not mutate them per agent.
 
 Independent children can use different hosts, account services, storage, tools, adapters and budgets:
 
@@ -46,14 +46,14 @@ children = [
   {OhMyJido.Runtime,
    name: MyApp.ReaderCoding,
    host: {OhMyJido.Host.Local, credentials: {OhMyJido.Auth, broker: MyApp.ReaderAccounts}},
-   storage: {Jido.Storage.File, path: "/srv/my_app/reader_sessions"},
+   storage: {Jido.Persistence.File, path: "/srv/my_app/reader_sessions"},
    tools: [OhMyJido.Tools.Read, OhMyJido.Tools.Search],
    max_sessions: 20,
    max_active: 2},
   {OhMyJido.Runtime,
    name: MyApp.WriterCoding,
    host: {OhMyJido.Host.Local, credentials: {OhMyJido.Auth, broker: MyApp.WriterAccounts}},
-   storage: {Jido.Storage.File, path: "/srv/my_app/writer_sessions"},
+   storage: {Jido.Persistence.File, path: "/srv/my_app/writer_sessions"},
    max_sessions: 10,
    max_active: 1}
 ]
@@ -71,7 +71,7 @@ All values below are source defaults, not measured capacity guarantees. Millisec
 | `credentials` | absent | Optional explicit `{ResolverModule, keyword_options}` exporting `resolve/3`; Host.Local shortcut only, never ambient credential discovery |
 | `bundles` | absent | Explicit tool availability selection through `Tools.select/1`; no permission or service startup |
 | `default_role` | `:coding` | Role used when no higher selection exists |
-| `storage` | `{Jido.Storage.ETS, table: instance-specific_table}` | Created when no storage option exists; not durable across a host VM lifetime |
+| `storage` | `{Jido.Persistence.ETS, table: instance-specific_table}` | Native binary/CAS adapter; worker restart only, not durable across host lifetime |
 | `max_sessions` | `500` | Supervised session admission ceiling |
 | `max_active` | `8` | Admitted active-run leases, held through native model/tool work |
 | `max_processes` | `8` | Scoped Process leases |
@@ -93,6 +93,9 @@ All values below are source defaults, not measured capacity guarantees. Millisec
 | `max_jido_tasks` | `1_000` | Native Jido task budget when not supplied |
 
 The runtime's declared positive-integer limits are validated at startup. Native task/options validation remains owned by the corresponding dependency. `max_active`, Process and subagent admission use `Task.Supervisor.max_children`: saturation is an immediate `{:error, {:capacity, kind}}`, **not** an implicit queue or retry. Run/effect histories also refuse new work when full; stopping/restoring a session does not erase its history. Archive it according to host retention policy and create a new identity when appropriate.
+
+On this native V3 branch, custom storage implements `Jido.Persistence.Adapter`: binary values from `get/2`, opaque conditions and `compare_and_swap/4`. The library stores versioned session bytes under namespaced keys and retains native CAS conditions. `Jido.Persistence.File` is the supplied durable adapter. V2 `Jido.Storage` terms are not automatically converted; use separate compatible data roots or an explicit host migration.
+
 
 Other trusted Runtime options include `tools`, `adapters`, `metadata`, `limits`, `instructions`, `system_prompt`, `project_instructions`, `project_config`, `project_approved`, `user_config`, `skills`, `skill_roots` and `request_transformer`. The default transformer is the native policy boundary `OhMyJido.Models.Transformer`; replacing it is trusted host code, not a model-facing preference.
 
@@ -125,7 +128,7 @@ For prompt composition, supply approved project instructions through the trusted
 | `advisor` | Consequences and trade-offs without taking control | `:thinking` | `:capable` |
 | `compaction` | Preserve constraints and effect evidence | `:fast` | `:fast` |
 
-The installed Jido defaults resolve `:capable`, `:planning` and `:thinking` to `anthropic:claude-sonnet-4-20250514`; `:fast` resolves to `anthropic:claude-haiku-4-5`. Selecting those models does **not** enroll an Anthropic subscription or authorize billing. ContextPolicy itself is extractive and performs no automatic compaction-model call.
+This branch explicitly configures `:capable` as active `anthropic:claude-sonnet-4-6` and `:fast` as active `anthropic:claude-haiku-4-5`. The installed catalog marks older `claude-sonnet-4-20250514` retired with no capabilities; its alias name does not supply tool support. Hosts must configure an appropriate active catalog model when using bare SDK defaults. This is explicit host configuration, not runtime fallback or authorization to bill/enroll an account. ContextPolicy is extractive and never makes an automatic compaction-model request.
 
 Model selection and account selection use the following layers independently:
 

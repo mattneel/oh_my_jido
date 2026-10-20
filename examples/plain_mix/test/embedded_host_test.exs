@@ -93,7 +93,7 @@ defmodule PlainMixHost.EmbeddedHostTest do
     events = OhMyJido.events(session)
     assert Enum.any?(events, &(&1.kind == :tool_completed && &1.payload.tool_name == "edit"))
 
-    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert {:ok, %{effects: effects, conversation: before}} = OhMyJido.inspect_session(session)
 
     assert Enum.any?(Map.values(effects), fn
              %{
@@ -121,10 +121,24 @@ defmodule PlainMixHost.EmbeddedHostTest do
     assert {:ok, ^session} = PlainMixHost.restore(session.id, runtime: @runtime)
     assert {:ok, %{conversation: conversation}} = OhMyJido.inspect_session(session)
 
-    assert Enum.any?(
-             conversation,
-             &(Map.get(&1, :content) == "The increment is repaired and the project test passed.")
-           )
+    assert conversation == before
+
+    assert [_terminal] =
+             Enum.filter(conversation, fn message ->
+               message.role == :assistant and
+                 Jido.AI.Model.Response.extract_from_content(message.content) ==
+                   "The increment is repaired and the project test passed."
+             end)
+
+    calls =
+      for message <- conversation,
+          call <- List.wrap(Map.get(message, :tool_calls)),
+          do: ReqLLM.ToolCall.to_map(call)
+
+    assert Enum.map(calls, & &1.name) == ["read", "edit", "shell"]
+    call_ids = Enum.map(calls, & &1.id)
+    assert call_ids == Enum.uniq(call_ids)
+    assert Enum.map(Enum.filter(conversation, &(&1.role == :tool)), & &1.tool_call_id) == call_ids
 
     assert File.cwd!() == cwd
     assert System.get_env() == env

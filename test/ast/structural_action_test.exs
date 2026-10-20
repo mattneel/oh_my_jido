@@ -252,7 +252,19 @@ defmodule OhMyJido.AST.StructuralActionTest do
       expected_count: 1
     }
 
-    assert_reason(execute(context, params), :stale_snapshot)
+    result = execute(context, params)
+    assert_reason(result, :stale_snapshot)
+    assert {:error, %Jido.Action.Error.ExecutionFailureError{} = error} = result
+
+    assert error.details == %{
+             message: "Structural AST operation rejected: :stale_snapshot",
+             reason: :stale_snapshot,
+             expected_snapshot: search.snapshot,
+             actual_snapshot: Files.snapshot(newer)
+           }
+
+    assert error.message == error.details.message
+    refute Jido.Action.Error.retryable?(error)
     assert_reason(execute(context, Map.merge(params, %{operation: "search"})), :stale_snapshot)
     assert File.read!(path) == newer
   end
@@ -453,10 +465,15 @@ defmodule OhMyJido.AST.StructuralActionTest do
     path = Path.join(root, "lib/invalid.ex")
     File.write!(path, "defmodule Broken do\n")
 
-    assert_reason(
-      execute(context, %{operation: "search", path: "lib/invalid.ex", pattern: "IO.inspect(_)"}),
-      :ast_parse_error
-    )
+    result =
+      execute(context, %{operation: "search", path: "lib/invalid.ex", pattern: "IO.inspect(_)"})
+
+    assert_reason(result, :ast_parse_error)
+    assert {:error, %Jido.Action.Error.ExecutionFailureError{} = error} = result
+    assert %{reason: :ast_parse_error, description: description} = error.details
+    assert is_binary(description) and byte_size(description) > 0
+    assert error.message == error.details.message
+    assert Jido.Action.Error.to_map(error).details == error.details
 
     source = "IO.inspect(IO.inspect(1))\n"
     File.write!(path, source)
@@ -577,13 +594,12 @@ defmodule OhMyJido.AST.StructuralActionTest do
   end
 
   defp execute(context, params) do
-    Jido.Exec.run(ASTAction, params, %{oh_my_jido: context}, max_retries: 0)
+    Jido.Exec.run(ASTAction, params, %{oh_my_jido: context}, timeout: 30_000)
   end
 
   defp assert_reason(result, reason) do
     assert {:error, error} = result
     actual = Jido.Action.Error.to_map(error).details.reason
-    expected = if is_tuple(reason), do: Tuple.to_list(reason), else: reason
-    assert actual == expected
+    assert actual == reason
   end
 end

@@ -6,9 +6,9 @@ defmodule OhMyJido.Runtime do
   task supervisors, and optional Eval kernels. No agent starts with the library
   application. `name` is a host-chosen atom; session and run IDs stay strings.
 
-  Storage implements `Jido.Storage`; the default ETS adapter survives worker
-  restart but not host restart. Supply `Jido.Storage.File` or a durable host
-  adapter for restart across host lifetimes.
+  Storage uses the native `Jido.Persistence.Adapter` byte/CAS contract. The
+  default ETS adapter survives worker restart but not host restart. Supply
+  `Jido.Persistence.File` or a durable host adapter across host lifetimes.
   """
 
   use Supervisor
@@ -66,7 +66,7 @@ defmodule OhMyJido.Runtime do
       |> credential_host!()
 
     config =
-      Keyword.put_new(config, :storage, {Jido.Storage.ETS, table: component(name, Storage)})
+      Keyword.put_new(config, :storage, {Jido.Persistence.ETS, table: component(name, Storage)})
 
     validate_limits!(config)
     validate_native_boundary!()
@@ -112,8 +112,8 @@ defmodule OhMyJido.Runtime do
   @spec resume_session(atom(), String.t()) :: {:ok, SessionRef.t()} | {:error, term()}
   def resume_session(runtime, id) when is_atom(runtime) and is_binary(id) do
     with {:ok, config} <- config(runtime),
-         {adapter, opts} <- Jido.Storage.normalize_storage(config[:storage]),
-         {:ok, saved} <- Jido.Storage.fetch_checkpoint(adapter, {runtime, id}, opts) do
+         {:ok, saved, _condition} <-
+           OhMyJido.Persistence.read_session(config[:storage], {runtime, id}) do
       start_session_child(runtime, id, [restore: saved], config)
     end
   end
@@ -122,7 +122,9 @@ defmodule OhMyJido.Runtime do
   @spec list_sessions(atom()) :: [SessionRef.t()]
   def list_sessions(runtime) do
     registry(runtime)
-    |> Registry.select([{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
+    |> Registry.select([
+      {{:"$1", :"$2", :_}, [{:is_binary, :"$1"}], [{{:"$1", :"$2"}}]}
+    ])
     |> Enum.reduce([], fn {id, pid}, sessions ->
       if Process.alive?(pid),
         do: [%SessionRef{runtime: runtime, id: id} | sessions],

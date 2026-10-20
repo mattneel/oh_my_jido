@@ -1,0 +1,74 @@
+defmodule Jido.Agent.DSL.Route do
+  @moduledoc false
+  defstruct [:path, :target, :as, :defaults, :match, :__spark_metadata__, priority: 0]
+end
+
+defmodule Jido.Agent.DSL.Plugin do
+  @moduledoc false
+  defstruct [:module, :__spark_metadata__, config: []]
+end
+
+defmodule Jido.Agent.DSL.Extension do
+  @moduledoc false
+
+  @route %Spark.Dsl.Entity{
+    name: :__route__,
+    target: Jido.Agent.DSL.Route,
+    args: [:path, {:optional, :target}],
+    schema: [
+      path: [type: :string, required: true],
+      target: [type: :any],
+      as: [type: :atom],
+      defaults: [type: :map],
+      priority: [type: :integer, default: 0],
+      match: [type: {:fun, 1}]
+    ]
+  }
+  @plugin %Spark.Dsl.Entity{
+    name: :plugin,
+    target: Jido.Agent.DSL.Plugin,
+    args: [:module],
+    schema: [
+      module: [type: :atom, required: true],
+      config: [type: :any, default: []]
+    ]
+  }
+  @agent %Spark.Dsl.Section{
+    name: :agent,
+    patchable?: true,
+    schema: [
+      schema: [type: :any],
+      metadata: [type: {:custom, __MODULE__, :validate_metadata, []}, type_doc: "map"]
+    ],
+    entities: [@plugin],
+    after_define: {__MODULE__, :mark_agent_block}
+  }
+  @routes %Spark.Dsl.Section{
+    name: :routes,
+    schema: [signal_source: [type: :string]],
+    imports: [Jido.Agent.DSL.Macros],
+    entities: [@route]
+  }
+
+  @doc false
+  def mark_agent_block do
+    quote generated: true do
+      Jido.Agent.DSL.Compiler.register_agent_block!(__MODULE__)
+    end
+  end
+
+  @doc false
+  def validate_metadata(value) do
+    case Jido.Agent.Validation.field(:metadata, value) do
+      {:ok, metadata} -> {:ok, metadata}
+      {:error, error} -> {:error, Exception.message(error)}
+    end
+  end
+
+  use Spark.Dsl.Extension, sections: [@agent, @routes]
+end
+
+defmodule Jido.Agent.DSL do
+  @moduledoc false
+  use Spark.Dsl, default_extensions: [extensions: [Jido.Agent.DSL.Extension]]
+end

@@ -1,0 +1,132 @@
+{
+  "consumers": {
+    "jido_agent": {
+      "actual_behavior": [
+        "plain agent tools",
+        "native AI composition",
+        "existing domain tool preservation"
+      ],
+      "strict_compile_exit_code": 0,
+      "tests_passed": 4
+    },
+    "plain_mix": {
+      "actual_behavior": [
+        "source repair",
+        "child tests",
+        "questions/control",
+        "host restart and conversation restore"
+      ],
+      "strict_compile_exit_code": 0,
+      "tests_passed": 2
+    }
+  },
+  "density": {
+    "active": 8,
+    "cleanup": {
+      "disposable_root_removed": true,
+      "driver_supervisor_stopped": true,
+      "gateway_stopped": true,
+      "host_cwd_unchanged": true,
+      "host_environment_unchanged": true,
+      "os_descendants_returned_to_baseline": true,
+      "os_live_descendants_after": 3,
+      "os_live_descendants_before": 3,
+      "runtime_stopped": true,
+      "supervisor_stopped": true
+    },
+    "elapsed_ms": 93278.783,
+    "file": "bench/results/density-docs-native-v3-owned-20261020.json",
+    "populations": [
+      1,
+      10,
+      100,
+      500
+    ],
+    "result": "passed",
+    "rounds": 6,
+    "schema_validation_errors": 0,
+    "schema_validator": "Draft202012Validator with FormatChecker",
+    "warmup": "Bounded real native scripted HTTP/SSE gateway before empty-runtime baseline; temporary runtime/session/checkpoint/workspace retired; exact OS identity equality retained."
+  },
+  "dependency_identities": {
+    "jido": {
+      "upstream_ref": "8322de574c53d5c2096243d230c9de4f14803bda",
+      "version": "3.0.0-beta.1"
+    },
+    "jido_action": {
+      "upstream_ref": "19c77f94e5c2513b2e684a289857fcd568f7eb29",
+      "version": "3.0.0-beta.12"
+    },
+    "jido_ai": {
+      "note": "Unchanged upstream metadata; native V3 Flow/coordinator integration.",
+      "upstream_ref": "1f19ff262081bc13eb30da7bff8bfe42685d63c8",
+      "version": "2.3.0"
+    },
+    "jido_signal": {
+      "upstream_ref": "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+      "version": "3.0.0-beta.4"
+    },
+    "req_llm": {
+      "provenance": "vendor/req_llm/UPSTREAM.json",
+      "version": "1.28.0"
+    },
+    "zoi": {
+      "upstream_ref": "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9",
+      "version": "0.18.11"
+    }
+  },
+  "full_quality_gate": {
+    "command": "env OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "command_elapsed_seconds": 163.74,
+    "credo_findings": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skipped": 0,
+    "ex_dna_budget": 0,
+    "ex_dna_clones": 0,
+    "exit_code": 0,
+    "reach": "OK",
+    "tests_elapsed_seconds": 147.4,
+    "tests_passed": 585,
+    "transcript": "artifact://1036"
+  },
+  "limitations": [
+    "No live provider or billing request in this milestone.",
+    "Native scripted model latency is simulated; actual tools/files/processes and loopback HTTP are real.",
+    "No production Fly provisioning/deployment or Git push.",
+    "This evidence does not accept the separate Phoenix CMS.",
+    "Earlier failed density artifacts are retained unchanged; no missing model capabilities were enabled and no arbitrary descendants were excluded."
+  ],
+  "native_gateway_ownership": {
+    "behavior": [
+      "empty then tool-bearing native sessions",
+      "actual Write/Read effects",
+      "atom and keyword named Finch selection",
+      "unchanged shared Finch pools",
+      "owned pool and worker DOWN",
+      "semantic native actor descriptors"
+    ],
+    "tests_passed": 1,
+    "transcript": "bg_23"
+  },
+  "scope": "Genuine native Jido V3 core library only; shared Phoenix CMS, browser, release and external Fly acceptance remain open.",
+  "source_fingerprints": {
+    "benchmark_sha256": "b02a743e679d9fd9e7379c1e6475ae76af25ac637cf43b883d044678845dfca8",
+    "library_sha256": "1629f5ec5d28359da8c807025c1686a3fb5ab107ac92ac85c79d0bd68bac58bf",
+    "mix_lock_sha256": "f6a9d6479396d3eb8468c751056b4410b561fb484da3bca5425785e3b2486563",
+    "mix_project_sha256": "dc4cc14b4705dff8631e4656f68a7cd28887a35cf7c67851df07ec89caf634e6"
+  },
+  "standalone_stop": {
+    "command": "MIX_ENV=test mix run --no-compile --no-deps-check -e PROGRAM",
+    "exit_code": 0,
+    "note": "Separate real BEAM process outside ExUnit; actual Shell leader/child and single retained write.",
+    "observed": {
+      "actual_shell_entered": true,
+      "leader_and_child_stopped": true,
+      "session_terminated": true,
+      "single_write_retained": true,
+      "stop_confirmed": true
+    },
+    "program": "\ndefmodule NativeStopProgramHost do\n  @behaviour OhMyJido.Host\n  def authorize(_context, :exec, _effect, _opts), do: :ok\n  def authorize(context, capability, effect, opts), do: OhMyJido.Host.Local.authorize(context, capability, effect, opts)\n  defdelegate credentials(context, account, opts), to: OhMyJido.Host.Local\n  defdelegate invoke(context, capability, request, opts), to: OhMyJido.Host.Local\n  def question(_context, _question, _opts), do: :pending\nend\nroot = System.fetch_env!(\"OMJ_STOP_PROGRAM_ROOT\")\n{:ok, runtime} = OhMyJido.Runtime.start_link(name: NativeStopProgram, tools: [OhMyJido.Tools.Shell], max_processes: 1)\n{:ok, session} = OhMyJido.start_session(NativeStopProgram, workspace: root, permissions: [:exec], host: {NativeStopProgramHost, []})\ntry do\n  command = \"printf 'once\\\\n' > writes; printf '%s\\\\n' \\\"$$\\\" > leader; sleep 30 & printf '%s\\\\n' \\\"$!\\\" > child; wait\"\n  task = Task.async(fn -> OhMyJido.execute_tool(session, \"shell\", %{executable: System.find_executable(\"sh\"), args: [\"-c\", command], timeout_ms: 20_000}) end)\n  ready = fn -> Enum.all?([\"leader\", \"child\"], fn name -> case File.read(Path.join(root, name)) do {:ok, bytes} -> String.trim(bytes) != \"\"; _ -> false end end) end\n  Enum.reduce_while(1..500, nil, fn _, _ -> if ready.(), do: {:halt, :ready}, else: (Process.sleep(10); {:cont, nil}) end)\n  true = ready.()\n  pids = Enum.map([\"leader\", \"child\"], fn name -> root |> Path.join(name) |> File.read!() |> String.trim() |> String.to_integer() end)\n  :ok = OhMyJido.stop_session(session)\n  _tool_result = Task.await(task, 10_000)\n  stopped = Enum.all?(pids, fn pid -> case OhMyJido.Process.capture_identity(pid) do {:ok, %{state: state}} -> state in [\"Z\", \"X\"]; {:error, reason} -> reason in [:enoent, :esrch] end end)\n  true = stopped\n  true = is_nil(GenServer.whereis(OhMyJido.Runtime.via(session)))\n  true = File.read!(Path.join(root, \"writes\")) == \"once\\n\"\n  IO.puts(JSON.encode!(%{stop_confirmed: true, actual_shell_entered: true, leader_and_child_stopped: stopped, session_terminated: true, single_write_retained: true}))\nafter\n  Supervisor.stop(runtime)\nend\n",
+    "stderr": ""
+  }
+}

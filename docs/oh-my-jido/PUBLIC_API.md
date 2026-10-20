@@ -34,13 +34,13 @@ Execute a selected Action through `Jido.Exec.run(action, params, %{oh_my_jido: c
 
 ## Native plugin on your own agent
 
-Attach `OhMyJido.Plugin` through the native `plugins:` option. Its configuration selects `bundles:` and a trusted `context_provider:` module implementing `OhMyJido.Plugin.ContextProvider.fetch_context/1`. The provider receives native `agent_module`/`agent_id` identity and returns `{:ok, Context}` or an explicit error. Resolve a stable per-agent workspace, grants, host policy and service bindings there; never accept those bindings from model text or tool parameters.
+Declare `plugin OhMyJido.Plugin, config: [bundles: [:read_only], context_provider: MyApp.CodingContexts]` inside native `agent do`; plain coding routes are explicit. AI agents add `OhMyJido.Plugin.AgentExtension` to native `extensions:` for static profile binding. The trusted provider implements `fetch_context/1`, receiving only native `agent_module`/`agent_id`, and returns `{:ok, Context}` or error. Never derive authority from model/query/tool parameters.
 
-Mount is configuration-only. Bundle-bound native Actions resolve context at execution rather than copying authority into native agent/request/checkpoint state. Existing application state, genuine domain tools and native model/transformer policy remain host-owned. A native Jido.AI consumer must explicitly implement `private_diagnostics?/0` returning `true` and configure `tool_max_retries: 0`; attaching a plugin is not permission to change global diagnostics or retry effects.
+Preparation is configuration-only. Bound Actions resolve authority at execution rather than copying Context into agent/request/checkpoint state. Domain fields/tools and native model/transformer policy remain host-owned. Implement `private_diagnostics?/0 == true` before native startup; privacy is not retroactive for previously public work. Bound coding catalog entries enforce zero retries and `:unsafe_once`; no global diagnostics mutation or alternate AI loop is installed.
 
-`Plugin.cmd(agent, original_action_or_exact_name, params)` returns the caller's native `{agent, directives}` result, or an explicit preflight error. Native Direct instruction failures are error directives/signals, not necessarily an `{:error, reason}` reply from `AgentServer.call/3`; inspect the real outcome. Successful Direct Actions merge result fields into native agent state in the usual way.
+`Plugin.cmd(agent, original_action_or_exact_name, params)` returns native `{:ok, agent, directives}` or an explicit error. Declare selected `oh_my_jido.*` routes explicitly. Successful coding results live under `agent.state.oh_my_jido_tools`; the reducer preserves domain fields rather than merging arbitrary tool result keys into top-level state.
 
-Rejected AI queries retain native bounded request insertion, stream ownership and completion. A rejecting native request transformer fails before provider/tool calls; errors carry the native `{:failed, :error, {:request_transformer, reason}}` envelope. Stream consumers may receive native lifecycle/checkpoint events before terminal `:request_failed`, not a synthetic one-event stream. Use native `ask`/`await`/`ask_stream` for AI tasks.
+Native V3 admission rejects unsafe AI queries before a provider starts: `ask/3` and `ask_stream/3` return an error without manufacturing a request handle or rejected model turn. Reused request IDs are rejected without terminating the original stream. Use native `ask`/`await`/`ask_stream` for admitted AI tasks.
 
 This integration does not instantiate `CodingAgent`, Runtime or another model loop. Managed session journals, recovery, goal/subagent coordination and the built-in approval conversation require the Runtime/session path. For direct plugin effects, provide deliberate host authorization; availability still does not grant an Action or install external services.
 
@@ -61,17 +61,19 @@ Discovery is literal AST matching, not environment-aware alias/macro expansion. 
 | `Runtime.child_spec(options)` | Ordinary Supervisor child; `name` is required and is the child ID |
 | `Runtime.start_link(options)` | `{:ok, pid}` or Supervisor error; no session/request starts implicitly |
 | `OhMyJido.start_session(runtime, options)` | `{:ok, SessionRef}` or error; existing rooted workspace required; optional `id` 1–128 bytes; grants default empty |
-| `OhMyJido.resume_session(runtime, id)` | Fetches the configured `Jido.Storage` checkpoint and restores without replay; errors for unavailable/unsupported state |
+| `OhMyJido.resume_session(runtime, id)` | Reads native `Jido.Persistence` versioned bytes/CAS state and restores without replay; errors for unavailable/unsupported state |
 | `OhMyJido.list_sessions(runtime)` | Sorted list of currently supervised references, not an enumeration of all stored checkpoints |
 | `OhMyJido.inspect_session(session)` | `{:ok, snapshot}` or error; redacted **host-only** inspection, including an intentional transient `agent_pid` |
 | `OhMyJido.checkpoint(session)` | `:ok` only while no run is active; otherwise `{:error, :run_active}` |
-| `OhMyJido.stop_session(session)` | Stops owned session resources, preserves durable state; not archive deletion or effect rollback |
+| `OhMyJido.stop_session(session)` | Seals admission and waits for owned native execution/effect/resource/child/service settlement; `:ok` then terminates the exact actor. Unconfirmed cleanup returns `{:error, %{reason: :cleanup_uncertain, ...}}` and retains the sealed actor; not rollback or archive deletion |
 
 `start_session/2` with an ID already present in storage uses that checkpoint; it is not a reset/override of a stored session. Starting an already supervised identity returns `:session_exists`. A new workspace/policy needs a new identity or an explicitly managed host storage migration.
 
 An inspection contains `id`, `status`, `active_run`, `agent_pid`, `workspace`, `permissions`, `role`, `account`, `model`, `conversation`, `goal`, `plan`, `retained`, `effects`, `runs`, `children`, `pending_questions` and `seq`. Do not send the whole map to a public UI or telemetry exporter. It includes private workspace/conversation evidence, and its native PID is not JSON or a durable handle. Project a host-approved view.
 
-The ETS default only persists as long as its table/host remains available. For host restart use `{Jido.Storage.File, path: host_path}` or another actual `Jido.Storage` adapter. Restored policy/capability bindings come from the runtime; see [configuration](RUNTIME_CONFIGURATION.md#session-options-and-restore).
+Stopping is bounded; a caller or native Coordinator disappearing is not proof that an Action stopped. Native V3 uses identity-bound Exec admission/worker-supervisor closure, including nested Experiment trials, separately from Process/Eval cleanup. A generic host tool call borrowing the same run ID is not native-owned and must settle independently. Inspect `native_execution` for bounded count/limit diagnostics, not reusable scope tokens or process authority. Missing closure receipts remain fail-closed.
+
+The ETS default lasts only while its table/host remains available. For host restart use `{Jido.Persistence.File, path: host_path}` or another native `Jido.Persistence.Adapter` binary/CAS implementation. V2 `Jido.Storage` checkpoints are not automatically migrated. Restored policy/capability bindings come from the current runtime; see [configuration](RUNTIME_CONFIGURATION.md#session-options-and-restore).
 
 ## Task execution and control
 

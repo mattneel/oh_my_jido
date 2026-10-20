@@ -26,6 +26,7 @@
     },
     "before": {"$ref": "#/$defs/sample"},
     "after": {"$ref": "#/$defs/sample"},
+    "gateway_warmup": {"$ref": "#/$defs/gateway_warmup"},
     "populations": {"type": "array", "items": {"oneOf": [{"$ref": "#/$defs/population"}, {"$ref": "#/$defs/population_error"}]}},
     "errors": {"type": "array", "items": {"$ref": "#/$defs/error"}},
     "cleanup": {
@@ -36,6 +37,7 @@
         "supervisor_stopped": {"type": "boolean"},
         "runtime_stopped": {"type": "boolean"},
         "driver_supervisor_stopped": {"type": "boolean"},
+        "gateway_stopped": {"type": "boolean"},
         "disposable_root_removed": {"type": "boolean"},
         "host_cwd_unchanged": {"type": "boolean"},
         "host_environment_unchanged": {"type": "boolean"},
@@ -52,6 +54,41 @@
     "nullable_number": {"type": ["number", "null"]},
     "nullable_string": {"type": ["string", "null"]},
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "descendant_identity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["pid", "name", "parent_pid", "process_group", "session_id", "start_ticks"],
+      "properties": {
+        "pid": {"type": "integer", "minimum": 1}, "name": {"type": "string"},
+        "parent_pid": {"$ref": "#/$defs/count"}, "process_group": {"$ref": "#/$defs/count"},
+        "session_id": {"$ref": "#/$defs/count"}, "start_ticks": {"$ref": "#/$defs/count"}
+      }
+    },
+    "gateway_warmup": {
+      "type": "object", "additionalProperties": false,
+      "required": ["result", "elapsed_ms", "request_timeout_ms", "initialization_timeout_ms", "source", "live_descendants_before", "live_descendants_after", "model_calls", "session_stopped", "checkpoint_removed", "runtime_stopped", "disposable_root_removed"],
+      "properties": {
+        "result": {"const": "passed"}, "elapsed_ms": {"$ref": "#/$defs/duration"},
+        "request_timeout_ms": {"type": "integer", "minimum": 1},
+        "initialization_timeout_ms": {"type": "integer", "minimum": 1},
+        "source": {"type": "string"},
+        "live_descendants_before": {"type": "array", "items": {"$ref": "#/$defs/descendant_identity"}},
+        "live_descendants_after": {"type": "array", "items": {"$ref": "#/$defs/descendant_identity"}},
+        "model_calls": {
+          "type": "array", "minItems": 1, "maxItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["iteration", "requested_ms", "elapsed_ms"],
+            "properties": {
+              "iteration": {"const": 1}, "requested_ms": {"$ref": "#/$defs/duration"},
+              "elapsed_ms": {"$ref": "#/$defs/duration"}
+            }
+          }
+        },
+        "session_stopped": {"const": true}, "checkpoint_removed": {"const": true},
+        "runtime_stopped": {"const": true}, "disposable_root_removed": {"const": true},
+        "gateway_stopped": {"const": true}
+      }
+    },
     "error": {
       "type": "object", "additionalProperties": false, "required": ["code"],
       "properties": {"code": {"type": "string"}, "resource": {"type": "string"}, "type": {"type": "string"}, "kind": {"type": "string"}}
@@ -117,6 +154,8 @@
         "beam_process_count": {"$ref": "#/$defs/count"}, "beam_port_count": {"$ref": "#/$defs/count"}, "beam_run_queue": {"$ref": "#/$defs/count"},
         "runtime_supervised_process_count": {"$ref": "#/$defs/count"}, "runtime_tree_read_errors": {"$ref": "#/$defs/count"},
         "session_coordinator_count": {"type": ["integer", "null"]}, "native_agent_supervisor_count": {"type": ["integer", "null"]},
+        "native_plugin_lifecycle_count": {"type": ["integer", "null"]},
+        "native_agent_supervisor_child_count": {"type": ["integer", "null"]},
         "in_flight_driver_attempts": {"$ref": "#/$defs/count"},
         "os": {
           "type": "object", "additionalProperties": false,
@@ -124,6 +163,7 @@
           "properties": {
             "beam_rss_bytes": {"type": ["integer", "null"]}, "beam_rss_high_water_bytes": {"type": ["integer", "null"]},
             "live_descendant_count": {"$ref": "#/$defs/count"}, "descendant_rss_sum_bytes": {"$ref": "#/$defs/count"},
+            "live_descendants": {"type": "array", "items": {"$ref": "#/$defs/descendant_identity"}},
             "descendant_rss_unavailable_count": {"$ref": "#/$defs/count"}, "descendant_scan_read_errors": {"$ref": "#/$defs/count"},
             "observed_zombie_descendant_count": {"$ref": "#/$defs/count"}
           }

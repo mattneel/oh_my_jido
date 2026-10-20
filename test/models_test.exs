@@ -14,7 +14,7 @@ defmodule OhMyJido.ModelsTest do
     for role <- roles do
       assert {:ok, selection} = Models.select([role: role], %{model_roles: mappings})
       assert selection.role == role
-      assert selection.model == Jido.AI.ModelAliases.resolve_model(mappings[role])
+      assert selection.model == Jido.AI.Models.resolve(mappings[role])
       assert selection.source == :default
     end
   end

@@ -1,319 +1,341 @@
 defmodule Jido.Discovery do
   @moduledoc """
-  Fast, persistent catalog of Jido components (Actions, Sensors, Agents, Plugins, Demos).
+  Builds a read-only catalog of available Action modules.
 
-  Discovery uses `:persistent_term` for optimal read performance. The catalog is built
-  asynchronously during application startup and can be refreshed on demand.
+  Jido starts one temporary Task that builds the catalog after startup. The
+  Task scans the module lists of loaded applications. You can also configure
+  an application allowlist or add modules that are not in an application.
 
-  ## Component Discovery
+      config :jido, Jido.Discovery,
+        applications: [:my_app, :jido_connect_github],
+        modules: [MyApp.SpecialAction]
 
-  Discovery automatically finds and indexes:
+  The default application value is `:loaded`. This value scans all loaded
+  applications. `refresh/1` replaces the complete catalog. Reads use
+  `:persistent_term` and do not call Action code.
 
-  - **Actions** - Discrete units of work (`__action_metadata__/0`)
-  - **Sensors** - Event monitoring components (`__sensor_metadata__/0`)
-  - **Agents** - Autonomous workers (`__agent_metadata__/0`)
-  - **Plugins** - Reusable capability packs (`__plugin_metadata__/0`)
-  - **Demos** - Example implementations (`__jido_demo__/0`)
+  Discovery is an inventory service. It does not grant permission to run an
+  Action. A product must keep its own allowlist and assignment data.
 
-  ## Component Metadata
-
-  Each discovered component includes:
-
-  ```elixir
-  %{
-    module: MyApp.CoolAction,
-    name: "cool_action",
-    description: "Does cool stuff",
-    slug: "abc123de",
-    category: :utility,
-    tags: [:cool, :stuff]
-  }
-  ```
-
-  ## Usage
-
-      # List components with optional filters
-      Jido.Discovery.list_actions(category: :utility, limit: 10)
-      Jido.Discovery.list_sensors(tag: :monitoring)
-
-      # Find by slug
-      Jido.Discovery.get_action_by_slug("abc123de")
-
-      # Refresh catalog
-      Jido.Discovery.refresh()
-
-      # Get last update time
-      {:ok, timestamp} = Jido.Discovery.last_updated()
-
-  ## Filtering Options
-
-  - `:limit` - Maximum results to return
-  - `:offset` - Results to skip (pagination)
-  - `:name` - Filter by name (partial match)
-  - `:description` - Filter by description (partial match)
-  - `:category` - Filter by category (exact match)
-  - `:tag` - Filter by tag (must have exact tag)
-
-  Filters use AND logic - all specified filters must match.
-
-  ## Performance
-
-  Reads are extremely fast (direct memory access) and never block.
-  All processes can read concurrently without contention.
+  Inline Actions are implementation details of their owner modules. Discovery
+  does not add them to the catalog.
   """
 
-  @catalog_key :jido_discovery_catalog
+  require Logger
 
-  @type component_type :: :actions | :sensors | :agents | :plugins | :demos
-  @type component_metadata :: %{
+  alias Jido.Executable
+
+  @catalog_key {__MODULE__, :catalog}
+  @catalog_version 1
+  @default_applications :loaded
+
+  @typedoc "Metadata for one discovered Action."
+  @type action_metadata :: %{
           module: module(),
+          application: atom() | nil,
           name: String.t(),
-          description: String.t(),
-          slug: String.t(),
-          category: atom() | nil,
-          tags: [atom()] | nil
+          description: String.t() | nil,
+          slug: String.t()
         }
 
-  # Initialization
+  @typedoc "A module that looked like an Action but did not have a valid contract."
+  @type diagnostic :: %{module: module(), error: term()}
 
-  @doc """
-  Initializes the discovery catalog asynchronously.
+  @typedoc "The immutable Discovery catalog."
+  @type catalog :: %{
+          version: pos_integer(),
+          built_at: DateTime.t(),
+          actions: [action_metadata()],
+          diagnostics: [diagnostic()],
+          actions_by_module: %{optional(module()) => action_metadata()},
+          actions_by_slug: %{optional(String.t()) => action_metadata()}
+        }
 
-  Call this from your application supervisor's start callback.
-  The catalog will be built in the background without blocking startup.
-  """
-  @spec init_async() :: Task.t()
-  def init_async do
-    Task.async(fn ->
-      catalog = build_catalog()
-      :persistent_term.put(@catalog_key, catalog)
-      :ok
-    end)
-  end
-
-  # Public API
-
-  @doc """
-  Refreshes the component catalog by rescanning all loaded applications.
-  """
-  @spec refresh() :: :ok
-  def refresh do
-    catalog = build_catalog()
-    :persistent_term.put(@catalog_key, catalog)
-    :ok
-  end
-
-  @doc """
-  Returns the last time the catalog was updated.
-  """
-  @spec last_updated() :: {:ok, DateTime.t()} | {:error, :not_initialized}
-  def last_updated do
-    case get_catalog() do
-      {:ok, catalog} -> {:ok, catalog.last_updated}
-      error -> error
-    end
-  end
-
-  @doc """
-  Returns the full catalog for inspection.
-  """
-  @spec catalog() :: {:ok, map()} | {:error, :not_initialized}
-  def catalog do
-    get_catalog()
-  end
-
-  # Listing components
-
-  @doc """
-  Lists all Actions with optional filtering and pagination.
-  """
-  @spec list_actions(keyword()) :: [component_metadata()]
-  def list_actions(opts \\ []), do: list(:actions, opts)
-
-  @doc """
-  Lists all Sensors with optional filtering and pagination.
-  """
-  @spec list_sensors(keyword()) :: [component_metadata()]
-  def list_sensors(opts \\ []), do: list(:sensors, opts)
-
-  @doc """
-  Lists all Agents with optional filtering and pagination.
-  """
-  @spec list_agents(keyword()) :: [component_metadata()]
-  def list_agents(opts \\ []), do: list(:agents, opts)
-
-  @doc """
-  Lists all Plugins with optional filtering and pagination.
-  """
-  @spec list_plugins(keyword()) :: [component_metadata()]
-  def list_plugins(opts \\ []), do: list(:plugins, opts)
-
-  @doc """
-  Lists all Demos with optional filtering and pagination.
-  """
-  @spec list_demos(keyword()) :: [component_metadata()]
-  def list_demos(opts \\ []), do: list(:demos, opts)
-
-  # Finding by slug
-
-  @doc """
-  Retrieves an Action by its slug.
-  """
-  @spec get_action_by_slug(String.t()) :: component_metadata() | nil
-  def get_action_by_slug(slug), do: get_by_slug(:actions, slug)
-
-  @doc """
-  Retrieves a Sensor by its slug.
-  """
-  @spec get_sensor_by_slug(String.t()) :: component_metadata() | nil
-  def get_sensor_by_slug(slug), do: get_by_slug(:sensors, slug)
-
-  @doc """
-  Retrieves an Agent by its slug.
-  """
-  @spec get_agent_by_slug(String.t()) :: component_metadata() | nil
-  def get_agent_by_slug(slug), do: get_by_slug(:agents, slug)
-
-  @doc """
-  Retrieves a Plugin by its slug.
-  """
-  @spec get_plugin_by_slug(String.t()) :: component_metadata() | nil
-  def get_plugin_by_slug(slug), do: get_by_slug(:plugins, slug)
-
-  @doc """
-  Retrieves a Demo by its slug.
-  """
-  @spec get_demo_by_slug(String.t()) :: component_metadata() | nil
-  def get_demo_by_slug(slug), do: get_by_slug(:demos, slug)
-
-  # Internal helpers
-
-  defp list(type, opts) do
-    case get_catalog() do
-      {:ok, catalog} ->
-        catalog.components
-        |> Map.fetch!(type)
-        |> filter_and_paginate(opts)
-
-      {:error, _} ->
-        []
-    end
-  end
-
-  defp get_by_slug(type, slug) do
-    case get_catalog() do
-      {:ok, catalog} ->
-        catalog.components
-        |> Map.fetch!(type)
-        |> Enum.find(&(&1.slug == slug))
-
-      {:error, _} ->
-        nil
-    end
-  end
-
-  defp get_catalog do
-    {:ok, :persistent_term.get(@catalog_key)}
-  rescue
-    ArgumentError -> {:error, :not_initialized}
-  end
-
-  defp build_catalog do
+  @doc false
+  @spec child_spec(keyword()) :: Supervisor.child_spec()
+  def child_spec(opts) do
     %{
-      last_updated: DateTime.utc_now(),
-      components: %{
-        actions: discover_components(:__action_metadata__),
-        sensors: discover_components(:__sensor_metadata__),
-        agents: discover_components(:__agent_metadata__),
-        plugins: discover_components(:__plugin_metadata__),
-        demos: discover_components(:__jido_demo__)
-      }
+      id: __MODULE__,
+      start: {Task, :start_link, [fn -> initialize(opts) end]},
+      restart: :temporary,
+      type: :worker
     }
   end
 
-  defp discover_components(metadata_fun) do
-    loaded_applications()
-    |> Enum.flat_map(&modules_for/1)
-    |> Enum.filter(&has_metadata_function?(&1, metadata_fun))
-    |> Enum.map(&build_metadata(&1, metadata_fun))
-  end
+  @doc "Returns true when the first catalog build is complete."
+  @spec ready?() :: boolean()
+  def ready?, do: :persistent_term.get(@catalog_key, :not_initialized) != :not_initialized
 
-  defp loaded_applications do
-    Application.loaded_applications()
-    |> Enum.map(fn {app, _desc, _vsn} -> app end)
-  end
-
-  defp modules_for(app) do
-    case :application.get_key(app, :modules) do
-      {:ok, modules} -> modules
-      :undefined -> []
+  @doc "Returns the complete catalog."
+  @spec catalog() :: {:ok, catalog()} | {:error, :not_initialized}
+  def catalog do
+    case :persistent_term.get(@catalog_key, :not_initialized) do
+      :not_initialized -> {:error, :not_initialized}
+      catalog -> {:ok, catalog}
     end
   end
 
-  defp has_metadata_function?(module, fun) do
-    Code.ensure_loaded?(module) and function_exported?(module, fun, 0)
+  @doc "Returns the time of the last successful catalog build."
+  @spec last_updated() :: {:ok, DateTime.t()} | {:error, :not_initialized}
+  def last_updated do
+    with {:ok, catalog} <- catalog() do
+      {:ok, catalog.built_at}
+    end
   end
 
-  defp build_metadata(module, metadata_fun) do
-    raw_metadata = apply(module, metadata_fun, [])
+  @doc """
+  Lists discovered Actions.
 
-    metadata_map =
-      if Keyword.keyword?(raw_metadata), do: Map.new(raw_metadata), else: raw_metadata
-
-    slug =
-      module
-      |> Atom.to_string()
-      |> then(&:crypto.hash(:sha256, &1))
-      |> Base.url_encode64(padding: false)
-      |> binary_part(0, 8)
-
-    metadata_map
-    |> Map.put(:module, module)
-    |> Map.put(:slug, slug)
+  Use `:name` and `:description` for case-sensitive partial matches. Use
+  `:application` for an exact match. Use `:offset` and `:limit` for paging.
+  """
+  @spec list_actions(keyword()) :: [action_metadata()]
+  def list_actions(opts \\ []) do
+    case catalog() do
+      {:ok, catalog} -> filter_and_paginate(catalog.actions, opts)
+      {:error, :not_initialized} -> []
+    end
   end
 
-  defp filter_and_paginate(components, opts) do
-    components
-    |> filter_components(opts)
-    |> paginate(opts)
+  @doc "Returns a discovered Action for a module."
+  @spec get_action(module()) :: action_metadata() | nil
+  def get_action(module) when is_atom(module) do
+    case catalog() do
+      {:ok, catalog} -> Map.get(catalog.actions_by_module, module)
+      {:error, :not_initialized} -> nil
+    end
   end
 
-  defp filter_components(components, opts) do
-    name = Keyword.get(opts, :name)
-    description = Keyword.get(opts, :description)
-    category = Keyword.get(opts, :category)
-    tag = Keyword.get(opts, :tag)
+  @doc "Returns a discovered Action for a catalog slug."
+  @spec get_action_by_slug(String.t()) :: action_metadata() | nil
+  def get_action_by_slug(slug) when is_binary(slug) do
+    case catalog() do
+      {:ok, catalog} -> Map.get(catalog.actions_by_slug, slug)
+      {:error, :not_initialized} -> nil
+    end
+  end
 
-    Enum.filter(components, fn meta ->
-      matches_name?(meta, name) and
-        matches_description?(meta, description) and
-        matches_category?(meta, category) and
-        matches_tag?(meta, tag)
+  @doc """
+  Rebuilds and replaces the complete catalog.
+
+  `:applications` defaults to the configured value or `:loaded`. `:modules`
+  adds explicit modules to the application scan. Pass `applications: []` to
+  scan only explicit modules.
+  """
+  @spec refresh(keyword()) :: :ok | {:error, term()}
+  def refresh(opts \\ []) do
+    with {:ok, modules} <- discovery_modules(opts),
+         {:ok, catalog} <- build_catalog(modules) do
+      :persistent_term.put(@catalog_key, catalog)
+      :ok
+    end
+  end
+
+  defp initialize(opts) do
+    case refresh(opts) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Jido Discovery did not build its catalog: #{inspect(reason)}")
+        :ok
+    end
+  end
+
+  defp discovery_modules(opts) do
+    with {:ok, config} <- discovery_config(),
+         {:ok, applications} <- application_option(opts, config),
+         {:ok, configured_modules} <- module_option(config),
+         {:ok, option_modules} <- module_option(opts),
+         {:ok, application_modules} <- modules_for_applications(applications) do
+      modules =
+        application_modules
+        |> Kernel.++(configured_modules)
+        |> Kernel.++(option_modules)
+        |> Enum.uniq()
+        |> Enum.sort()
+
+      {:ok, modules}
+    end
+  end
+
+  defp discovery_config do
+    case Application.get_env(:jido, __MODULE__, []) do
+      config when is_list(config) -> {:ok, config}
+      config -> {:error, {:invalid_discovery_config, config}}
+    end
+  end
+
+  defp application_option(opts, config) do
+    value =
+      Keyword.get(opts, :applications, Keyword.get(config, :applications, @default_applications))
+
+    case value do
+      :loaded -> {:ok, loaded_applications()}
+      applications when is_list(applications) -> validate_atoms(:applications, applications)
+      other -> {:error, {:invalid_applications, other}}
+    end
+  end
+
+  defp module_option(options) do
+    case Keyword.get(options, :modules, []) do
+      modules when is_list(modules) -> validate_atoms(:modules, modules)
+      other -> {:error, {:invalid_modules, other}}
+    end
+  end
+
+  defp validate_atoms(_name, values) when values == [], do: {:ok, []}
+
+  defp validate_atoms(name, values) do
+    if Enum.all?(values, &(is_atom(&1) and not is_nil(&1))) do
+      {:ok, values}
+    else
+      invalid_atom_list(name, values)
+    end
+  end
+
+  defp invalid_atom_list(:applications, values), do: {:error, {:invalid_applications, values}}
+  defp invalid_atom_list(:modules, values), do: {:error, {:invalid_modules, values}}
+
+  defp loaded_applications do
+    Application.loaded_applications()
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  defp modules_for_applications(applications) do
+    Enum.reduce_while(applications, {:ok, []}, fn application, {:ok, result} ->
+      case Application.spec(application, :modules) do
+        modules when is_list(modules) -> {:cont, {:ok, modules ++ result}}
+        nil -> {:halt, {:error, {:application_not_loaded, application}}}
+      end
     end)
   end
 
-  defp paginate(components, opts) do
+  defp build_catalog(modules) do
+    {actions, diagnostics} =
+      Enum.reduce(modules, {[], []}, fn module, {actions, diagnostics} ->
+        case discover_action(module) do
+          {:ok, metadata} -> {[metadata | actions], diagnostics}
+          :skip -> {actions, diagnostics}
+          {:error, error} -> {actions, [%{module: module, error: error} | diagnostics]}
+        end
+      end)
+
+    actions = Enum.sort_by(actions, &{&1.name, Atom.to_string(&1.module)})
+    diagnostics = Enum.sort_by(diagnostics, &Atom.to_string(&1.module))
+
+    with :ok <- validate_unique_slugs(actions) do
+      {:ok,
+       %{
+         version: @catalog_version,
+         built_at: DateTime.utc_now(),
+         actions: actions,
+         diagnostics: diagnostics,
+         actions_by_module: Map.new(actions, &{&1.module, &1}),
+         actions_by_slug: Map.new(actions, &{&1.slug, &1})
+       }}
+    end
+  end
+
+  defp discover_action(module) do
+    case Code.ensure_loaded(module) do
+      {:module, ^module} -> discover_loaded_action(module)
+      {:error, reason} -> {:error, {:module_not_loaded, reason}}
+    end
+  end
+
+  defp discover_loaded_action(module) do
+    cond do
+      function_exported?(module, :__jido_inline_action__, 0) ->
+        :skip
+
+      not function_exported?(module, :__jido_executable__, 0) ->
+        :skip
+
+      true ->
+        validate_action(module)
+    end
+  end
+
+  defp validate_action(module) do
+    with {:ok, %Executable{kind: :action, target: ^module} = executable} <-
+           Executable.resolve(module),
+         :ok <- Executable.validate(executable),
+         {:ok, metadata} <- action_metadata(module) do
+      {:ok, metadata}
+    else
+      {:ok, %Executable{}} -> :skip
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp action_metadata(module) do
+    name = module.name()
+    description = module.description()
+
+    if is_binary(name) and (is_binary(description) or is_nil(description)) do
+      {:ok,
+       %{
+         module: module,
+         application: Application.get_application(module),
+         name: name,
+         description: description,
+         slug: slug(module)
+       }}
+    else
+      {:error, {:invalid_action_metadata, %{name: name, description: description}}}
+    end
+  rescue
+    error -> {:error, {:action_metadata_failed, error}}
+  catch
+    kind, reason -> {:error, {:action_metadata_failed, {kind, reason}}}
+  end
+
+  defp slug(module) do
+    module
+    |> Atom.to_string()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.url_encode64(padding: false)
+    |> binary_part(0, 16)
+  end
+
+  defp validate_unique_slugs(actions) do
+    case Enum.find(Enum.group_by(actions, & &1.slug), fn {_slug, items} -> length(items) > 1 end) do
+      nil -> :ok
+      {slug, items} -> {:error, {:duplicate_action_slug, slug, Enum.map(items, & &1.module)}}
+    end
+  end
+
+  defp filter_and_paginate(actions, opts) do
+    name = Keyword.get(opts, :name)
+    description = Keyword.get(opts, :description)
+    application = Keyword.get(opts, :application)
     offset = Keyword.get(opts, :offset, 0)
     limit = Keyword.get(opts, :limit)
 
-    components
-    |> Enum.drop(offset)
+    actions
+    |> Enum.filter(fn metadata ->
+      contains?(metadata.name, name) and
+        contains?(metadata.description, description) and
+        matches?(metadata.application, application)
+    end)
+    |> Enum.drop(valid_offset(offset))
     |> maybe_limit(limit)
   end
 
-  defp matches_name?(_meta, nil), do: true
-  defp matches_name?(meta, name), do: String.contains?(meta[:name] || "", name)
+  defp contains?(_value, nil), do: true
+  defp contains?(nil, _part), do: false
+  defp contains?(value, part) when is_binary(part), do: String.contains?(value, part)
+  defp contains?(_value, _part), do: false
 
-  defp matches_description?(_meta, nil), do: true
-  defp matches_description?(meta, desc), do: String.contains?(meta[:description] || "", desc)
+  defp matches?(_value, nil), do: true
+  defp matches?(value, expected), do: value == expected
 
-  defp matches_category?(_meta, nil), do: true
-  defp matches_category?(meta, category), do: meta[:category] == category
+  defp valid_offset(offset) when is_integer(offset) and offset >= 0, do: offset
+  defp valid_offset(_offset), do: 0
 
-  defp matches_tag?(_meta, nil), do: true
-  defp matches_tag?(meta, tag), do: is_list(meta[:tags]) and tag in meta[:tags]
+  defp maybe_limit(actions, limit) when is_integer(limit) and limit >= 0,
+    do: Enum.take(actions, limit)
 
-  defp maybe_limit(list, nil), do: list
-  defp maybe_limit(list, limit) when is_integer(limit) and limit > 0, do: Enum.take(list, limit)
-  defp maybe_limit(list, _), do: list
+  defp maybe_limit(actions, _limit), do: actions
 end

@@ -9,29 +9,47 @@ defmodule OhMyJido.NativePrivacyTest do
   alias ReqLLM.{Context, StreamServer}
   alias ReqLLM.Streaming.{Failure, InProcessClient, WebSocketClient}
 
-  defmodule DirectiveStrategy do
-    use Jido.Agent.Strategy
+  defmodule ForwardDirective do
+    use Jido.Action, name: "native_privacy_forward_directive"
 
     @impl true
-    def cmd(agent, [instruction], _context), do: {agent, [instruction.params.directive]}
+    def run(%{directive: directive}, %{agent_state: state}), do: {:ok, state, [directive]}
   end
 
   defmodule PublicAgent do
-    use Jido.Agent,
-      name: "public_directive_privacy_fixture",
-      default_plugins: false,
-      strategy: DirectiveStrategy,
-      signal_routes: [{"privacy.directive", :forward}]
+    use Jido.Agent, name: "public_directive_privacy_fixture"
+
+    agent do
+      schema(Zoi.object(%{}))
+    end
+
+    routes do
+      route("privacy.directive", ForwardDirective)
+    end
   end
 
   defmodule PrivateAgent do
-    use Jido.Agent,
-      name: "private_directive_privacy_fixture",
-      default_plugins: false,
-      strategy: DirectiveStrategy,
-      signal_routes: [{"privacy.directive", :forward}]
+    use Jido.Agent, name: "private_directive_privacy_fixture"
+
+    agent do
+      schema(Zoi.object(%{}))
+    end
+
+    routes do
+      route("privacy.directive", ForwardDirective)
+    end
 
     def private_diagnostics?, do: true
+  end
+
+  defmodule FailingDispatch do
+    @behaviour Jido.Signal.Dispatch.Adapter
+
+    @impl true
+    def options_schema, do: Zoi.keyword(secret: Zoi.string() |> Zoi.required())
+
+    @impl true
+    def deliver(_signal, opts), do: raise(Keyword.fetch!(opts, :secret))
   end
 
   defmodule AlternateProvider do
@@ -136,18 +154,18 @@ defmodule OhMyJido.NativePrivacyTest do
           forwarded_trace = Jido.Tracing.Trace.get(forwarded)
           input_trace = Jido.Tracing.Trace.get(input)
           assert forwarded_trace.trace_id == input_trace.trace_id
-          assert forwarded_trace.parent_span_id == input_trace.span_id
+          assert forwarded_trace.span_id != input_trace.span_id
           assert forwarded_trace.causation_id == input.id
           assert_receive {:directive_telemetry, :start, measurements, start_metadata}, 1_000
           assert is_integer(measurements.system_time)
           assert_private_directive_metadata(start_metadata, id, input.id)
           assert_receive {:directive_telemetry, :stop, measurements, stop_metadata}, 1_000
           assert is_integer(measurements.duration)
-          assert stop_metadata.result == :async
+          assert stop_metadata.status == :ok
           assert_private_directive_metadata(stop_metadata, id, input.id)
           refute inspect([start_metadata, stop_metadata], limit: :infinity) =~ secret
           refute inspect([start_metadata, stop_metadata], limit: :infinity) =~ trace_secret
-          assert {:ok, _status} = AgentServer.status(server)
+          assert %{phase: :idle} = AgentServer.status(server)
         end)
 
       refute log =~ secret
@@ -155,15 +173,16 @@ defmodule OhMyJido.NativePrivacyTest do
     end
   end
 
-  test "private directive exceptions expose kind and identifiers without directive or trace data" do
+  test "private native dispatch failures remain real after commit without payload diagnostics" do
     start_supervised!({Jido, name: __MODULE__.Engine})
     id = "native-private-exception"
     secret = "synthetic-failed-directive-payload"
     trace_secret = "synthetic-failed-directive-trace"
-    directive = %Directive.Emit{signal: %{content: secret}}
+    emitted = Signal.new!("privacy.forwarded", %{content: secret}, source: "/privacy")
+    directive = %Directive.Emit{signal: emitted, dispatch: {FailingDispatch, secret: secret}}
     input = directive_signal(directive, trace_secret)
     observe_directives(id)
-    server = start_agent(:module, id)
+    server = start_agent(:module, id, error_policy: :stop_on_error)
     monitor = Process.monitor(server)
 
     log =
@@ -171,26 +190,93 @@ defmodule OhMyJido.NativePrivacyTest do
         assert {:ok, _agent} = AgentServer.call(server, input)
         assert_receive {:directive_telemetry, :start, _measurements, metadata}, 1_000
         assert_private_directive_metadata(metadata, id, input.id)
-        assert_receive {:directive_telemetry, :exception, measurements, metadata}, 1_000
+        assert_receive {:directive_telemetry, :stop, measurements, metadata}, 1_000
         assert is_integer(measurements.duration)
         assert_private_directive_metadata(metadata, id, input.id)
-        assert metadata.kind == :error
-        assert metadata.error_type == :private_agent_failure
+        assert metadata.status == :error
+        assert metadata.error_type == :execution_error
         assert metadata.retryable? == false
+        assert metadata.committed?
         refute inspect(metadata, limit: :infinity) =~ secret
         refute inspect(metadata, limit: :infinity) =~ trace_secret
 
         assert_receive {:DOWN, ^monitor, :process, ^server,
-                        {:shutdown, :private_callback_failed}},
+                        {:shutdown, {:agent_error, %Jido.Error.ExecutionError{} = reason}}},
                        1_000
+
+        assert reason.details.retry == false
+        refute inspect(reason, limit: :infinity) =~ secret
       end)
 
-    assert log =~ "Private AgentServer callback failed"
+    assert log =~ "Agent Directive handling failed"
     refute log =~ secret
     refute log =~ trace_secret
+    refute log =~ "Private AgentServer callback failed"
   end
 
-  test "ordinary native directive telemetry preserves complete directives and trace context" do
+  test "private committed dispatch failures notify subscribers without replaying partial deliveries" do
+    start_supervised!({Jido, name: __MODULE__.Engine})
+    id = "native-private-partial-dispatch"
+    secret = "synthetic-partial-dispatch-payload"
+    trace_secret = "synthetic-partial-dispatch-trace"
+    emitted = Signal.new!("privacy.forwarded", %{content: secret}, source: "/privacy")
+
+    directive = %Directive.Emit{
+      signal: emitted,
+      dispatch: [{:pid, target: self()}, {FailingDispatch, secret: secret}]
+    }
+
+    input = directive_signal(directive, trace_secret)
+    observe_directives(id)
+    server = start_agent(:module, id, error_policy: {:emit_signal, {:pid, target: self()}})
+    monitor = Process.monitor(server)
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert {:ok, committed} = AgentServer.call(server, input)
+
+        assert_receive {:signal, %Signal{type: "privacy.forwarded", data: %{content: ^secret}}},
+                       1_000
+
+        assert_receive {:signal, %Signal{type: "jido.agent.error"} = failure}, 1_000
+        assert failure.data.agent_id == id
+        assert failure.data.status == :failed
+        assert failure.data.stage == :directive
+        assert failure.data.committed?
+        assert %{type: :execution_error, retryable?: false} = failure.data.error
+        refute inspect(failure.data, limit: :infinity) =~ secret
+        refute inspect(failure.data, limit: :infinity) =~ trace_secret
+
+        assert_receive {:directive_telemetry, :start, _measurements, metadata}, 1_000
+        assert_private_directive_metadata(metadata, id, input.id)
+        assert_receive {:directive_telemetry, :stop, measurements, metadata}, 1_000
+        assert is_integer(measurements.duration)
+        assert_private_directive_metadata(metadata, id, input.id)
+        assert metadata.status == :error
+        assert metadata.error_type == :execution_error
+        assert metadata.retryable? == false
+        assert metadata.committed?
+        assert metadata.turn_id == failure.data.turn_id
+        refute inspect(metadata, limit: :infinity) =~ secret
+        refute inspect(metadata, limit: :infinity) =~ trace_secret
+
+        assert AgentServer.agent(server) == committed
+
+        assert %{phase: :idle, state_version: 1, runtime: %{error_count: 1}} =
+                 AgentServer.status(server)
+
+        refute_receive {:signal, %Signal{type: "privacy.forwarded"}}, 0
+        refute_receive {:signal, %Signal{type: "jido.agent.error"}}, 0
+        refute_receive {:DOWN, ^monitor, :process, ^server, _reason}, 0
+      end)
+
+    assert log =~ "Agent Directive handling failed"
+    refute log =~ secret
+    refute log =~ trace_secret
+    refute log =~ "Private AgentServer callback failed"
+  end
+
+  test "ordinary native directives retain payload and trace while telemetry stays native and bounded" do
     start_supervised!({Jido, name: __MODULE__.Engine})
     id = "native-public-directive"
     emitted = Signal.new!("privacy.forwarded", %{content: "ordinary payload"}, source: "/privacy")
@@ -200,14 +286,17 @@ defmodule OhMyJido.NativePrivacyTest do
     server = start_agent(:public, id)
 
     assert {:ok, _agent} = AgentServer.call(server, input)
-    assert_receive {:signal, %Signal{data: %{content: "ordinary payload"}}}, 1_000
+    assert_receive {:signal, %Signal{data: %{content: "ordinary payload"}} = forwarded}, 1_000
+    assert Jido.Tracing.Trace.get(forwarded).tracestate == "omj=ordinary trace attributes"
 
     for phase <- [:start, :stop] do
       assert_receive {:directive_telemetry, ^phase, _measurements, metadata}, 1_000
-      assert metadata.directive == directive
-      assert metadata.directive_type == "Emit"
+      assert metadata.directive_module == Directive.Emit
       assert metadata.agent_id == id
-      assert metadata.jido_tracestate == "ordinary trace attributes"
+      assert metadata.trace_id == Jido.Tracing.Trace.get(input).trace_id
+      refute Map.has_key?(metadata, :directive)
+      refute Map.has_key?(metadata, :tracestate)
+      refute Map.has_key?(metadata, :jido_tracestate)
     end
   end
 
@@ -353,22 +442,29 @@ defmodule OhMyJido.NativePrivacyTest do
     handler = {__MODULE__, id, make_ref()}
 
     events =
-      for phase <- [:start, :stop, :exception], do: [:jido, :agent_server, :directive, phase]
+      for phase <- [:start, :stop, :exception], do: [:jido, :agent, :directive, phase]
 
     :ok = :telemetry.attach_many(handler, events, &__MODULE__.record_directive/4, {self(), id})
     on_exit(fn -> :telemetry.detach(handler) end)
   end
 
-  defp start_agent(mode, id) do
+  defp start_agent(mode, id, extra_opts \\ []) do
     module = if mode == :module, do: PrivateAgent, else: PublicAgent
-    opts = [jido: __MODULE__.Engine, agent: module, id: id]
+
+    opts =
+      Keyword.merge(
+        [jido: __MODULE__.Engine, agent: module, id: id, restart: :temporary],
+        extra_opts
+      )
 
     opts =
       if mode == :inherited do
+        parent_server = start_agent(:module, id <> "-parent")
+
         parent =
           Jido.AgentServer.ParentRef.new!(%{
-            pid: self(),
-            id: "native-parent",
+            pid: parent_server,
+            id: id <> "-parent",
             tag: :privacy,
             meta: %{private_diagnostics: true}
           })
@@ -378,9 +474,13 @@ defmodule OhMyJido.NativePrivacyTest do
         opts
       end
 
-    start_supervised!(Supervisor.child_spec({AgentServer, opts}, restart: :temporary),
-      id: make_ref()
-    )
+    server =
+      start_supervised!(Supervisor.child_spec({AgentServer, opts}, restart: :temporary),
+        id: make_ref()
+      )
+
+    assert :ok = AgentServer.await_ready(server)
+    server
   end
 
   defp directive_signal(directive, trace_state) do
@@ -390,7 +490,7 @@ defmodule OhMyJido.NativePrivacyTest do
       Jido.Tracing.Trace.put(signal, %{
         trace_id: "00000000000000000000000000000001",
         span_id: "0000000000000001",
-        tracestate: trace_state
+        tracestate: "omj=" <> trace_state
       })
 
     signal
@@ -399,10 +499,9 @@ defmodule OhMyJido.NativePrivacyTest do
   defp assert_private_directive_metadata(metadata, id, signal_id) do
     assert metadata.agent_id == id
     assert metadata.agent_module in [PrivateAgent, PublicAgent]
-    assert metadata.directive_type == "Emit"
+    assert metadata.directive_module == Directive.Emit
     assert metadata.signal_type == "privacy.directive"
     assert metadata.signal_id == signal_id
-    assert metadata.jido_instance == __MODULE__.Engine
     refute Map.has_key?(metadata, :directive)
     refute Map.has_key?(metadata, :jido_tracestate)
   end

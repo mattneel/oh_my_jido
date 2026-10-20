@@ -133,7 +133,7 @@ defmodule OhMyJido.Search do
     with {:ok, root} <- Workspace.resolve(context, "."),
          {:ok, resolved} <- Workspace.resolve(context, path),
          :ok <- directory_or_file(resolved),
-         :ok <- safe_glob(glob, root),
+         :ok <- safe_glob(glob),
          true <- is_boolean(ignore) and is_boolean(hidden),
          {:ok, compiled_glob} <- compile_glob(glob, hidden),
          :ok <- deadline(limits),
@@ -197,7 +197,7 @@ defmodule OhMyJido.Search do
     end
   end
 
-  defp safe_glob(glob, root) when is_binary(glob) do
+  defp safe_glob(glob) when is_binary(glob) do
     cond do
       glob == "" or not String.valid?(glob) or String.contains?(glob, <<0>>) ->
         {:error, :invalid_pattern}
@@ -205,15 +205,15 @@ defmodule OhMyJido.Search do
       byte_size(glob) > 4096 ->
         {:error, :invalid_pattern}
 
+      Path.type(glob) == :absolute or String.contains?(glob, "..") ->
+        {:error, :outside_workspace}
+
       true ->
-        case Jido.Tools.Files.validate_glob_pattern(glob, %{allowed_file_roots: [root]}) do
-          :ok -> :ok
-          {:error, _reason} -> {:error, :outside_workspace}
-        end
+        :ok
     end
   end
 
-  defp safe_glob(_glob, _root), do: {:error, :invalid_pattern}
+  defp safe_glob(_glob), do: {:error, :invalid_pattern}
 
   defp compile_glob(glob, hidden), do: GlobEx.compile(glob, match_dot: hidden)
 

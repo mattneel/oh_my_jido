@@ -1,35 +1,37 @@
 defmodule Jido.AgentServer.Signal.ChildStarted do
-  @moduledoc """
-  Emitted by a child agent when it finishes initialization and becomes ready.
-
-  Delivered to the parent as `jido.agent.child.started`. This allows the parent
-  to know when a spawned child is ready to receive signals.
-
-  ## Fields
-
-  - `:parent_id` - ID of the parent agent
-  - `:child_id` - ID of the child agent
-  - `:child_partition` - Partition of the child agent
-  - `:child_module` - Module of the child agent
-  - `:tag` - Tag used when spawning the child
-  - `:pid` - PID of the child process
-  - `:meta` - Metadata passed during spawn
-  """
+  @moduledoc false
 
   use Jido.Signal,
     type: "jido.agent.child.started",
     default_source: "/agent",
-    extension_policy: [
-      {Jido.Signal.Ext.Trace, :optional},
-      {Jido.Signal.Ext.Dispatch, :optional}
-    ],
-    schema: [
-      parent_id: [type: :string, required: true, doc: "ID of the parent agent"],
-      child_id: [type: :string, required: true, doc: "ID of the child agent"],
-      child_partition: [type: :any, doc: "Partition of the child agent"],
-      child_module: [type: :any, required: true, doc: "Module of the child agent"],
-      tag: [type: :any, required: true, doc: "Tag used when spawning"],
-      pid: [type: :any, required: true, doc: "PID of the child process"],
-      meta: [type: :map, default: %{}, doc: "Metadata passed during spawn"]
-    ]
+    schema:
+      Zoi.object(%{
+        parent_id: Zoi.string(description: "Parent Agent id"),
+        child_id: Zoi.string(description: "Child Agent id"),
+        child_partition: Zoi.any(description: "Child partition") |> Zoi.optional(),
+        child_module: Zoi.any(description: "Child Agent module"),
+        tag: Zoi.any(description: "Tracked child tag"),
+        pid: Zoi.any(description: "Child Agent Server PID"),
+        meta: Zoi.map(description: "Relationship metadata") |> Zoi.default(%{})
+      })
+
+  def for_child(parent_id, child, restarted? \\ false) do
+    signal =
+      new!(
+        %{
+          parent_id: parent_id,
+          child_id: child.id,
+          child_partition: child.partition,
+          child_module: child.module,
+          tag: child.tag,
+          pid: child.pid,
+          meta: Map.put(child.meta, :restarted, restarted?)
+        },
+        source: "/agent/#{parent_id}"
+      )
+      |> Jido.AgentServer.CreationCause.put(child.creation_cause)
+
+    {:ok, signal} = Jido.Signal.put_context(signal, "jidochildactivation", child.activation_id)
+    signal
+  end
 end

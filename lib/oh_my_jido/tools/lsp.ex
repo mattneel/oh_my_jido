@@ -53,7 +53,6 @@ defmodule OhMyJido.Tools.LSP do
   @impl true
   def run(params, execution_context) do
     with {:ok, params} <- validate_params(params),
-         {:ok, params} <- Jido.Action.Schema.validate(schema(), params),
          {:ok, context} <- Context.fetch(execution_context),
          :ok <-
            Tool.authorize(context, :lsp, %{

@@ -227,7 +227,13 @@ defmodule OhMyJido.SearchTest do
       {:permission_denied, :read}
     )
 
-    for glob <- ["../outside/*.ex", "/**/*.ex"] do
+    for glob <- [
+          "../outside/*.ex",
+          "/**/*.ex",
+          "lib/../*.ex",
+          "{lib,../outside}/*.ex",
+          "file..ex"
+        ] do
       assert_reason(Tool.execute(fixture.context, "list", %{glob: glob}), :outside_workspace)
 
       assert_reason(

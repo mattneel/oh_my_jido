@@ -404,14 +404,17 @@ defmodule OhMyJido.Process do
 
   defp unregister_resource(_context, nil, _outcome), do: :ok
 
-  defp unregister_resource(context, key, {:ok, %{cleanup: :confirmed}}),
-    do: unregister_resource(context, key)
+  defp unregister_resource(context, key, outcome) do
+    receipt =
+      case outcome do
+        {status, %{} = result} when status in [:ok, :error] ->
+          {status, Map.take(result, [:cleanup, :effect, :status, :reason, :cancellation])}
 
-  defp unregister_resource(context, key, {:error, _reason}), do: unregister_resource(context, key)
-  defp unregister_resource(_context, _key, _uncertain), do: :ok
+        result ->
+          result
+      end
 
-  defp unregister_resource(context, key) do
-    OhMyJido.Session.unregister_resource(context.coordinator, key)
+    OhMyJido.Session.unregister_resource(context.coordinator, key, receipt)
   catch
     :exit, _reason -> :ok
   end

@@ -4,10 +4,19 @@ defmodule OhMyJido.Bench.Density.Native do
   import Jido.AI.Test
 
   @input "density input\n"
-  @model "anthropic:claude-sonnet-4-20250514"
+  @model "anthropic:claude-sonnet-4-6"
 
   def model, do: @model
   def tools, do: [OhMyJido.Tools.Read, OhMyJido.Tools.Write, OhMyJido.Tools.Shell]
+  def finch, do: __MODULE__.Gateway
+
+  def gateway_child_spec do
+    Supervisor.child_spec(
+      {Finch, name: finch(), pools: %{default: [protocols: [:http1], size: 1, count: 1]}},
+      id: finch()
+    )
+  end
+
   def input, do: @input
   def content(token), do: "density output #{token}\n"
 
@@ -57,12 +66,24 @@ defmodule OhMyJido.Bench.Density.Native do
             env: %{"OMJ_DENSITY_CHILD" => token},
             timeout_ms: tool_timeout_ms,
             max_output_bytes: 1_024
-          }, id: "#{token}-shell")
+          },
+          id: "#{token}-shell"
+        )
 
         answer(final_answer(token))
       end
 
     {task(token), react_opts(script)}
+  end
+
+  def warmup_script do
+    script =
+      expect_react do
+        user("Initialize the density benchmark's native scripted model gateway.")
+        answer(final_answer("gateway-warmup"))
+      end
+
+    {script.user, react_opts(script)}
   end
 
   def shell_args(delay_ms) do
@@ -123,7 +144,13 @@ defmodule OhMyJido.Bench.Density.Native.Transformer do
         {:density_delay, settings.token, :model, state.iteration, requested, elapsed}
       )
 
-      {:ok, overrides}
+      http_options =
+        overrides.llm_opts
+        |> Keyword.get(:req_http_options, [])
+        |> Keyword.put(:finch, name: Native.finch())
+
+      {:ok,
+       %{overrides | llm_opts: Keyword.put(overrides.llm_opts, :req_http_options, http_options)}}
     else
       false -> {:error, :density_requires_an_explicit_native_script}
       {:error, _reason} = error -> error

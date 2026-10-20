@@ -218,7 +218,7 @@ defmodule OhMyJido.Eval.Kernel do
           invalidate(state, :closed, :cancelled)
 
         state.execution ->
-          finish_execution(state.execution)
+          finish_execution(state.execution, %{cleanup: :uncertain, status: :crashed})
           Process.exit(state.execution.task.pid, :kill)
           GenServer.reply(state.execution.from, {:error, {:kernel_invalidated, :bridge_down}})
 
@@ -244,11 +244,11 @@ defmodule OhMyJido.Eval.Kernel do
   defp finish_result({:ok, %{status: status} = result}, state, execution)
        when status in [:ok, :error] do
     result = complete_result(state, result, :ready)
-    finish_execution(execution)
 
     if result.effects == :uncertain do
       cleanup = state.backend.interrupt(state.handle, execution.request.id)
       result = Map.merge(result, %{kernel_state: :invalidated, cleanup: cleanup_state(cleanup)})
+      finish_execution(execution, result)
       GenServer.reply(execution.from, {:ok, result})
 
       {:noreply,
@@ -260,6 +260,8 @@ defmodule OhMyJido.Eval.Kernel do
            last_used: now()
        }}
     else
+      # The matched backend result and finished bridge callbacks settle this execution.
+      finish_execution(execution, Map.put_new(result, :cleanup, :confirmed))
       GenServer.reply(execution.from, {:ok, result})
       {:noreply, %{state | status: :ready, execution: nil, last_used: now()}}
     end
@@ -284,7 +286,6 @@ defmodule OhMyJido.Eval.Kernel do
 
     if state.execution do
       execution = state.execution
-      finish_execution(execution)
       Process.exit(execution.task.pid, :kill)
 
       result =
@@ -299,6 +300,8 @@ defmodule OhMyJido.Eval.Kernel do
           },
           :invalidated
         )
+
+      finish_execution(execution, result)
 
       GenServer.reply(execution.from, {:ok, result})
     end
@@ -358,11 +361,15 @@ defmodule OhMyJido.Eval.Kernel do
 
   defp valid_cell_id?(_cell_id), do: false
 
-  defp finish_execution(execution) do
+  defp finish_execution(execution, result) do
     Process.cancel_timer(execution.timer)
     Process.demonitor(execution.task.ref, [:flush])
     Process.demonitor(execution.caller_monitor, [:flush])
-    unregister_resource(execution.resource)
+
+    unregister_resource(
+      execution.resource,
+      Map.put(result, :execution_id, execution.request.id)
+    )
   end
 
   defp prepare_execution(context, state, request) do
@@ -372,7 +379,12 @@ defmodule OhMyJido.Eval.Kernel do
           {:ok, resource}
 
         {:error, _reason} = error ->
-          unregister_resource(resource)
+          unregister_resource(resource, %{
+            execution_id: request.id,
+            cleanup: :confirmed,
+            status: :not_started
+          })
+
           error
       end
     end
@@ -398,10 +410,12 @@ defmodule OhMyJido.Eval.Kernel do
     :exit, reason -> {:error, {:resource_registration_failed, reason}}
   end
 
-  defp unregister_resource(nil), do: :ok
+  defp unregister_resource(nil, _result), do: :ok
 
-  defp unregister_resource({coordinator, key}),
-    do: OhMyJido.Session.unregister_resource(coordinator, key)
+  defp unregister_resource({coordinator, key}, result) do
+    receipt = Map.take(result, [:execution_id, :cleanup, :status, :effects, :kernel_state])
+    OhMyJido.Session.unregister_resource(coordinator, key, {:ok, receipt})
+  end
 
   defp snapshot(state) do
     %{

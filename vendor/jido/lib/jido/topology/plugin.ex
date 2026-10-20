@@ -1,0 +1,163 @@
+defmodule Jido.Topology.Plugin do
+  @moduledoc """
+  Executes the Topology callbacks of `Jido.Plugin`.
+
+  A callback can return current canonical Bus resources, ownership
+  relationships, and Bus subscriptions. Bus is the first core resource type.
+  It cannot start a process, activate a plan, persist data, or add another
+  resource type through this contract.
+
+  `Jido.Topology.instantiate/2` invokes these callbacks during pure plan
+  construction. It processes Agent declarations, then group declarations, in
+  their source order. Each declaration keeps its Plugin order. Included
+  Topologies receive contributions in their own scope. Common Topology
+  validation checks the combined entries before a Controller can activate the
+  plan.
+  """
+
+  alias Jido.Agent.Authoring
+  alias Jido.Plugin.Normalizer, as: PluginNormalizer
+  alias Jido.Plugin.Error, as: PluginError
+  alias Jido.Topology.Plugin.{Context, Contribution, Spec}
+  alias Jido.Topology.Validation
+
+  @doc false
+  @spec contribute(Jido.Plugin.Spec.t(), Context.t()) ::
+          {:ok, Contribution.t()} | {:error, term()}
+  def contribute(%{topology: %Spec{} = spec}, %Context{} = context) do
+    with {:ok, context} <- Context.validate(context),
+         :ok <- validate_context(context, spec),
+         result <-
+           PluginError.safe_apply(
+             spec.package,
+             spec.module,
+             :contribute,
+             [context, spec.options],
+             "Topology Plugin contribution failed"
+           ),
+         {:ok, contribution} <- callback_contribution(result, spec),
+         :ok <- contribution_owner(contribution, spec),
+         {:ok, resources} <- validate_entries(:resource, contribution.resources),
+         {:ok, relationships} <- validate_entries(:owns, contribution.relationships),
+         {:ok, connections} <- validate_entries(:subscribe, contribution.connections) do
+      {:ok,
+       %{
+         contribution
+         | resources: resources,
+           relationships: relationships,
+           connections: connections
+       }}
+    end
+  end
+
+  @doc false
+  @spec context(Jido.Plugin.Spec.t(), String.t(), module()) :: Context.t()
+  def context(%{topology: %Spec{} = spec}, agent_key, agent_module)
+      when is_binary(agent_key) and is_atom(agent_module) do
+    %Context{
+      plugin: spec.package,
+      plugin_vsn: spec.vsn,
+      agent_key: agent_key,
+      agent_module: agent_module
+    }
+  end
+
+  @doc false
+  @spec expand_definition(Jido.Topology.t()) ::
+          {:ok, Jido.Topology.t()} | {:error, term()}
+  def expand_definition(%Jido.Topology{} = definition) do
+    with {:ok, includes} <-
+           Authoring.traverse(definition.includes, &expand_include/1),
+         definition = %{definition | includes: includes},
+         {:ok, nested} <-
+           Authoring.traverse(
+             definition.agents ++ definition.groups,
+             &declaration_contributions/1
+           ),
+         expanded <- append_contributions(definition, List.flatten(nested)),
+         {:ok, attrs} <- Validation.definition(expanded) do
+      {:ok, struct(Jido.Topology, attrs)}
+    end
+  end
+
+  defp expand_include(include) do
+    with {:ok, topology} <- expand_definition(include.topology),
+         do: {:ok, %{include | topology: topology}}
+  end
+
+  defp declaration_contributions(declaration) do
+    with {:ok, agent} <- Validation.agent_definition(Validation.agent_source(declaration)),
+         {:ok, specs} <- PluginNormalizer.normalize_all(agent.plugins) do
+      specs
+      |> Enum.reject(&is_nil(&1.topology))
+      |> Authoring.traverse(fn spec ->
+        contribute(spec, context(spec, declaration.key, agent.module))
+      end)
+    end
+  end
+
+  defp append_contributions(definition, contributions) do
+    %{
+      definition
+      | resources: definition.resources ++ Enum.flat_map(contributions, & &1.resources),
+        relationships:
+          definition.relationships ++ Enum.flat_map(contributions, & &1.relationships),
+        connections: definition.connections ++ Enum.flat_map(contributions, & &1.connections)
+    }
+  end
+
+  defp callback_contribution({:ok, %Contribution{} = contribution}, spec) do
+    case Contribution.validate(contribution) do
+      {:ok, contribution} ->
+        {:ok, contribution}
+
+      {:error, reason} ->
+        PluginError.invalid_callback(
+          "Topology Plugin returned an invalid contribution",
+          spec.package,
+          spec.module,
+          %{reason: reason}
+        )
+    end
+  end
+
+  defp callback_contribution({:error, _reason} = error, _spec), do: error
+
+  defp callback_contribution(result, spec) do
+    PluginError.invalid_callback(
+      "Topology Plugin contribute/2 returned an invalid result",
+      spec.package,
+      spec.module,
+      %{result: result}
+    )
+  end
+
+  defp contribution_owner(%Contribution{plugin: package}, %Spec{package: package}), do: :ok
+
+  defp contribution_owner(contribution, spec) do
+    PluginError.invalid_callback(
+      "Topology Plugin contribution changed package identity",
+      spec.package,
+      spec.module,
+      %{actual: contribution.plugin}
+    )
+  end
+
+  defp validate_entries(kind, entries) do
+    Authoring.traverse(entries, &Validation.entry(kind, &1))
+  end
+
+  defp validate_context(
+         %Context{plugin: package, plugin_vsn: vsn},
+         %Spec{package: package, vsn: vsn}
+       ),
+       do: :ok
+
+  defp validate_context(context, spec) do
+    PluginError.validation("Topology Plugin context does not match its owner", %{
+      plugin: spec.package,
+      facet: spec.module,
+      context: context
+    })
+  end
+end

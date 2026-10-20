@@ -1,5 +1,13 @@
 # Elixos-owned integration example
 
+**Historical stable-Jido integration, not a V3 acceptance example.** The human
+explicitly assigned Elixos integration to the Elixos repository. This adapter
+and its recorded commands/evidence remain intentionally unmigrated here; in
+particular, its `Jido.Storage` references describe the stable SDK. Do not run
+these instructions as native V3 proof. Use `../plain_mix` and `../jido_agent`
+for this branch's native integration; the source-first docs-site example has
+its own acceptance gates.
+
 This separate Mix project has two explicit profiles. The independent host-test
 profile compiles selected **current working source** from Elixos;
 `ELIXOS_SOURCE` is the trusted `os/` Mix project directory (default: the sibling

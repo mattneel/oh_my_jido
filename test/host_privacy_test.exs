@@ -2,7 +2,9 @@ defmodule OhMyJido.HostPrivacyTest do
   use Jido.AI.TestCase, async: false
   import ExUnit.CaptureLog
 
-  alias OhMyJido.{CodingAgent, Context, Runtime, Session}
+  alias Jido.AI.Test.ReActScript
+  alias OhMyJido.{Context, Persistence, Runtime, Session}
+  alias ReqLLM.Message.ContentPart
 
   @moduletag :tmp_dir
 
@@ -76,8 +78,7 @@ defmodule OhMyJido.HostPrivacyTest do
                    Jido.Exec.run(
                      OhMyJido.Tools.Read,
                      %{path: "input.txt"},
-                     %{oh_my_jido: context},
-                     max_retries: 0
+                     %{oh_my_jido: context}
                    )
 
           refute contains_secret?(reason, secret)
@@ -87,7 +88,7 @@ defmodule OhMyJido.HostPrivacyTest do
     end
   end
 
-  test "native signed continuation cannot retain a recoverable credential in durable session storage",
+  test "native encoded model content cannot retain a recoverable credential in durable session storage",
        %{
          tmp_dir: root
        } do
@@ -98,7 +99,7 @@ defmodule OhMyJido.HostPrivacyTest do
       {Runtime,
        name: __MODULE__.Durable,
        allow_test_scripts: true,
-       storage: {Jido.Storage.File, path: store}}
+       storage: {Jido.Persistence.File, path: store}}
     )
 
     {:ok, session} = OhMyJido.start_session(__MODULE__.Durable, workspace: root, permissions: [])
@@ -111,20 +112,42 @@ defmodule OhMyJido.HostPrivacyTest do
         answer(secret)
       end
 
+    media = ContentPart.image(<<137, 80, 78, 71, 13, 10, 26, 10>> <> secret, "image/png")
+
+    model_call = fn call, next ->
+      {:ok, %ReqLLM.StreamResponse{} = response} = ReActScript.model_call(call, next)
+      chunk = ReqLLM.StreamChunk.content_part(media)
+      {:ok, %{response | stream: Stream.concat(response.stream, [chunk])}}
+    end
+
+    opts =
+      script
+      |> react_llm_opts()
+      |> Keyword.put(:jido_ai_model_call, model_call)
+
     {:ok, run} =
-      OhMyJido.prompt(session, "Exercise durable continuation privacy", react_opts(script))
+      OhMyJido.prompt(session, "Exercise durable continuation privacy", llm_opts: opts)
 
     assert {:ok, %{status: :completed, answer: answer}} = OhMyJido.await(session, run)
-    refute answer =~ secret
+    refute contains_secret?(answer, secret)
+    refute Enum.any?(binaries(answer), &encoded_secret?(&1, secret))
     assert {:ok, %{agent_pid: agent_pid}} = OhMyJido.inspect_session(session)
-    assert {:ok, %{agent: agent}} = Jido.AgentServer.state(agent_pid)
-    assert {:ok, native_checkpoint} = CodingAgent.checkpoint(agent, %{})
+    assert %Jido.Agent{} = agent = Jido.AgentServer.agent(agent_pid)
+    assert {:ok, native_checkpoint} = Jido.Agent.checkpoint(agent, %{})
     assert Enum.any?(binaries(native_checkpoint), &encoded_secret?(&1, secret))
+
+    for public <- [OhMyJido.inspect_session(session), OhMyJido.events(session)] do
+      refute contains_secret?(public, secret)
+      refute Enum.any?(binaries(public), &encoded_secret?(&1, secret))
+    end
 
     :ok = OhMyJido.checkpoint(session)
 
-    assert {:ok, saved} =
-             Jido.Storage.File.get_checkpoint({session.runtime, session.id}, path: store)
+    assert {:ok, saved, _condition} =
+             Persistence.read_session(
+               {Jido.Persistence.File, path: store},
+               {session.runtime, session.id}
+             )
 
     refute contains_secret?(saved, secret)
     refute Enum.any?(binaries(saved), &encoded_secret?(&1, secret))
@@ -146,16 +169,10 @@ defmodule OhMyJido.HostPrivacyTest do
   defp binaries(value) when is_tuple(value), do: value |> Tuple.to_list() |> binaries()
   defp binaries(_value), do: []
 
-  defp encoded_secret?("rt2." <> rest, secret) do
-    with [payload, _signature] <- String.split(rest, ".", parts: 2),
-         {:ok, encoded} <- Base.url_decode64(payload, padding: false) do
-      contains_secret?(:erlang.binary_to_term(encoded, [:safe]), secret)
-    else
-      _invalid -> false
+  defp encoded_secret?(value, secret) do
+    case Base.decode64(value) do
+      {:ok, decoded} -> contains_secret?(decoded, secret)
+      :error -> false
     end
-  rescue
-    ArgumentError -> false
   end
-
-  defp encoded_secret?(_value, _secret), do: false
 end

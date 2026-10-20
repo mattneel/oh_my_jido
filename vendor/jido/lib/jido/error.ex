@@ -8,7 +8,7 @@ defmodule Jido.Error do
 
   | Error | Use Case |
   |-------|----------|
-  | `ValidationError` | Invalid inputs, actions, sensors, configs |
+  | `ValidationError` | Invalid inputs, actions, and configs |
   | `ExecutionError` | Runtime failures during execution or planning |
   | `RoutingError` | Signal routing and dispatch failures |
   | `TimeoutError` | Operation timeouts |
@@ -42,6 +42,12 @@ defmodule Jido.Error do
   - `:routing` - Routing/dispatch failures
   - `:timeout` - Timeouts
   - `:internal` - Unexpected failures
+
+  ## Stable Program Codes
+
+  Jido-owned conversions store a stable atom in `error.details.code`. Use
+  `code/1` to read the code. Do not use a human-readable message as a program
+  key. `stable_codes/0` returns the closed registry for this release.
   """
 
   # Splode error classes (internal - do not use directly)
@@ -86,12 +92,13 @@ defmodule Jido.Error do
         opts
         |> Keyword.put(:message, message)
         |> Keyword.put_new(:details, %{})
+        |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
         |> super()
       end
 
       defp unknown_message(error) when is_binary(error), do: error
       defp unknown_message(nil), do: "Unknown error"
-      defp unknown_message(error), do: inspect(error)
+      defp unknown_message(error), do: Jido.Error.to_map(error).message
     end
   end
 
@@ -105,6 +112,60 @@ defmodule Jido.Error do
     ],
     unknown_error: Internal.UnknownError
 
+  @typedoc """
+  A stable Jido-owned program code.
+
+  The code is stored in `error.details.code`. Call `code/1` instead of matching
+  a human-readable message. Codes from adjacent packages remain owned by those
+  packages.
+  """
+  @type code ::
+          :non_portable_term
+          | :invalid_checkpoint
+          | :definition_mismatch
+          | :agent_invalid_callback_result
+          | :agent_callback_failed
+          | :plugin_state_owner_violation
+          | :plugin_invalid_callback_result
+          | :plugin_callback_failed
+          | :plugin_callback_timeout
+          | :plugin_callback_task_failed
+          | :persistence_invalid_callback_result
+          | :persistence_callback_failed
+          | :agent_exec_invalid_callback_result
+          | :agent_exec_callback_failed
+          | :agent_exec_callback_timeout
+          | :agent_exec_callback_task_failed
+          | :agent_turn_timeout
+          | :jido_instance_invalid_config
+          | :jido_namespace_already_bound
+          | :jido_namespace_required
+          | :jido_namespace_mismatch
+
+  @stable_codes [
+    :non_portable_term,
+    :invalid_checkpoint,
+    :definition_mismatch,
+    :agent_invalid_callback_result,
+    :agent_callback_failed,
+    :plugin_state_owner_violation,
+    :plugin_invalid_callback_result,
+    :plugin_callback_failed,
+    :plugin_callback_timeout,
+    :plugin_callback_task_failed,
+    :persistence_invalid_callback_result,
+    :persistence_callback_failed,
+    :agent_exec_invalid_callback_result,
+    :agent_exec_callback_failed,
+    :agent_exec_callback_timeout,
+    :agent_exec_callback_task_failed,
+    :agent_turn_timeout,
+    :jido_instance_invalid_config,
+    :jido_namespace_already_bound,
+    :jido_namespace_required,
+    :jido_namespace_mismatch
+  ]
+
   # ============================================================================
   # Error Structs
   # ============================================================================
@@ -113,12 +174,12 @@ defmodule Jido.Error do
     @moduledoc """
     Error for validation failures.
 
-    Covers invalid inputs, actions, sensors, and configurations.
+    Covers invalid inputs, actions, and configurations.
 
     ## Fields
 
     - `message` - Human-readable error message
-    - `kind` - Category: `:input`, `:action`, `:sensor`, `:config`, `:state_size`
+    - `kind` - Category: `:input`, `:action`, `:config`
     - `subject` - The invalid value (field name, action module, etc.)
     - `details` - Additional context
     """
@@ -128,7 +189,7 @@ defmodule Jido.Error do
 
     @type t :: %__MODULE__{
             message: String.t(),
-            kind: :input | :action | :sensor | :config | :state_size | nil,
+            kind: :input | :action | :config | nil,
             subject: any(),
             details: map()
           }
@@ -140,6 +201,7 @@ defmodule Jido.Error do
       opts
       |> Keyword.put_new(:message, "Validation failed")
       |> Keyword.put_new(:details, %{})
+      |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
       |> super()
     end
   end
@@ -174,6 +236,7 @@ defmodule Jido.Error do
       |> Keyword.put_new(:message, "Execution failed")
       |> Keyword.put_new(:phase, :execution)
       |> Keyword.put_new(:details, %{})
+      |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
       |> super()
     end
   end
@@ -181,6 +244,12 @@ defmodule Jido.Error do
   defmodule RoutingError do
     @moduledoc """
     Error for signal routing and dispatch failures.
+
+    Agent command preparation uses this public type for missing routes and
+    invalid Signal types. This applies to direct Agent commands and live Agent
+    Server calls. When several targets match, Jido uses the first target in
+    Router order. A wrapped Signal Router error retains its details and retry
+    hints, with the original error stored in `details.cause`.
 
     ## Fields
 
@@ -205,6 +274,7 @@ defmodule Jido.Error do
       opts
       |> Keyword.put_new(:message, "Routing failed")
       |> Keyword.put_new(:details, %{})
+      |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
       |> super()
     end
   end
@@ -236,6 +306,7 @@ defmodule Jido.Error do
       opts
       |> Keyword.put_new(:message, "Operation timed out")
       |> Keyword.put_new(:details, %{})
+      |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
       |> super()
     end
   end
@@ -272,6 +343,7 @@ defmodule Jido.Error do
       |> Keyword.put_new(:message, "Compensation error")
       |> Keyword.put_new(:compensated, false)
       |> Keyword.put_new(:details, %{})
+      |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
       |> super()
     end
   end
@@ -299,6 +371,7 @@ defmodule Jido.Error do
       opts
       |> Keyword.put_new(:message, "Internal error")
       |> Keyword.put_new(:details, %{})
+      |> Keyword.update!(:details, &Jido.Error.normalize_details/1)
       |> super()
     end
   end
@@ -307,16 +380,20 @@ defmodule Jido.Error do
   # Error Constructors
   # ============================================================================
 
+  @doc false
+  @spec normalize_details(term()) :: map()
+  def normalize_details(details) when is_map(details), do: details
+  def normalize_details(_details), do: %{}
+
   @doc """
   Creates a validation error.
 
   ## Options
 
-  - `:kind` - Category: `:input`, `:action`, `:sensor`, `:config`, `:state_size`
+  - `:kind` - Category: `:input`, `:action`, `:config`
   - `:subject` - The invalid value
   - `:field` - Alias for `:subject` (for input validation)
   - `:action` - Alias for `:subject` with `kind: :action`
-  - `:sensor` - Alias for `:subject` with `kind: :sensor`
   - `:details` - Additional context map
 
   ## Examples
@@ -332,7 +409,6 @@ defmodule Jido.Error do
     {kind, subject} =
       cond do
         opts[:action] -> {:action, opts[:action]}
-        opts[:sensor] -> {:sensor, opts[:sensor]}
         opts[:field] -> {:input, opts[:field]}
         true -> {opts[:kind], opts[:subject]}
       end
@@ -445,16 +521,12 @@ defmodule Jido.Error do
   end
 
   defp merge_extra_details(opts, reserved_keys) do
-    explicit_details =
-      case Keyword.get(opts, :details, %{}) do
-        details when is_map(details) -> details
-        _ -> %{}
-      end
+    explicit_details = opts |> Keyword.get(:details, %{}) |> normalize_details()
 
     extra_details =
       opts
       |> Keyword.drop([:details | reserved_keys])
-      |> Enum.into(%{})
+      |> Map.new()
 
     Map.merge(extra_details, explicit_details)
   end
@@ -462,6 +534,17 @@ defmodule Jido.Error do
   # ============================================================================
   # Utilities
   # ============================================================================
+
+  @doc "Returns the registered Jido program code carried by an error."
+  @spec code(term()) :: code() | nil
+  def code({:error, reason}), do: code(reason)
+  def code(%{details: %{code: code}}) when code in @stable_codes, do: code
+  def code(%{code: code}) when code in @stable_codes, do: code
+  def code(_error), do: nil
+
+  @doc "Returns the closed set of Jido-owned program codes."
+  @spec stable_codes() :: [code()]
+  def stable_codes, do: @stable_codes
 
   @transport_max_depth 4
   @transport_max_items 20
@@ -471,13 +554,11 @@ defmodule Jido.Error do
   @non_retryable_error_type_strings ~w[
     validation_error
     invalid_action
-    invalid_sensor
     config_error
   ]
   @known_error_type_strings %{
     "validation_error" => :validation_error,
     "invalid_action" => :invalid_action,
-    "invalid_sensor" => :invalid_sensor,
     "config_error" => :config_error,
     "planning_error" => :planning_error,
     "execution_error" => :execution_error,
@@ -489,17 +570,6 @@ defmodule Jido.Error do
   @redacted "[REDACTED]"
   @omitted "[OMITTED]"
   @depth_limit "[DEPTH_LIMIT]"
-  @sensitive_key_parts MapSet.new(~w[
-    api_key
-    apikey
-    authorization
-    credential
-    credentials
-    password
-    private_key
-    secret
-    token
-  ])
   @sensitive_key_fragments ~w[
     apikey
     authorization
@@ -522,6 +592,7 @@ defmodule Jido.Error do
   depth limit, so validation paths retain field names and list indexes. Strings
   are limited to #{@transport_max_string} characters plus a truncation suffix.
   Invalid UTF-8 binaries use bounded inspection.
+  Improper lists use `[IMPROPER LIST]` without inspecting their sensitive data.
   Deeper containers and opaque terms are replaced with `#{@depth_limit}`.
   """
   @spec to_map(any()) :: map()
@@ -543,26 +614,6 @@ defmodule Jido.Error do
   @spec retryable?(term()) :: boolean()
   def retryable?({:error, reason, _effects}), do: retryable?(reason)
   def retryable?({:error, reason}), do: retryable?(reason)
-  def retryable?(%ValidationError{details: details}), do: retryable_hint(details, false)
-
-  def retryable?(%ExecutionError{details: details} = error),
-    do: retryable_hint(details, default_retryable?(error))
-
-  def retryable?(%RoutingError{details: details} = error),
-    do: retryable_hint(details, default_retryable?(error))
-
-  def retryable?(%TimeoutError{details: details} = error),
-    do: retryable_hint(details, default_retryable?(error))
-
-  def retryable?(%CompensationError{details: details} = error),
-    do: retryable_hint(details, default_retryable?(error))
-
-  def retryable?(%InternalError{details: details} = error),
-    do: retryable_hint(details, default_retryable?(error))
-
-  def retryable?(%Internal.UnknownError{details: details} = error),
-    do: retryable_hint(details, default_retryable?(error))
-
   def retryable?(%{retryable?: value}) when is_boolean(value), do: value
   def retryable?(%{retryable: value}) when is_boolean(value), do: value
   def retryable?(%{"retryable" => value}) when is_boolean(value), do: value
@@ -603,62 +654,7 @@ defmodule Jido.Error do
     end
   end
 
-  @doc """
-  Formats a NimbleOptions configuration error.
-  """
-  @spec format_nimble_config_error(any(), String.t(), module()) :: String.t()
-  def format_nimble_config_error(
-        %NimbleOptions.ValidationError{keys_path: [], message: message},
-        module_type,
-        module
-      ) do
-    "Invalid configuration for #{module_type} (#{module}): #{message}"
-  end
-
-  def format_nimble_config_error(
-        %NimbleOptions.ValidationError{keys_path: keys_path, message: message},
-        module_type,
-        module
-      ) do
-    "Invalid configuration for #{module_type} (#{module}) at #{inspect(keys_path)}: #{message}"
-  end
-
-  def format_nimble_config_error(error, _module_type, _module) when is_binary(error), do: error
-  def format_nimble_config_error(error, _module_type, _module), do: inspect(error)
-
-  @doc """
-  Formats a NimbleOptions validation error for parameters.
-  """
-  @spec format_nimble_validation_error(any(), String.t(), module()) :: String.t()
-  def format_nimble_validation_error(
-        %NimbleOptions.ValidationError{keys_path: [], message: message},
-        module_type,
-        module
-      ) do
-    "Invalid parameters for #{module_type} (#{module}): #{message}"
-  end
-
-  def format_nimble_validation_error(
-        %NimbleOptions.ValidationError{keys_path: keys_path, message: message},
-        module_type,
-        module
-      ) do
-    "Invalid parameters for #{module_type} (#{module}) at #{inspect(keys_path)}: #{message}"
-  end
-
-  def format_nimble_validation_error(error, _module_type, _module) when is_binary(error),
-    do: error
-
-  def format_nimble_validation_error(error, _module_type, _module), do: inspect(error)
-
-  @doc false
-  def capture_stacktrace do
-    {:current_stacktrace, stacktrace} = Process.info(self(), :current_stacktrace)
-    Enum.drop(stacktrace, 2)
-  end
-
-  defp public_message(error) when is_exception(error),
-    do: truncate_string(Exception.message(error))
+  defp public_message(error) when is_exception(error), do: safe_exception_message(error)
 
   defp public_message(%{message: message}), do: transport_string(message)
   defp public_message(%{"message" => message}), do: transport_string(message)
@@ -734,7 +730,7 @@ defmodule Jido.Error do
   defp sanitize_transport(%_{} = value, _depth) when is_exception(value) do
     %{
       type: value.__struct__ |> Module.split() |> Enum.join("."),
-      message: truncate_string(Exception.message(value))
+      message: safe_exception_message(value)
     }
   end
 
@@ -752,22 +748,38 @@ defmodule Jido.Error do
   end
 
   defp sanitize_transport(value, depth) when is_list(value) do
-    if key_value_list?(value) do
-      sanitize_key_value_pairs(value, depth)
-    else
-      value
-      |> Enum.take(@transport_max_items)
-      |> Enum.map(&sanitize_transport(&1, depth - 1))
+    case transport_list_kind(value) do
+      :key_value ->
+        sanitize_key_value_pairs(value, depth)
+
+      :list ->
+        value
+        |> Enum.take(@transport_max_items)
+        |> Enum.map(&sanitize_transport(&1, depth - 1))
+
+      :improper ->
+        "[IMPROPER LIST]"
     end
   end
 
-  defp sanitize_transport(value, _depth) when is_tuple(value), do: safe_inspect(value)
-  defp sanitize_transport(value, _depth) when is_function(value), do: safe_inspect(value)
-  defp sanitize_transport(value, _depth) when is_pid(value), do: safe_inspect(value)
-  defp sanitize_transport(value, _depth) when is_reference(value), do: safe_inspect(value)
+  defp sanitize_transport({key, value}, depth) when is_atom(key) or is_binary(key) do
+    [entry] = Map.to_list(sanitize_key_value_pairs([{key, value}], depth))
+    safe_inspect(entry)
+  end
+
+  defp sanitize_transport(value, depth) when is_tuple(value) do
+    value
+    |> Tuple.to_list()
+    |> Enum.take(@transport_max_items)
+    |> Enum.map(&sanitize_transport(&1, depth - 1))
+    |> List.to_tuple()
+    |> safe_inspect()
+  end
+
   defp sanitize_transport(value, _depth), do: safe_inspect(value)
 
-  defp sanitize_key(key) when is_atom(key) or is_binary(key), do: key
+  defp sanitize_key(key) when is_atom(key), do: key
+  defp sanitize_key(key) when is_binary(key), do: sanitize_utf8(key)
   defp sanitize_key(key), do: safe_inspect(key)
 
   defp sanitize_key_value_pairs(entries, depth) do
@@ -783,46 +795,57 @@ defmodule Jido.Error do
           true -> sanitize_transport(nested_value, depth - 1)
         end
 
-      {sanitized_key, nested_value}
+      public_key =
+        if is_binary(sanitized_key), do: truncate_string(sanitized_key), else: sanitized_key
+
+      {public_key, nested_value}
     end)
   end
 
-  defp key_value_list?(value) do
-    value != [] and
-      Enum.all?(value, fn
-        {key, _value} when is_atom(key) or is_binary(key) -> true
-        _other -> false
-      end)
-  end
+  # Classify the full shape before using Enum. Do not inspect an improper tail:
+  # it can contain sensitive details that would bypass key-based redaction.
+  defp transport_list_kind([]), do: :list
+  defp transport_list_kind(value), do: transport_list_kind(value, :key_value)
+
+  defp transport_list_kind([], kind), do: kind
+
+  defp transport_list_kind([{key, _value} | tail], :key_value)
+       when is_atom(key) or is_binary(key),
+       do: transport_list_kind(tail, :key_value)
+
+  defp transport_list_kind([_head | tail], _kind), do: transport_list_kind(tail, :list)
+  defp transport_list_kind(_tail, _kind), do: :improper
 
   defp sensitive_key?(key) do
-    normalized_key = normalized_key(key)
-    key_parts = key_parts(normalized_key)
-    compact_key = compact_key(normalized_key)
-
-    MapSet.member?(@sensitive_key_parts, normalized_key) ||
-      Enum.any?(key_parts, &MapSet.member?(@sensitive_key_parts, &1)) ||
-      Enum.any?(@sensitive_key_fragments, &String.contains?(compact_key, &1))
+    compact_key = key |> normalized_key() |> compact_key()
+    Enum.any?(@sensitive_key_fragments, &String.contains?(compact_key, &1))
   end
 
   defp stacktrace_key?(key) do
-    normalized_key = normalized_key(key)
-    compact_key = compact_key(normalized_key)
-
-    normalized_key in ["stacktrace", "stack_trace"] ||
-      "stacktrace" in key_parts(normalized_key) ||
-      String.contains?(compact_key, "stacktrace")
+    key |> normalized_key() |> compact_key() |> String.contains?("stacktrace")
   end
 
   defp normalized_key(key) when is_atom(key), do: key |> Atom.to_string() |> String.downcase()
   defp normalized_key(key) when is_binary(key), do: String.downcase(key)
 
-  defp key_parts(key), do: String.split(key, ~r/[^a-z0-9]+/, trim: true)
   defp compact_key(key), do: String.replace(key, ~r/[^a-z0-9]+/, "")
 
   defp transport_string(value) when is_binary(value), do: truncate_string(value)
+
   defp transport_string(%{message: message}), do: transport_string(message)
   defp transport_string(value), do: value |> sanitize_transport() |> safe_inspect()
+
+  defp safe_exception_message(error) do
+    error
+    |> Exception.message()
+    |> truncate_string()
+  rescue
+    _error -> safe_inspect(error)
+  catch
+    _kind, _reason -> safe_inspect(error)
+  end
+
+  defp sanitize_utf8(value) when is_binary(value), do: String.replace_invalid(value)
 
   defp safe_inspect(value) do
     value
@@ -830,6 +853,8 @@ defmodule Jido.Error do
     |> truncate_string()
   rescue
     _ -> inspect_fallback(value)
+  catch
+    _kind, _reason -> inspect_fallback(value)
   end
 
   defp inspect_fallback(value) do
@@ -843,6 +868,8 @@ defmodule Jido.Error do
   end
 
   defp truncate_string(value, max_chars \\ @transport_max_string) when is_binary(value) do
+    value = sanitize_utf8(value)
+
     if String.length(value) > max_chars do
       String.slice(value, 0, max_chars) <> "...(truncated)"
     else
@@ -857,12 +884,7 @@ defmodule Jido.Error do
     end
   end
 
-  defp extract_retry_hint(%{details: details}) do
-    case extract_retry_hint(details) do
-      nil -> nil
-      value -> value
-    end
-  end
+  defp extract_retry_hint(%{details: details}), do: extract_retry_hint(details)
 
   defp extract_retry_hint(%{} = map) do
     cond do
@@ -895,7 +917,7 @@ defmodule Jido.Error do
   defp default_retryable?(error), do: error |> unified_type() |> default_retryable_for_type?()
 
   defp default_retryable_for_type?(type)
-       when type in [:validation_error, :invalid_action, :invalid_sensor, :config_error],
+       when type in [:validation_error, :invalid_action, :config_error],
        do: false
 
   defp default_retryable_for_type?(type) when is_binary(type),
@@ -905,7 +927,6 @@ defmodule Jido.Error do
 
   # Maps error structs to unified type atoms
   defp unified_type(%ValidationError{kind: :action}), do: :invalid_action
-  defp unified_type(%ValidationError{kind: :sensor}), do: :invalid_sensor
   defp unified_type(%ValidationError{kind: :config}), do: :config_error
   defp unified_type(%ValidationError{}), do: :validation_error
   defp unified_type(%ExecutionError{phase: :planning}), do: :planning_error
@@ -930,9 +951,9 @@ defmodule Jido.Error do
   defp unified_type(%Jido.Signal.Error.DispatchError{}), do: :routing_error
   defp unified_type(%Jido.Signal.Error.InternalError{}), do: :internal
 
-  defp unified_type(%{type: type}) when is_atom(type), do: type
+  defp unified_type(%{type: type}) when is_atom(type), do: unified_type_from_atom(type)
   defp unified_type(%{type: type}) when is_binary(type), do: unified_type_from_string(type)
-  defp unified_type(%{"type" => type}) when is_atom(type), do: type
+  defp unified_type(%{"type" => type}) when is_atom(type), do: unified_type_from_atom(type)
   defp unified_type(%{"type" => type}) when is_binary(type), do: unified_type_from_string(type)
 
   defp unified_type(_), do: :internal
@@ -941,9 +962,12 @@ defmodule Jido.Error do
     Map.get(@known_error_type_strings, normalize_type_string(type), :internal)
   end
 
+  defp unified_type_from_atom(type), do: type |> Atom.to_string() |> unified_type_from_string()
+
   defp normalize_type_string(type) do
     type
     |> String.trim()
     |> String.trim_leading(":")
+    |> String.downcase()
   end
 end

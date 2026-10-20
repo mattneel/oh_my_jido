@@ -1,63 +1,25 @@
 defmodule Jido.Debug do
-  @moduledoc """
-  Per-instance debug mode for Jido agents.
-
-  Provides a single entrypoint to control observability verbosity
-  at runtime, scoped to a specific Jido instance.
-
-  ## Debug Levels
-
-  - `:off` - No debug overrides, uses configured defaults
-  - `:on` - Developer-friendly verbosity (debug logging, keys_only args, minimal debug events)
-  - `:verbose` - Maximum detail (trace logging, full args, all debug events)
-
-  ## Usage
-
-      # Via instance module
-      MyApp.Jido.debug(:on)
-      MyApp.Jido.debug(:verbose)
-      MyApp.Jido.debug(:off)
-      MyApp.Jido.debug()          # => :off
-
-      # Via top-level Jido module (applies to Jido.Default)
-      Jido.debug(:on)
-  """
+  @moduledoc false
 
   @type level :: :off | :on | :verbose
   @type instance :: atom()
 
-  @on_overrides %{
-    telemetry_log_level: :debug,
-    telemetry_log_args: :keys_only,
-    observe_log_level: :debug,
-    observe_debug_events: :minimal
-  }
+  @on_overrides %{semantic_log_mode: :interesting}
+  @verbose_overrides %{semantic_log_mode: :all}
 
-  @verbose_overrides %{
-    telemetry_log_level: :trace,
-    telemetry_log_args: :full,
-    observe_log_level: :debug,
-    observe_debug_events: :all
-  }
+  @spec enable(instance(), level()) :: :ok
+  def enable(instance, level \\ :on)
 
-  @spec enable(instance(), level(), keyword()) :: :ok
-  def enable(instance, level \\ :on, opts \\ [])
-
-  def enable(instance, :off, _opts) do
+  def enable(instance, :off) do
     disable(instance)
   end
 
-  def enable(instance, level, opts) when level in [:on, :verbose] do
-    overrides = build_overrides(level)
+  def enable(instance, level) when level in [:on, :verbose] do
+    :persistent_term.put(
+      {:jido_debug, instance},
+      %{level: level, overrides: build_overrides(level)}
+    )
 
-    overrides =
-      if Keyword.get(opts, :redact) == false do
-        Map.put(overrides, :redact_sensitive, false)
-      else
-        overrides
-      end
-
-    :persistent_term.put({:jido_debug, instance}, %{level: level, overrides: overrides})
     :ok
   end
 
@@ -70,12 +32,7 @@ defmodule Jido.Debug do
   end
 
   @spec level(instance()) :: level()
-  def level(instance) do
-    case :persistent_term.get({:jido_debug, instance}, nil) do
-      nil -> :off
-      %{level: level} -> level
-    end
-  end
+  def level(instance), do: status(instance).level
 
   @spec enabled?(instance()) :: boolean()
   def enabled?(instance) do
@@ -83,18 +40,12 @@ defmodule Jido.Debug do
   end
 
   @spec override(instance(), atom()) :: term() | nil
-  def override(instance, key) do
-    case :persistent_term.get({:jido_debug, instance}, nil) do
-      nil -> nil
-      %{overrides: overrides} -> Map.get(overrides, key)
-    end
-  end
+  def override(instance, key), do: Map.get(status(instance).overrides, key)
 
-  @spec maybe_enable_from_config(atom(), instance()) :: :ok
-  def maybe_enable_from_config(otp_app, instance) do
-    config = Application.get_env(otp_app, instance, [])
-
-    case Keyword.get(config, :debug) do
+  @doc false
+  @spec configure(instance(), term()) :: :ok
+  def configure(instance, debug) do
+    case debug do
       true -> enable(instance, :on)
       :verbose -> enable(instance, :verbose)
       _ -> disable(instance)
@@ -109,8 +60,12 @@ defmodule Jido.Debug do
   @spec status(instance()) :: map()
   def status(instance) do
     case :persistent_term.get({:jido_debug, instance}, nil) do
-      nil -> %{level: :off, overrides: %{}}
-      state -> state
+      %{level: level, overrides: overrides} = state
+      when level in [:on, :verbose] and is_map(overrides) ->
+        state
+
+      _invalid ->
+        %{level: :off, overrides: %{}}
     end
   end
 

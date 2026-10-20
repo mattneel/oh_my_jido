@@ -18,17 +18,15 @@ defmodule Jido.Util do
   but they can also be useful for developers building applications with Jido.
   """
 
-  alias Jido.Signal.ID, as: SignalID
-
   require Logger
 
   @name_regex ~r/^[a-zA-Z][a-zA-Z0-9_]*$/
 
   @doc """
-  Generates a unique ID.
+  Generates a UUID7 identifier with `Jido.Signal.ID.generate!/0`.
   """
-  @spec generate_id() :: String.t()
-  def generate_id, do: SignalID.generate!()
+  @spec generate_id() :: Jido.Signal.ID.uuid7()
+  defdelegate generate_id(), to: Jido.Signal.ID, as: :generate!
 
   @doc """
   Converts a string to a binary.
@@ -62,7 +60,8 @@ defmodule Jido.Util do
 
   """
   @spec validate_name(any()) :: {:ok, String.t()} | {:error, Jido.Error.ValidationError.t()}
-  @spec validate_name(any(), keyword()) :: :ok | {:error, Jido.Error.ValidationError.t()}
+  @spec validate_name(any(), keyword()) ::
+          :ok | {:ok, String.t()} | {:error, Jido.Error.ValidationError.t()}
   def validate_name(name, opts \\ [])
 
   def validate_name(name, []) when is_binary(name) do
@@ -77,34 +76,22 @@ defmodule Jido.Util do
     end
   end
 
-  def validate_name(name, _opts) when is_binary(name) do
-    if Regex.match?(@name_regex, name) do
-      :ok
-    else
-      {:error,
-       Jido.Error.validation_error(
-         "The name must start with a letter and contain only letters, numbers, and underscores.",
-         field: :name
-       )}
-    end
-  end
-
   def validate_name(_, []) do
     {:error, Jido.Error.validation_error("Invalid name format.", field: :name)}
   end
 
-  def validate_name(_, _opts) do
-    {:error, Jido.Error.validation_error("Invalid name format.", field: :name)}
+  def validate_name(name, _opts) do
+    with {:ok, _name} <- validate_name(name, []), do: :ok
   end
 
   @doc """
   Validates that all modules in a list implement the Jido.Action behavior.
-  Used as a custom validator for NimbleOptions.
+  Used to validate action modules in plugin configuration.
 
   This function ensures that all provided modules are valid Jido.Action implementations
   by checking that they:
   1. Are valid Elixir modules that can be loaded
-  2. Export the required __action_metadata__/0 function that indicates Jido.Action behavior
+  2. Export the Jido v3 executable marker
 
   ## Parameters
 
@@ -147,18 +134,6 @@ defmodule Jido.Util do
     end
   end
 
-  def validate_actions(actions, _opts) when is_list(actions) do
-    if Enum.all?(actions, &implements_action?/1) do
-      :ok
-    else
-      {:error,
-       Jido.Error.validation_error("All actions must implement the Jido.Action behavior",
-         kind: :action,
-         subject: actions
-       )}
-    end
-  end
-
   def validate_actions(action, []) when is_atom(action) do
     if implements_action?(action) do
       {:ok, action}
@@ -171,26 +146,21 @@ defmodule Jido.Util do
     end
   end
 
-  def validate_actions(action, _opts) when is_atom(action) do
-    if implements_action?(action) do
-      :ok
-    else
-      {:error,
-       Jido.Error.validation_error("All actions must implement the Jido.Action behavior",
-         kind: :action,
-         subject: action
-       )}
-    end
+  def validate_actions(actions, _opts) when is_list(actions) or is_atom(actions) do
+    with {:ok, _actions} <- validate_actions(actions, []), do: :ok
   end
 
   defp implements_action?(module) when is_atom(module) do
     match?({:module, _}, Code.ensure_compiled(module)) and
-      function_exported?(module, :__action_metadata__, 0)
+      match?(
+        {:ok, %Jido.Executable{kind: :action, target: ^module}},
+        Jido.Executable.resolve(module)
+      )
   end
 
   @doc """
   Validates that a module is a valid Elixir module that can be loaded.
-  Used as a custom validator for NimbleOptions.
+  Used to validate module configuration values.
 
   ## Parameters
 
@@ -229,7 +199,7 @@ defmodule Jido.Util do
 
   @doc """
   Validates that a module is a valid Elixir module that can be compiled.
-  Used as a custom validator for NimbleOptions that handles compilation order.
+  Used to validate module configuration values when compilation order matters.
 
   Uses Code.ensure_compiled/1 which blocks until the module finishes compilation
   or returns an error, making it safe for parallel compilation scenarios.
@@ -270,12 +240,6 @@ defmodule Jido.Util do
 
   def validate_module_compiled(_) do
     {:error, Jido.Error.validation_error("Module must be an atom", kind: :config, field: :module)}
-  end
-
-  @doc false
-  @spec pluck(Enumerable.t(), atom()) :: list()
-  def pluck(enumerable, field) do
-    Enum.map(enumerable, &Map.get(&1, field))
   end
 
   @type server :: pid() | atom() | binary() | {name :: atom() | binary(), registry :: module()}
@@ -348,21 +312,8 @@ defmodule Jido.Util do
 
   def whereis(pid, _opts) when is_pid(pid), do: {:ok, pid}
 
-  def whereis({name, registry}, _opts) when is_atom(registry) do
-    name = if is_atom(name), do: Atom.to_string(name), else: name
-
-    case Registry.lookup(registry, name) do
-      [{pid, _}] -> {:ok, pid}
-      [] -> {:error, :not_found}
-    end
-  end
-
   def whereis(name, opts) do
-    registry =
-      Keyword.get(opts, :registry) ||
-        raise ArgumentError, ":registry option is required"
-
-    name = if is_atom(name), do: Atom.to_string(name), else: name
+    {:via, Registry, {registry, name}} = via_tuple(name, opts)
 
     case Registry.lookup(registry, name) do
       [{pid, _}] -> {:ok, pid}
@@ -417,31 +368,4 @@ defmodule Jido.Util do
         :ok
     end
   end
-
-  @doc """
-  Returns `true` when an exit reason represents a clean process shutdown.
-
-  OTP treats `:normal`, `:shutdown` and `{:shutdown, term}` as clean exits:
-  they are not logged as crashes and do not restart `:transient` children.
-  Every other reason is abnormal.
-
-  Use this when propagating an exit reason from one process to another so that
-  normal shutdowns stay quiet instead of surfacing as crash reports.
-
-  ## Examples
-
-      iex> Jido.Util.clean_exit_reason?(:normal)
-      true
-
-      iex> Jido.Util.clean_exit_reason?({:shutdown, :idle_timeout})
-      true
-
-      iex> Jido.Util.clean_exit_reason?(:killed)
-      false
-  """
-  @spec clean_exit_reason?(term()) :: boolean()
-  def clean_exit_reason?(:normal), do: true
-  def clean_exit_reason?(:shutdown), do: true
-  def clean_exit_reason?({:shutdown, _term}), do: true
-  def clean_exit_reason?(_reason), do: false
 end

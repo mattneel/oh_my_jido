@@ -5,7 +5,6 @@ defmodule OhMyJido.Tools.Search do
     name: "search",
     description:
       "Search UTF-8 repository files with relative paths, one-based lines and byte columns. Respect gitignore/ignore rules, skip binary files and report every truncation. No shell or executable is supplied by the model.",
-    category: "filesystem",
     schema:
       Zoi.object(
         %{
@@ -36,6 +35,9 @@ defmodule OhMyJido.Tools.Search do
       )
 
   alias OhMyJido.Search, as: RepositorySearch
+
+  @doc "Returns the Action category."
+  def category, do: "filesystem"
 
   @spec capability() :: :read
   def capability, do: :read

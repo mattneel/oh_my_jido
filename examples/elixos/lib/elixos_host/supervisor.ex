@@ -64,7 +64,7 @@ defmodule ElixosHost.Supervisor do
     runtime_options =
       Keyword.merge(runtime_options,
         name: runtime,
-        storage: {Jido.Storage.File, path: storage_path},
+        storage: {Jido.Persistence.File, path: storage_path},
         host: {ElixosHost.Host, host_options},
         adapters:
           if(browser_enabled, do: %{browser: {ElixosHost.Browser, host_options}}, else: %{})

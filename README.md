@@ -10,8 +10,10 @@ presentation. There is no required CLI, default coding instance or TypeScript/Bu
 tool host.
 
 The project declares app `:oh_my_jido`, version `0.1.0`, and Elixir `~> 1.20`.
-Stable usability is verified in the [current acceptance record](docs/oh-my-jido/evidence/usability-20261019.json). Earlier [library-scope evidence](docs/oh-my-jido/evidence/library-acceptance-20261019.json) remains historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) records exact source hashes and boundaries.
+This is the **native Jido V3 preview branch**. Stable2.4 [usability evidence](docs/oh-my-jido/evidence/usability-20261019.json) is historical, not proof of this port; [PROGRESS](docs/oh-my-jido/PROGRESS.md) records current gates. Core is the coherent3.0.0-beta.1 revision pinned by upstream AI; the latest Corebeta.2 and AI branch tips have incompatible contracts. AI's upstream version metadata remains2.3.0 despite its genuine native V3 coordinator/Flow implementation. Licensed `vendor/*/UPSTREAM.json` manifests identify exact original revisions and privacy patches. No package version is relabelled.
 No published Hex release or production certification is claimed; [operational boundaries](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md) remain explicit.
+
+Current native core evidence: **585 tests**, strict analysis, both independent consumers and the full1/10/100/500 density workload pass. [Retained commands, source fingerprints and limitations](docs/oh-my-jido/evidence/native-v3-core-20261020.json) distinguish real tools/owned HTTP from simulated model latency. The shared Phoenix CMS, actual public release and external deployment gates remain open.
 
 ## Choose the integration level
 
@@ -34,7 +36,7 @@ mix deps.get
 mix compile
 ```
 
-This uses native Igniter and changes only the consumer's `mix.exs` dependencies. It preserves the licensed Jido/ReqLLM privacy snapshots with required top-level overrides, pins the audited Jido.AI/Action version and refuses incompatible existing declarations. It does not evaluate consumer Mix/config/formatter code during the standalone bootstrap, configure credentials, start services or set up Runtime. Initial installer tooling may require ordinary Hex downloads. Add `--snakepit` to both commands only when explicitly selecting Python Eval; Python provisioning remains separate.
+This uses native Igniter and changes only the consumer's `mix.exs` dependencies. It preserves the licensed Core/AI/Action/ReqLLM privacy snapshots with four top-level path overrides plus exact Signal/Zoi Git refs. Incompatible declarations are refused. The standalone bootstrap does not evaluate consumer Mix/config/formatter code, configure credentials, start services or set up Runtime. Initial installer tooling may require ordinary Hex downloads. Add `--snakepit` only when explicitly selecting Python Eval; Python provisioning remains separate.
 
 The installer requires a literal `project/0` configuration with `deps: deps()` and a literal private dependency list. Computed/incompatible layouts are refused rather than rewritten speculatively. For manual setup, retain the same source overrides:
 
@@ -45,18 +47,22 @@ defp deps do
   [
     {:oh_my_jido, path: root},
     {:jido, path: Path.join(root, "vendor/jido"), override: true},
+    {:jido_ai, path: Path.join(root, "vendor/jido_ai"), override: true},
+    {:jido_action, path: Path.join(root, "vendor/jido_action"), override: true},
     {:req_llm, path: Path.join(root, "vendor/req_llm"), override: true},
-    {:jido_ai, "== 2.4.0"},
-    {:jido_action, "== 2.4.0"}
+    {:jido_signal, git: "https://github.com/agentjido/jido_signal.git",
+     ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41", override: true},
+    {:zoi, git: "https://github.com/mikehostetler/zoi.git",
+     ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9", override: true}
   ]
 end
 ```
 
 Adapt the checkout location to your host. The independent
 [plain Mix example](examples/plain_mix/README.md) selects the same licensed
-Jido/ReqLLM path overrides, with its own dependencies, lockfile and build.
+Core/AI/Action/ReqLLM path overrides and exact Signal/Zoi refs, with independent dependencies, lockfile and build.
 It does not select optional native Eval packages.
-Do not replace the pinned Jido/ReqLLM diagnostic boundaries with stock packages
+Do not replace the pinned native diagnostic boundaries with stock packages
 while retaining this library's credential/privacy claims.
 
 QuickBEAM 0.11 and Snakepit 0.14 are optional, `runtime: false` dependencies.
@@ -75,9 +81,11 @@ children = [
   {OhMyJido,
    name: MyApp.Coding,
    bundles: :read_only,
-   storage: {Jido.Storage.File, path: "/srv/my_app/coding_sessions"}}
+   storage: {Jido.Persistence.File, path: "/srv/my_app/coding_sessions"}}
 ]
 ```
+
+V3 storage implements native `Jido.Persistence.Adapter` binary values and opaque compare-and-swap conditions. There is no automatic conversion of older V2 `Jido.Storage` checkpoints. Keep separate compatible data roots while evaluating the preview.
 
 Starting the application/runtime starts no session and sends no model request.
 Create a session with an existing explicit workspace and minimal grants:
@@ -151,9 +159,9 @@ The constructor canonicalizes the workspace and validates host/tool/adapter bind
 
 ## Your own Jido agent
 
-Use `OhMyJido.Plugin` in your agent's native `plugins:` list with `%{bundles: [:read_only, :editing], context_provider: MyApp.CodingContexts}`. The provider implements `OhMyJido.Plugin.ContextProvider.fetch_context/1` and resolves a trusted Context by native module/ID. Keep `private_diagnostics?/0 == true` and, for Jido.AI, `tool_max_retries: 0`.
+Declare `plugin OhMyJido.Plugin, config: [bundles: [:read_only, :editing], context_provider: MyApp.CodingContexts]` inside the native `agent do` block. Plain agents explicitly route selected `oh_my_jido.*` signals to `OhMyJido.Plugin.Tools.*`. AI agents add `extensions: [OhMyJido.Plugin.AgentExtension]`; the extension binds coding Actions to native static AI profiles without replacing domain tools/model policy. Keep `private_diagnostics?/0 == true`; coding entries enforce zero retries and `:unsafe_once`.
 
-The plugin retains your existing model/transformer policy and genuine domain tools; it does not create Runtime or CodingAgent. Native plain routes are `oh_my_jido.read`, `oh_my_jido.edit`, etc.; `Plugin.cmd/3` exposes native result/error directives without a server. Jido.AI retains native `ask`/`await`/stream/cancel. The independent [own-agent example](examples/jido_agent/README.md) contains complete plain/AI agent declarations, a host binding store and actual native tool-turn exercises.
+The provider implements `OhMyJido.Plugin.ContextProvider.fetch_context/1`, resolving trusted authority by native module/ID. The plugin creates no Runtime/CodingAgent. `Plugin.cmd/3` returns native `{:ok, agent, directives}` or error; plain results are under `agent.state.oh_my_jido_tools`. Native AI retains `ask`/`await`/stream/cancel, while rejected admissions return errors before a model/request handle starts. The independent [own-agent example](examples/jido_agent/README.md) contains complete native V3 declarations and real tool-turn exercises.
 
 ## Implemented surfaces and limits
 

@@ -1,6 +1,8 @@
 # Modified by Oh-My-Jido contributors, 2026-10-13: preserve opt-in safe failures
 # through native streaming, metadata handles and lazy enumeration. Original
 # ReqLLM 1.28.0 source remains under Apache License 2.0; see LICENSE/UPSTREAM.json.
+# Modified by Oh-My-Jido contributors, 2026-10-19: honor native per-request
+# req_http_options Finch ownership for streaming as well as ordinary requests.
 defmodule ReqLLM.Streaming do
   @moduledoc """
   Main orchestration for ReqLLM streaming operations.
@@ -76,7 +78,9 @@ defmodule ReqLLM.Streaming do
     * `:stream_idle_timeout` - Optional timeout between semantic stream updates
     * `:metadata_timeout` - Maximum metadata inactivity in milliseconds, or `:infinity`
     * `:fixture_path` - Path for test fixture capture (testing only)
-    * `:finch_name` - Finch pool name (default: ReqLLM.Finch)
+    * `:finch_name` - Low-level Finch name (default: configured ReqLLM Finch)
+    * `:req_http_options` - Native HTTP options. A `:finch` atom or `[name: name]`
+      selects the host-owned streaming Finch, taking precedence over `:finch_name`.
 
   ## Examples
 
@@ -138,8 +142,13 @@ defmodule ReqLLM.Streaming do
       )
     else
       {:error, reason} ->
-        reason = ReqLLM.Streaming.Failure.normalize(reason, error_context(provider_mod, model, opts))
-        Logger.error("Failed to start streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        reason =
+          ReqLLM.Streaming.Failure.normalize(reason, error_context(provider_mod, model, opts))
+
+        Logger.error(
+          "Failed to start streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+        )
+
         {:error, reason}
     end
   end
@@ -194,7 +203,15 @@ defmodule ReqLLM.Streaming do
       error_context = error_context(provider_mod, model, opts)
       metadata_handle = start_metadata_handle(server_pid, opts, error_context)
       cancel_fn = fn -> cancel_stream(server_pid, metadata_handle) end
-      stream = create_lazy_stream(server_pid, next_timeout, cancel_fn, transport == :in_process, error_context)
+
+      stream =
+        create_lazy_stream(
+          server_pid,
+          next_timeout,
+          cancel_fn,
+          transport == :in_process,
+          error_context
+        )
 
       stream_response = %StreamResponse{
         stream: stream,
@@ -208,21 +225,36 @@ defmodule ReqLLM.Streaming do
     else
       {:error, reason} ->
         cancel_failed_setup(server_pid)
-        reason = ReqLLM.Streaming.Failure.normalize(reason, error_context(provider_mod, model, opts))
-        Logger.error("Failed to start streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+
+        reason =
+          ReqLLM.Streaming.Failure.normalize(reason, error_context(provider_mod, model, opts))
+
+        Logger.error(
+          "Failed to start streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+        )
+
         {:error, reason}
     end
   rescue
     error ->
       cancel_failed_setup(server_pid)
+
       if ReqLLM.Streaming.Failure.normalizer?(error_context(provider_mod, model, opts)),
-        do: {:error, ReqLLM.Streaming.Failure.normalize(error, error_context(provider_mod, model, opts))},
+        do:
+          {:error,
+           ReqLLM.Streaming.Failure.normalize(error, error_context(provider_mod, model, opts))},
         else: reraise(error, __STACKTRACE__)
   catch
     kind, reason ->
       cancel_failed_setup(server_pid)
+
       if ReqLLM.Streaming.Failure.normalizer?(error_context(provider_mod, model, opts)),
-        do: {:error, ReqLLM.Streaming.Failure.normalize({kind, reason}, error_context(provider_mod, model, opts))},
+        do:
+          {:error,
+           ReqLLM.Streaming.Failure.normalize(
+             {kind, reason},
+             error_context(provider_mod, model, opts)
+           )},
         else: :erlang.raise(kind, reason, __STACKTRACE__)
   end
 
@@ -274,7 +306,10 @@ defmodule ReqLLM.Streaming do
         {:ok, pid}
 
       {:error, reason} ->
-        Logger.error("Failed to start StreamServer: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        Logger.error(
+          "Failed to start StreamServer: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+        )
+
         {:error, {:stream_server_failed, reason}}
     end
   end
@@ -301,7 +336,10 @@ defmodule ReqLLM.Streaming do
         {:ok, task_pid, http_context, canonical_json}
 
       {:error, reason} ->
-        Logger.error("Failed to start WebSocket streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        Logger.error(
+          "Failed to start WebSocket streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+        )
+
         {:error, {:websocket_streaming_failed, reason}}
     end
   end
@@ -329,14 +367,17 @@ defmodule ReqLLM.Streaming do
         {:ok, task_pid, stream_context, canonical_request}
 
       {:error, reason} ->
-        Logger.error("Failed to start in-process streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        Logger.error(
+          "Failed to start in-process streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+        )
+
         {:error, {:in_process_streaming_failed, reason}}
     end
   end
 
   # Start HTTP streaming through StreamServer
   defp start_http_streaming(provider_mod, model, context, opts, stream_server_pid) do
-    finch_name = Keyword.get(opts, :finch_name, ReqLLM.Finch)
+    finch_name = request_finch_name(opts)
 
     case StreamServer.start_http(
            stream_server_pid,
@@ -355,8 +396,22 @@ defmodule ReqLLM.Streaming do
         {:error, {:http2_body_too_large, message}}
 
       {:error, reason} ->
-        Logger.error("Failed to start HTTP streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+        Logger.error(
+          "Failed to start HTTP streaming: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+        )
+
         {:error, {:http_streaming_failed, reason}}
+    end
+  end
+
+  defp request_finch_name(opts) do
+    default = Keyword.get(opts, :finch_name, ReqLLM.Application.finch_name())
+    http_options = Map.new(Keyword.get(opts, :req_http_options) || [])
+
+    case Map.get(http_options, :finch) do
+      nil -> default
+      name when is_atom(name) -> name
+      options when is_list(options) -> Keyword.get(options, :name, default)
     end
   end
 
@@ -495,7 +550,11 @@ defmodule ReqLLM.Streaming do
 
         {:error, reason} ->
           reason = ReqLLM.Streaming.Failure.normalize(reason, error_context)
-          Logger.warning("Metadata collection failed: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}")
+
+          Logger.warning(
+            "Metadata collection failed: kind=#{ReqLLM.Streaming.Failure.diagnostic_kind(reason)}"
+          )
+
           %{error: reason, finish_reason: :error}
       end
     end

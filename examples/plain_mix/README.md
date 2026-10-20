@@ -29,7 +29,7 @@ The network-free tests drive the installed Jido.AI ReAct script API, but execute
 real read/edit/process Actions: they repair a disposable Mix project and run its
 actual test suite. They inspect typed progress/output events, exercise explicit
 answers, steering, cancellation and suspension, restart the host supervision
-tree, and restore the conversation from `Jido.Storage.File`. Only test-owned
+tree, and restore the conversation from native `Jido.Persistence.File`. Only test-owned
 runtimes set `allow_test_scripts: true`.
 
 ## Host-owned credentials and storage

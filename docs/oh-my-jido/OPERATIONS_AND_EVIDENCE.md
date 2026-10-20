@@ -2,6 +2,14 @@
 
 This document separates implemented interfaces, exercised observations and pending gates. It does **not** certify the capability matrix, a release, subscription parity or an OS generation. [PROGRESS.md](PROGRESS.md) remains the integration owner's exact current-revision ledger; [ACCEPTANCE.md](ACCEPTANCE.md) defines required gates. Evidence recorded before a source change is not a green check of that changed source.
 
+## Current native V3 core evidence
+
+[Current core evidence](evidence/native-v3-core-20261020.json) records585 passing tests with opt-in Python, Credo0, Dialyzer0errors/0skips, ExDNA0/0 and Reach OK. The independent plain Mix and own-agent consumers compile warnings-as-errors and pass2/2 and4/4 actual scenarios.
+
+[Full native density](../../bench/results/density-docs-native-v3-owned-20261020.json) passes all1/10/100/500 populations, active8/six rounds,93,278.783ms measured work and strict Draft2020-12/date-time validation with0 errors. Exact OS descendant identities return to baseline3→3 after bounded native gateway initialization; scoped Finch supervisors and workers stop rather than accumulating in shared transport. Real native tools/files/processes execute; model latency remains simulated, not provider throughput.
+
+The core library fingerprint is`1629f5ec5d28359da8c807025c1686a3fb5ab107ac92ac85c79d0bd68bac58bf`. Core3.0.0-beta.1, Action3.0.0-beta.12 and AI's unchanged2.3.0 metadata identify the genuine native preview; exact immutable refs and attributed SDK changes remain in`vendor/*/UPSTREAM.json`. This does not accept the separate Phoenix CMS, production release, Fly deployment or Hex publication.
+
 ## Host operating responsibilities
 
 Before admitting work:

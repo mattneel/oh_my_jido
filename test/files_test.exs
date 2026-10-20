@@ -572,10 +572,10 @@ defmodule OhMyJido.FilesTest do
       "edits" => [%{"old" => "original", "new" => "updated"}]
     }
 
-    converted = Jido.Action.Tool.convert_params_using_schema(params, Edit.schema())
-
-    assert {:ok, _result} =
-             Jido.Exec.run(Edit, converted, %{oh_my_jido: fixture.context}, max_retries: 0)
+    assert {:ok, _result, []} =
+             Jido.AI.Tools.Executor.execute_module(Edit, params, %{oh_my_jido: fixture.context},
+               timeout: 30_000
+             )
 
     assert File.read!(Path.join(fixture.root, "from-model")) == "updated"
   end

@@ -12,7 +12,7 @@ MIX_ENV=test mix compile --warnings-as-errors
 MIX_ENV=test mix test --seed 0
 ```
 
-Dependencies, lockfile and build belong to this consumer. Top-level overrides retain the licensed Jido/ReqLLM private-diagnostics snapshots; audited Jido.AI/Action are pinned to 2.4.0. Optional Eval backends and Igniter are not required. Native scripted-provider tests execute real scoped filesystem Actions without paid credentials or a fake coding tool implementation. Current verification is recorded in [PROGRESS](../../docs/oh-my-jido/PROGRESS.md).
+Dependencies, lockfile and build belong to this consumer. Four top-level source overrides retain licensed native Core/AI/Action/ReqLLM snapshots; Signal and Zoi use exact upstream Git revisions. This is real native V3: Core3.0.0-beta.1 and Action3.0.0-beta.12; upstream AI metadata remains2.3.0. Optional Eval/installed Igniter are not required. Native scripted-provider tests exercise actual Actions without paid credentials; current gates belong in [PROGRESS](../../docs/oh-my-jido/PROGRESS.md).
 
 ## Declare the native plugin
 
@@ -20,19 +20,29 @@ Dependencies, lockfile and build belong to this consumer. Top-level overrides re
 defmodule MyApp.Editor do
   use Jido.AI.Agent,
     name: "my_editor",
-    model: "openai:gpt-4o-mini",
-    tools: [],
-    tool_max_retries: 0,
-    plugins: [
-      {OhMyJido.Plugin,
-       %{bundles: [:read_only, :editing], context_provider: MyApp.CodingContexts}}
-    ]
+    extensions: [OhMyJido.Plugin.AgentExtension]
+
+  agent do
+    schema Zoi.object(%{answer: Zoi.string() |> Zoi.default("")})
+    plugin OhMyJido.Plugin,
+      config: [bundles: [:read_only, :editing], context_provider: MyApp.CodingContexts]
+
+    ai :assistant do
+      model "openai:gpt-4o-mini"
+      reasoning :react
+      result into: :answer
+    end
+  end
+
+  routes do
+    route "editor.ask", ai: :assistant
+  end
 
   def private_diagnostics?, do: true
 end
 ```
 
-Existing genuine domain tools may stay in `tools:`. The plugin binds its own selected coding Actions into native ReAct requests; do not put unbound `OhMyJido.Tools.*` Actions in the AI registry. Keep the native private-diagnostics callback and zero effect retries. Your model, credentials, billing and trusted request transformer remain your responsibility; the plugin neither imports credentials nor replaces them with the managed Runtime policy.
+Keep genuine domain Actions inside the native profile's `tools do` block. The static extension adds bound coding entries without replacing those Actions, model or transformer. Do not put unbound `OhMyJido.Tools.*` into the AI catalog. Keep `private_diagnostics?/0` true from startup; bound coding policies use zero retries/`:unsafe_once`. Credentials, billing and trusted transport remain the host's responsibility.
 
 `MyApp.CodingContexts` implements `OhMyJido.Plugin.ContextProvider.fetch_context/1`, receiving `%{agent_module: module, agent_id: id}` and returning `{:ok, context}` or `{:error, reason}`. Resolve a stable Context from host-owned bindings. Do not derive workspace, grants, host, provider module or service bindings from query/tool arguments. `JidoAgentHost.Contexts` demonstrates an explicitly supervised binding store keyed by both module and ID.
 
@@ -50,22 +60,22 @@ alias JidoAgentHost.{Contexts, Files}
   permissions: [:read]
 )
 
-agent = Files.new(id: "reader")
-{updated, []} = OhMyJido.Plugin.cmd(agent, "read", %{path: "mix.exs"})
-IO.puts(updated.state.content)
+{:ok, agent} = Files.new(id: "reader")
+{:ok, updated, []} = OhMyJido.Plugin.cmd(agent, "read", %{path: "mix.exs"})
+IO.puts(updated.state.oh_my_jido_tools.content)
 Supervisor.stop(host)
 ```
 
-For your already-supervised native agent, dispatch `oh_my_jido.read`, `oh_my_jido.edit`, etc. through ordinary `Jido.AgentServer` signals. Native Direct strategy merges successful Action output into agent state. Its instruction failures are native error directives/signals; `AgentServer.call/3` returning `{:ok, agent}` alone does not prove the Action succeeded. Process-free `Plugin.cmd/3` exposes the returned directives for host inspection.
+Plain modules explicitly declare selected `oh_my_jido.*` routes to bound Actions. Dispatch through ordinary native `Jido.AgentServer` signals or process-free `Plugin.cmd/3`. Successful tool results live under `agent.state.oh_my_jido_tools`; the reducer preserves domain fields. Native errors return `{:error, reason}`, not a successful result-shaped echo.
 
-For AI execution, start your own module through your existing Jido instance and use its native `ask`/`await`/`ask_stream` APIs. Let native APIs generate request IDs; explicitly reused IDs cannot produce an independent request handle. Per-request tool selection may narrow trusted availability, never add Actions or authority. Query rejection settles native request tracking and terminal stream events without a provider request.
+Start your module through your existing Jido instance and use native `ask`/`await`/`ask_stream`. Let native APIs generate request IDs; reused IDs cannot produce an independent handle or terminate the original stream. Per-request tool selection may narrow trusted availability, never add Actions or authority. Invalid admission returns an error before a provider starts.
 
 ## Explicit limits
 
 - Bundles select availability, not grants. The host Context is a second ceiling; unavailable or ungranted Actions fail before their effect.
 - The provider is called inside each actual coding Action. Context does not enter plugin state, model request state, worker payloads or checkpoints. Trusted host introspection and the host's own binding store remain outside the native agent diagnostic boundary.
 - Mount/configuration does not start services, model requests or a Runtime. LSP/DAP/Observer still require deliberately configured host targets.
-- Denied AI requests use native bounded request tracking and a rejecting request transformer before provider/tool execution. Await returns the native request-transformer failure envelope; streams retain native lifecycle events and terminate with `:request_failed`.
+- Native V3 admission rejects invalid AI requests before a provider starts; `ask`/`ask_stream` return errors without manufacturing a handle, failed model turn or synthetic stream. Reused IDs cannot terminate the original stream.
 - No managed effect journal, recovery, approval UI, Goal/Memory/Eval or subagent coordination is implied. Host approval without a managed coordinator returns `:approval_required`. Use managed Runtime sessions when you need those lifecycle facilities.
 - Cancellation does not roll back edits or prove an uncertain process never ran. Reconcile uncertain effects rather than replaying them automatically.
 - No OS sandbox, external Elixos integration, subscription login, release or production certification is claimed.

@@ -707,6 +707,8 @@ defmodule OhMyJido.ContextPolicy do
 
   defp data(value, _redact?) when is_atom(value), do: {:ok, Atom.to_string(value)}
 
+  defp data(%DateTime{} = value, _redact?), do: {:ok, DateTime.to_iso8601(value)}
+
   defp data(%module{} = value, redact?)
        when module in [
               ReqLLM.Message,

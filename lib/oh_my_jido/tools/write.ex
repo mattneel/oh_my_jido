@@ -5,7 +5,6 @@ defmodule OhMyJido.Tools.Write do
     name: "write",
     description:
       "Atomically write UTF-8 content. Supply the read's complete SHA256 snapshot to replace a file, or the literal missing to create without overwriting.",
-    category: "filesystem",
     schema:
       Zoi.object(
         %{
@@ -21,6 +20,9 @@ defmodule OhMyJido.Tools.Write do
       )
 
   alias OhMyJido.Files
+
+  @doc "Returns the Action category."
+  def category, do: "filesystem"
 
   @spec capability() :: :edit
   def capability, do: :edit

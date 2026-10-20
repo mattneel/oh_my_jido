@@ -5,7 +5,7 @@ defmodule OhMyJido.Actions.StopChild do
     schema: Zoi.object(%{tag: Zoi.string()})
 
   @impl true
-  def run(%{tag: tag}, _context) do
-    {:ok, %{}, [Jido.Agent.Directive.stop_child(tag)]}
+  def run(%{tag: tag}, %{agent_state: state}) do
+    {:ok, state, [Jido.Agent.Directive.stop_child(tag)]}
   end
 end

@@ -49,6 +49,27 @@ defmodule OhMyJido.Tools.SkillTest do
     assert context.tools == []
   end
 
+  test "the native execution boundary preserves approved skill results without exposing host context",
+       %{context: context} do
+    context = %{context | tools: [Skill], metadata: Map.put(context.metadata, :private, self())}
+
+    assert {:ok, %{skills: [%{name: "review-work"}], authority: :guidance_only}} =
+             OhMyJido.Tool.execute(context, "skill", %{operation: "discover"})
+
+    assert {:ok, loaded} =
+             OhMyJido.Tool.execute(context, "skill", %{operation: "load", name: "review-work"})
+
+    assert loaded.name == "review-work"
+    assert loaded.instructions =~ "Review risks before editing"
+    assert loaded.allowed_tools == ["shell", "write"]
+    assert loaded.authority == :guidance_only
+    refute Map.has_key?(loaded, :oh_my_jido)
+    refute Map.has_key?(loaded, :agent_state)
+    refute Map.has_key?(loaded, :private)
+    assert context.permissions == MapSet.new([:skills])
+    assert context.tools == [Skill]
+  end
+
   test "strict activation rejects a YAML allowed-tools list instead of normalizing it", %{
     context: context,
     root: root

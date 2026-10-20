@@ -10,7 +10,7 @@ Before granting execution over untrusted input, the host must supply its actual 
 
 Protect four separate stores/surfaces:
 
-- **Session storage:** private conversation, file/effect evidence and retained task facts. `Jido.Storage.File` is not an encrypted vault.
+- **Session storage:** private conversation, file/effect evidence and retained task facts. Native `Jido.Persistence.File` is not an encrypted vault.
 - **Credential vault:** broker-only encrypted/protected records and stable host-owned key; not part of a repository or an image generation.
 - **Native process state:** host-only handles, callbacks and request credentials; not a public UI payload.
 - **UI/telemetry/logs:** permit only necessary redacted metadata. Do not export whole inspections, raw native state, callback URLs or credential options.
@@ -79,6 +79,8 @@ Each tool call through the native agent interceptor or public `execute_tool/4` h
 
 Cancellation prevents new effects for the run and requests cleanup of owned processes/Eval resources. `cancel/2` returning `:ok` is request admission. `await/3` yields the observed terminal record; cancellation, suspension, deadline and worker failure are not successful task answers. `cleanup: :confirmed` and `effect: :uncertain` can both be true: a process stopped, but its past effects cannot be inferred away.
 
+`stop_session/1` additionally seals the session and waits for settlement before terminating its actor. Native V3 ownership follows validated Exec scope ancestry and its owning outer effect, not public run-ID equality. Request retirement alone cannot settle a nested Action; all matching live scopes must close through real worker-supervisor shutdown. Conversely, an unrelated host Write with that run ID remains pending until its own real receipt. Missing proof returns cleanup uncertainty and retains the sealed actor. Scope depth/live/history retention is bounded by existing resource/effect limits; capacity rejection occurs before target dispatch, while an earlier durable attempt may remain recorded. No historical effect is rolled back or replayed.
+
 No uncertain non-idempotent tool effect, Eval cell, experiment trial or restored request is automatically retried. CodingAgent and `Tool.execute/4` set native tool retries to zero. The subscription profile also sets request retries to zero. Native transport/auth diagnostic retryability is not a blanket promise about every provider or permission to replay a tool; the host must select/assess its inference policy explicitly.
 
 Post-effect coordinator/storage failure returns an explicit `:effect_recording_failed` error containing the sanitized native result and correlation ID. Preserve that nested evidence even when durable recording cannot be confirmed. Experiment retention/notification failures likewise carry the complete measured trial record rather than invite repetition. Opaque receipt/child identities are sanitized as dictionary values, not mistaken for credential field names; sensitive fields inside their records still lose credential contents.
@@ -93,7 +95,7 @@ Recovery workflow:
 4. Stop using an unsafe resource until the host reconciles cleanup/ownership.
 5. Submit a new scoped task only after reconciliation, carrying constraints and observed facts. A suspended session first needs `resume/1`.
 
-Explicit checkpoints reject active model runs. The host should also finish its direct tool calls before requesting a safe checkpoint. Durable restore uses configured `Jido.Storage`, recorded root/grants/identity and current trusted runtime service bindings. Active runs are restored as interrupted, running effects as uncertain, and no old question/process/PID is revived.
+Explicit checkpoints reject active model runs. Finish direct tool calls before requesting a safe checkpoint. Durable restore reads native `Jido.Persistence` versioned bytes/CAS state, recorded root/grants/identity and current trusted service bindings. Active runs become interrupted, running effects become uncertain, and no old question/process/PID is revived. V2 `Jido.Storage` data is not automatically converted.
 
 ## ContextPolicy version 2
 

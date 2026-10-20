@@ -17,14 +17,20 @@ defmodule JidoAgentHost.ProjectStatus do
 end
 
 defmodule JidoAgentHost.Files do
-  use Jido.Agent,
-    name: "host_file_agent",
-    default_plugins: false,
-    plugins: [
-      {OhMyJido.Plugin,
-       %{bundles: [:read_only, :editing], context_provider: JidoAgentHost.Contexts}}
-    ],
-    schema: Zoi.object(%{project_label: Zoi.string() |> Zoi.default("independent-host")})
+  use Jido.Agent, name: "host_file_agent"
+
+  agent do
+    schema(Zoi.object(%{project_label: Zoi.string() |> Zoi.default("independent-host")}))
+
+    plugin(OhMyJido.Plugin,
+      config: [bundles: [:read_only, :editing], context_provider: JidoAgentHost.Contexts]
+    )
+  end
+
+  routes do
+    route("oh_my_jido.read", OhMyJido.Plugin.Tools.Read)
+    route("oh_my_jido.edit", OhMyJido.Plugin.Tools.Edit)
+  end
 
   def private_diagnostics?, do: true
 end
@@ -32,14 +38,43 @@ end
 defmodule JidoAgentHost.Editor do
   use Jido.AI.Agent,
     name: "host_editor_agent",
-    model: "openai:gpt-4o-mini",
-    tools: [JidoAgentHost.ProjectStatus],
-    tool_max_retries: 0,
-    max_iterations: 8,
-    plugins: [
-      {OhMyJido.Plugin,
-       %{bundles: [:read_only, :editing], context_provider: JidoAgentHost.Contexts}}
-    ]
+    extensions: [OhMyJido.Plugin.AgentExtension]
+
+  agent do
+    schema(
+      Zoi.object(%{
+        answer: Zoi.string() |> Zoi.default(""),
+        project_label: Zoi.string() |> Zoi.default("independent-host")
+      })
+    )
+
+    plugin(OhMyJido.Plugin,
+      config: [bundles: [:read_only, :editing], context_provider: JidoAgentHost.Contexts]
+    )
+
+    ai :assistant do
+      model("openai:gpt-4o-mini")
+      reasoning(:react)
+
+      controls do
+        max_iterations(8)
+      end
+
+      tools do
+        action(JidoAgentHost.ProjectStatus)
+      end
+
+      observability do
+        stream_content(true)
+      end
+
+      result(into: :answer)
+    end
+  end
+
+  routes do
+    route("editor.ask", ai: :assistant)
+  end
 
   def private_diagnostics?, do: true
 end

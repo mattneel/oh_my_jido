@@ -21,8 +21,11 @@ defmodule OhMyJido.SessionRecoveryTest do
           request.messages
           |> Enum.reverse()
           |> Enum.find_value(fn
-            %{role: :user, content: content} -> Jido.AI.Turn.extract_from_content(content)
-            _message -> nil
+            %{role: :user, content: content} ->
+              Jido.AI.Model.Response.extract_from_content(content)
+
+            _message ->
+              nil
           end)
 
         send(
@@ -60,6 +63,115 @@ defmodule OhMyJido.SessionRecoveryTest do
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
     %{root: root}
+  end
+
+  for target <- [:owner, :guard] do
+    @failure_target target
+
+    test "#{target} death tears down the exact native request and releases its lease", %{
+      root: root
+    } do
+      session = session(root, max_active: 1)
+      owner = GenServer.whereis(Runtime.via(session))
+      assert {:ok, %{agent_pid: native}} = OhMyJido.inspect_session(session)
+      coordinator = Jido.AgentServer.children(native)[{:plugin, Jido.AI.Orchestration.Plugin}].pid
+
+      script =
+        expect_react do
+          user("Hold one native effect")
+          call("recovery_wait", %{})
+          answer("This request must not finish after its owner dies")
+        end
+
+      assert {:ok, run} = OhMyJido.prompt(session, "Hold one native effect", react_opts(script))
+      assert_receive {:waiting_effect, worker}, 10_000
+      native_monitor = Process.monitor(native)
+      coordinator_monitor = Process.monitor(coordinator)
+      worker_monitor = Process.monitor(worker)
+
+      victim =
+        case @failure_target do
+          :owner ->
+            owner
+
+          :guard ->
+            [{guard, nil}] =
+              Registry.lookup(
+                Runtime.registry(session.runtime),
+                {OhMyJido.Session, :native_owner, session.id}
+              )
+
+            guard
+        end
+
+      Process.exit(victim, :kill)
+
+      assert_receive {:DOWN, ^native_monitor, :process, ^native, _reason}, 10_000
+      assert_receive {:DOWN, ^coordinator_monitor, :process, ^coordinator, _reason}, 10_000
+      assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _reason}, 10_000
+
+      wait_until(fn ->
+        case OhMyJido.inspect_session(session) do
+          {:ok, %{agent_pid: replacement, runs: runs}} ->
+            replacement != native and match?(%{status: :interrupted}, runs[run])
+
+          _unavailable ->
+            false
+        end
+      end)
+
+      assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+
+      assert Enum.any?(effects, fn {_id, receipt} ->
+               receipt.run == run and receipt.name == "recovery_wait" and
+                 receipt.status == :uncertain
+             end)
+
+      assert {:ok, lease} = Runtime.reserve(session.runtime, :model, self())
+      assert :ok = Runtime.release(lease)
+      answer_run(session, "Continue without replay", "Recovered safely")
+      refute_receive {:waiting_effect, _replayed}
+    end
+  end
+
+  test "owner death during native startup cannot orphan a later admitted Agent", %{root: root} do
+    existing = session(root, max_sessions: 2)
+    engine = Runtime.engine(existing.runtime)
+    native_supervisor = Jido.agent_supervisor_name(engine)
+    id = "owner-dies-during-start"
+    owner_key = {OhMyJido.Session, :native_owner, id}
+    registry = Runtime.registry(existing.runtime)
+    assert :ok = :sys.suspend(native_supervisor)
+
+    {guard, monitor, starter} =
+      try do
+        starter =
+          Task.async(fn ->
+            OhMyJido.start_session(existing.runtime, id: id, workspace: root, permissions: [])
+          end)
+
+        wait_until(fn -> Registry.lookup(registry, owner_key) != [] end)
+        [{guard, nil}] = Registry.lookup(registry, owner_key)
+        [{owner, _value}] = Registry.lookup(registry, id)
+        monitor = Process.monitor(guard)
+        Process.exit(owner, :kill)
+        {guard, monitor, starter}
+      after
+        :sys.resume(native_supervisor)
+      end
+
+    assert {:error, _reason} = Task.await(starter, 10_000)
+    assert_receive {:DOWN, ^monitor, :process, ^guard, _reason}, 10_000
+
+    wait_until(fn ->
+      is_nil(Jido.whereis_agent(engine, id)) and Registry.lookup(registry, owner_key) == []
+    end)
+
+    assert is_nil(Jido.whereis_agent(engine, id))
+    assert Registry.lookup(registry, owner_key) == []
+    assert OhMyJido.list_sessions(existing.runtime) == [existing]
+    assert {:ok, lease} = Runtime.reserve(existing.runtime, :model, self())
+    assert :ok = Runtime.release(lease)
   end
 
   test "a compacted terminal answer reaches the next native model request", %{root: root} do
@@ -110,7 +222,23 @@ defmodule OhMyJido.SessionRecoveryTest do
                  Keyword.put(react_opts(script), :max_iterations, 1)
                )
 
-      assert {:ok, %{status: :completed}} = OhMyJido.await(session, run)
+      # Native Agent requests fail at the exhausted model budget. The completed
+      # tool receipt must survive that failure without inventing a final answer.
+      assert {:error,
+              %{
+                id: ^run,
+                status: :failed,
+                answer: nil,
+                tools: [%{name: "write", status: :completed}]
+              }} = OhMyJido.await(session, run)
+
+      events = Enum.filter(OhMyJido.events(session), &(&1.run_id == run))
+      assert Enum.count(events, &(&1.kind == :llm_completed)) == 1
+      assert Enum.any?(events, &(&1.kind == :request_failed))
+      refute Enum.any?(events, &(&1.kind == :request_completed))
+      assert {:ok, %{conversation: terminal}} = OhMyJido.inspect_session(session)
+      assert_receipt_exchange(terminal)
+      refute assistant_message?(terminal, "The receipt is complete.")
       assert File.read!(Path.join(root, "receipt.txt")) == "written once"
       assert Enum.any?(OhMyJido.events(session), &(&1.kind == :context_compacted))
 
@@ -130,10 +258,13 @@ defmodule OhMyJido.SessionRecoveryTest do
     end
   end
 
-  test "a hard Eval controller death releases its session slot without replay", %{root: root} do
+  test "a hard Eval controller death retains its uncertain resource slot without replay", %{
+    root: root
+  } do
     session = session(root, max_resources: 1)
     eval = Runtime.eval(__MODULE__.Host)
     coordinator = GenServer.whereis(Runtime.via(session))
+    coordinator_monitor = Process.monitor(coordinator)
 
     script =
       expect_react do
@@ -169,11 +300,42 @@ defmodule OhMyJido.SessionRecoveryTest do
     assert {:ok, %{status: :ready}} =
              OhMyJido.execute_tool(session, "eval", %{language: "elixir", operation: "reset"})
 
-    assert {:ok, %{status: :ok, display: "42"}} =
-             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "40 + 2"})
+    assert {:error, %{details: %{reason: :resource_capacity}}} =
+             OhMyJido.execute_tool(session, "eval", %{
+               language: "elixir",
+               source:
+                 ~s|Eval.tool("write", %{"path" => "unconfirmed-replacement.txt", "content" => "forbidden", "snapshot" => "missing"})|
+             })
+
+    refute File.exists?(Path.join(root, "unconfirmed-replacement.txt"))
 
     assert File.read!(Path.join(root, "receipt.txt")) == "written once"
     refute_receive {:waiting_effect, _callback}
+
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert [%{id: callback_effect}] = effects_named(effects, "recovery_wait")
+
+    assert {:error,
+            %{
+              reason: :cleanup_uncertain,
+              cleanup: :uncertain,
+              pending_effects: [^callback_effect],
+              pending_resources: [:eval],
+              native: :confirmed
+            }} = OhMyJido.stop_session(session)
+
+    refute_receive {:DOWN, ^coordinator_monitor, :process, ^coordinator, _reason}, 0
+    assert GenServer.whereis(Runtime.via(session)) == coordinator
+    assert {:ok, %{status: :cleanup_uncertain}} = OhMyJido.inspect_session(session)
+
+    assert {:error, :session_stopped} =
+             OhMyJido.execute_tool(session, "write", %{
+               path: "unconfirmed-replacement.txt",
+               content: "forbidden",
+               snapshot: "missing"
+             })
+
+    refute File.exists?(Path.join(root, "unconfirmed-replacement.txt"))
   end
 
   test "an enclosing native Action timeout keeps a write uncertain across restore", %{root: root} do
@@ -281,7 +443,6 @@ defmodule OhMyJido.SessionRecoveryTest do
     assert GenServer.whereis(Runtime.via(session)) == coordinator
     assert {:ok, %{status: :idle, goal: nil, runs: runs}} = OhMyJido.inspect_session(session)
     assert runs == %{}
-    assert OhMyJido.events(session) == []
 
     assert {:ok, %{status: :ok, display: "42"}} =
              OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "retained + 2"})
@@ -328,7 +489,7 @@ defmodule OhMyJido.SessionRecoveryTest do
           name: __MODULE__.Host,
           allow_test_scripts: true,
           request_transformer: ObservedRequests,
-          storage: {Jido.Storage.File, path: Path.join(root, ".store")},
+          storage: {Jido.Persistence.File, path: Path.join(root, ".store")},
           tools: [
             OhMyJido.Tools.Eval,
             OhMyJido.Tools.Read,
@@ -360,7 +521,9 @@ defmodule OhMyJido.SessionRecoveryTest do
         user(query)
 
         if preceding_calls > 0 do
-          for _index <- 1..preceding_calls, do: call("read", %{path: "receipt.txt"})
+          for index <- 1..preceding_calls do
+            call("read", %{path: "receipt.txt"}, id: "#{query}/read/#{index}")
+          end
         end
 
         answer(text)
@@ -372,21 +535,24 @@ defmodule OhMyJido.SessionRecoveryTest do
 
   defp assistant_message?(messages, text) do
     Enum.any?(messages, fn message ->
-      message.role == :assistant and Jido.AI.Turn.extract_from_content(message.content) == text
+      message.role == :assistant and
+        Jido.AI.Model.Response.extract_from_content(message.content) == text
     end)
   end
 
   defp assert_receipt_exchange(messages) do
     calls =
       Enum.flat_map(messages, fn message ->
-        Enum.filter(Map.get(message, :tool_calls) || [], &(Map.get(&1, :name) == "write"))
+        (Map.get(message, :tool_calls) || [])
+        |> Enum.map(&ReqLLM.ToolCall.to_map/1)
+        |> Enum.filter(&(&1.name == "write"))
       end)
 
     assert [call] = calls
 
     assert Enum.any?(messages, fn message ->
              message.role == :tool and Map.get(message, :tool_call_id) == call.id and
-               Jido.AI.Turn.extract_from_content(message.content) =~ "written"
+               Jido.AI.Model.Response.extract_from_content(message.content) =~ "written"
            end)
   end
 

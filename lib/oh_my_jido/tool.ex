@@ -79,11 +79,17 @@ defmodule OhMyJido.Tool do
            arguments: params
          },
          :ok <- begin_effect(context, call) do
+      params = Jido.AI.SchemaInput.normalize_tool(action.schema(), params)
+
       result =
         Jido.Exec.run(action, params, %{oh_my_jido: context},
           timeout: Keyword.get(opts, :timeout, Map.get(context.limits, :tool_timeout_ms, 30_000)),
-          max_retries: 0
+          private_diagnostics: %{
+            error: &Jido.AgentServer.PrivateDiagnostics.error/1,
+            private?: true
+          }
         )
+        |> canonical_result()
 
       complete_effect(context, call.id, result, secrets)
     end
@@ -98,6 +104,19 @@ defmodule OhMyJido.Tool do
       authorize(context, :custom, %{tool: action.name(), parameters: params})
     end
   end
+
+  defp canonical_result(
+         {:error,
+          %Jido.Action.Error.ExecutionFailureError{
+            message: message,
+            details: %{reason: reason, retry: false} = details
+          }}
+       )
+       when map_size(details) == 2 and is_map(reason) and not is_struct(reason) do
+    {:error, Jido.Action.Error.execution_error(message, reason)}
+  end
+
+  defp canonical_result(result), do: result
 
   defp complete_effect(context, id, result, secrets) do
     case redact_result(context, result) do
@@ -130,8 +149,18 @@ defmodule OhMyJido.Tool do
 
   defp begin_effect(%Context{coordinator: nil}, _call), do: :ok
 
-  defp begin_effect(context, call),
-    do: OhMyJido.Session.effect_started(context.coordinator, context.run_id, call)
+  defp begin_effect(context, call) do
+    case {Jido.Exec.LifecycleObserver.current(), Jido.Exec.Telemetry.tracker()} do
+      {%{parent: scope}, controller} when is_reference(scope) and is_pid(controller) ->
+        OhMyJido.Session.effect_started(context.coordinator, context.run_id, call, %{
+          scope: scope,
+          controller: controller
+        })
+
+      _ordinary_execution ->
+        OhMyJido.Session.effect_started(context.coordinator, context.run_id, call)
+    end
+  end
 
   defp finish_effect(%Context{coordinator: nil}, _id, _result), do: :ok
 

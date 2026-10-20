@@ -112,7 +112,7 @@ defmodule OhMyJido.LSPResultReceiptTest do
            end}
     }
 
-    assert {:error, %ExecutionFailureError{details: receipt} = error} =
+    assert {:error, %ExecutionFailureError{details: %{reason: receipt, retry: false}} = error} =
              run(context, apply_request(sources))
 
     assert receipt == expected
@@ -139,18 +139,21 @@ defmodule OhMyJido.LSPResultReceiptTest do
 
     assert {:error,
             %ExecutionFailureError{
-              details:
-                %{
-                  reason: :workspace_edit_conflict,
-                  failed_path: "sample.ex",
-                  applied: applied,
-                  effect: :uncertain,
-                  failure: %{
-                    reason: :stale_snapshot,
-                    expected_snapshot: expected_snapshot,
-                    actual_snapshot: actual_snapshot
-                  }
-                } = receipt
+              details: %{
+                reason:
+                  %{
+                    reason: :workspace_edit_conflict,
+                    failed_path: "sample.ex",
+                    applied: applied,
+                    effect: :uncertain,
+                    failure: %{
+                      reason: :stale_snapshot,
+                      expected_snapshot: expected_snapshot,
+                      actual_snapshot: actual_snapshot
+                    }
+                  } = receipt,
+                retry: false
+              }
             } = error} = run(context, apply_request(sources))
 
     assert applied == Enum.filter(file_receipts(renamed), &(&1.path == "consumer.ex"))
@@ -228,10 +231,7 @@ defmodule OhMyJido.LSPResultReceiptTest do
   end
 
   defp run(context, params) do
-    Jido.Exec.run(OhMyJido.Tools.LSP, params, %{oh_my_jido: context},
-      max_retries: 0,
-      timeout: 15_000
-    )
+    Jido.Exec.run(OhMyJido.Tools.LSP, params, %{oh_my_jido: context}, timeout: 15_000)
   end
 
   defmodule FixtureHost do

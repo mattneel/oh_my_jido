@@ -1,0 +1,146 @@
+defmodule Jido.Exec.Error do
+  @moduledoc """
+  Defines target-neutral errors for execution and asynchronous handles.
+
+  Action and Flow failures keep their original error types. These errors cover
+  zero-timeout rejection before target resolution, handle validation, message
+  handling, waiting, cancellation, and control process failures.
+  """
+
+  @type details_input :: map() | keyword()
+  @type error_map :: %{
+          type: atom(),
+          message: String.t(),
+          details: map(),
+          retryable?: false
+        }
+
+  defmodule TimeoutError do
+    @moduledoc "Error for a complete-call timeout before target resolution."
+    defexception message: "Execution timed out", timeout: nil, details: %{}
+    @type t :: %__MODULE__{message: String.t(), timeout: non_neg_integer() | nil, details: map()}
+  end
+
+  @doc "Creates a complete-call timeout error before target resolution."
+  @spec call_timeout_error(String.t(), details_input()) :: TimeoutError.t()
+  def call_timeout_error(message, details \\ %{}) do
+    details = normalize_details(details)
+
+    TimeoutError.exception(
+      message: message,
+      timeout: Map.get(details, :timeout),
+      details: details
+    )
+  end
+
+  defmodule InvalidHandleError do
+    @moduledoc "Error for an invalid asynchronous execution handle or operation."
+    defexception message: "Invalid asynchronous execution handle", details: %{}
+
+    @type t :: %__MODULE__{message: String.t(), details: map()}
+  end
+
+  defmodule AsyncTimeoutError do
+    @moduledoc "Error for an asynchronous wait timeout."
+    defexception message: "Asynchronous execution timed out", timeout: nil, details: %{}
+
+    @type t :: %__MODULE__{
+            message: String.t(),
+            timeout: non_neg_integer() | nil,
+            details: map()
+          }
+  end
+
+  defmodule AsyncExecutionError do
+    @moduledoc "Error for a failure of the managed asynchronous execution process."
+    defexception message: "Asynchronous execution failed", details: %{}
+
+    @type t :: %__MODULE__{message: String.t(), details: map()}
+  end
+
+  defmodule CancelledError do
+    @moduledoc "Error used to terminate a cancelled asynchronous execution."
+    defexception message: "Asynchronous execution was cancelled", details: %{}
+
+    @type t :: %__MODULE__{message: String.t(), details: map()}
+  end
+
+  @doc "Creates an invalid-handle error."
+  @spec invalid_handle_error(String.t(), details_input()) :: InvalidHandleError.t()
+  def invalid_handle_error(message, details \\ %{}) do
+    InvalidHandleError.exception(message: message, details: normalize_details(details))
+  end
+
+  @doc "Creates an asynchronous wait timeout error."
+  @spec timeout_error(String.t(), details_input()) :: AsyncTimeoutError.t()
+  def timeout_error(message, details \\ %{}) do
+    details = normalize_details(details)
+
+    AsyncTimeoutError.exception(
+      message: message,
+      timeout: Map.get(details, :timeout),
+      details: details
+    )
+  end
+
+  @doc "Creates an asynchronous execution-process error."
+  @spec execution_error(String.t(), details_input()) :: AsyncExecutionError.t()
+  def execution_error(message, details \\ %{}) do
+    AsyncExecutionError.exception(message: message, details: normalize_details(details))
+  end
+
+  @doc "Creates an asynchronous cancellation error."
+  @spec cancelled_error(String.t(), details_input()) :: CancelledError.t()
+  def cancelled_error(message \\ "Asynchronous execution was cancelled", details \\ %{}) do
+    CancelledError.exception(message: message, details: normalize_details(details))
+  end
+
+  @doc "Returns whether a value is an error owned by the execution boundary."
+  @spec owned?(term()) :: boolean()
+  def owned?(%TimeoutError{}), do: true
+  def owned?(%InvalidHandleError{}), do: true
+  def owned?(%AsyncTimeoutError{}), do: true
+  def owned?(%AsyncExecutionError{}), do: true
+  def owned?(%CancelledError{}), do: true
+  def owned?(_error), do: false
+
+  @doc """
+  Converts an execution error into its public map.
+
+  Detail values stay unchanged. A caller that sends the map through JSON or
+  another transport must convert its own detail values for that transport.
+  """
+  @spec to_map(Exception.t()) :: error_map()
+  def to_map(%TimeoutError{} = error),
+    do: error_map(:execution_timeout, error.message, error.details, timeout: error.timeout)
+
+  def to_map(%InvalidHandleError{} = error),
+    do: error_map(:async_invalid_handle, error.message, error.details)
+
+  def to_map(%AsyncTimeoutError{} = error) do
+    error_map(:async_timeout, error.message, error.details, timeout: error.timeout)
+  end
+
+  def to_map(%AsyncExecutionError{} = error),
+    do: error_map(:async_execution_error, error.message, error.details)
+
+  def to_map(%CancelledError{} = error),
+    do: error_map(:async_cancelled, error.message, error.details)
+
+  defp error_map(type, message, details, fields \\ []) do
+    details =
+      Enum.reduce(fields, details, fn
+        {_key, nil}, acc -> acc
+        {key, value}, acc -> Map.put(acc, key, value)
+      end)
+
+    %{type: type, message: message, details: details, retryable?: false}
+  end
+
+  defp normalize_details(details) when is_map(details) and not is_struct(details), do: details
+
+  defp normalize_details(details) when is_list(details),
+    do: if(Keyword.keyword?(details), do: Map.new(details), else: %{})
+
+  defp normalize_details(_details), do: %{}
+end

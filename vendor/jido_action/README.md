@@ -1,0 +1,510 @@
+# Jido Action
+
+[![Hex.pm](https://img.shields.io/badge/hex-3.0.0--beta.11-714a96.svg)](https://hex.pm/packages/jido_action)
+[![Hex Docs](https://img.shields.io/badge/hex-docs-lightgreen.svg)](https://hexdocs.pm/jido_action/)
+[![CI](https://github.com/agentjido/jido_action/actions/workflows/ci.yml/badge.svg)](https://github.com/agentjido/jido_action/actions/workflows/ci.yml)
+[![License](https://img.shields.io/hexpm/l/jido_action.svg)](https://github.com/agentjido/jido_action/blob/main/LICENSE)
+[![Website](https://img.shields.io/badge/website-jido.run-0f172a.svg)](https://jido.run)
+[![Ecosystem](https://img.shields.io/badge/ecosystem-jido.run-0ea5e9.svg)](https://jido.run/ecosystem)
+[![Discord](https://img.shields.io/badge/discord-join-5865F2.svg?logo=discord&logoColor=white)](https://jido.run/discord)
+
+> Validated Actions and data-first Flow composition for Elixir.
+
+`jido_action` is part of the [Jido](https://github.com/agentjido/jido)
+ecosystem. See [jido.run](https://jido.run) for the project and its packages.
+
+`jido_action` defines validated actions, executable call frames, data-first Flows,
+and one public execution boundary.
+
+Jido Flow is a declarative, in-memory graph execution layer for Jido Actions.
+Runic owns graph mechanics, planning, runnable discovery, node execution, and
+graph-state transitions. Jido Flow owns its DSL, validation, lossless Map/JSON
+representation, compilation, and Flow semantics. Jido Exec owns one in-memory
+execution session: step-wise execution, bounded concurrency, Action invocation,
+errors, telemetry, and final results.
+
+Durable orchestration is not provided. An outer system must own persistence,
+queues, scheduling, recovery, retries, durable cancellation policy,
+distributed coordination, supervision, and deployment-safe continuation.
+`Jido.Exec` can enforce one caller-selected timeout for a complete in-memory
+call. It can also return an owner-bound handle for one asynchronous call.
+Each Action invocation runs in a fresh supervised Task, including untimed
+synchronous calls, Flow Actions, and continuations. Synchronous calls wait for
+the result. Each call uses a control Task and private supervisor. Caller or controller
+death stops the call and its workers.
+Supervisor startup and telemetry delivery are synchronous, as in V2. Blocked
+host startup or cleanup handlers can delay the timeout response.
+See [Process Ownership](guides/execution.md#process-ownership).
+
+This foundation keeps the action boundary small:
+
+- `Jido.Executable` is the advanced descriptor API for the common Action and
+  Flow target contract.
+- `Jido.Action` defines a named action with Zoi input and output schemas.
+- `Jido.Action.Inline` lets host DSLs compile inline bodies to normal Actions.
+- `Jido.Expr` defines fixed, data-only operations for Flow and host DSLs.
+- `Jido.Instruction` captures one requested executable call as data.
+- `Jido.Flow` composes actions as a validated graph with steps and Choices.
+- `Jido.Flow.Extension` adds compile-time macros that lower to the normal Flow DSL.
+- `Jido.Exec` runs actions, instructions, and Flows, including asynchronous
+  run-to-completion calls and step-wise Flows.
+
+Version 3.0.0-beta.11 is a public beta. It includes the declarative Flow DSL,
+runtime Flow construction, safe stored Flow maps, and one Flow execution
+engine. Recent beta releases add inline Steps, the public
+`Jido.Action.Inline` host API, `Jido.Expr`, and
+compile-time Flow DSL extensions. The v3 API can still change before the
+stable release. The current development branch locks Runic 0.1.0-alpha.11.
+Use it for evaluation and controlled trials before you use it for critical
+production work. See the [version 2 to version 3 migration guide](guides/v2-to-v3-migration.md)
+for the confirmed breaking changes.
+
+## Install
+
+```elixir
+def deps do
+  [
+    {:jido_action, "~> 3.0.0-beta.12"}
+  ]
+end
+```
+
+To keep Flow DSL declarations without parentheses, add `:jido_action` to
+`import_deps` in your project's `.formatter.exs`:
+
+```elixir
+[
+  import_deps: [:jido_action],
+  inputs: ["{mix,.formatter}.exs", "{config,lib,test}/**/*.{ex,exs}"]
+]
+```
+
+Keep your existing formatter options and imported dependencies. No formatter
+plugin is required. See [Flow Modules](guides/flow-modules.md#format-the-dsl).
+
+## Define An Action
+
+```elixir
+defmodule MyApp.Actions.GreetUser do
+  use Jido.Action,
+    name: "greet_user",
+    description: "Builds a greeting for a user",
+    schema:
+      Zoi.object(%{
+        name: Zoi.string() |> Zoi.min(1),
+        excited?: Zoi.boolean() |> Zoi.default(false)
+      }),
+    output_schema:
+      Zoi.object(%{
+        greeting: Zoi.string()
+      })
+
+  @impl true
+  def run(%{name: name, excited?: excited?}, _context) do
+    suffix = if excited?, do: "!", else: "."
+    {:ok, %{greeting: "Hello, #{name}#{suffix}"}}
+  end
+end
+```
+
+Public action functions:
+
+- `name/0`
+- `description/0`
+- `schema/0`
+- `output_schema/0`
+- `to_json/0`
+- `validate_params/1`
+- `validate_output/1`
+- `run/2`
+
+`to_json/0` returns a JSON-safe Action description with the name,
+description, input JSON Schema, and output JSON Schema. Jido builds and stores
+this description when it compiles the Action. An empty schema becomes `nil`.
+The function raises `ArgumentError` when Zoi cannot project a declared schema
+to JSON Schema. This does not stop that Action from compiling or running.
+Runtime Zoi validation remains authoritative.
+
+Every Action must implement `run/2`. A missing implementation stops compilation.
+
+An Action can also implement `on_before_validate_params/1` when raw input must
+be prepared before Zoi validation. Prefer Zoi coercion and other schema rules
+when they can express the required change.
+
+## Run An Action
+
+```elixir
+{:ok, %{greeting: "Hello, Ada!"}} =
+  Jido.Exec.run(
+    MyApp.Actions.GreetUser,
+    %{name: "Ada", excited?: true},
+    %{request_id: "req-123"}
+  )
+```
+
+`Jido.Exec` validates the Action input and output in the same fresh Task as
+its callback. This applies to synchronous calls with `timeout: :infinity`,
+timed calls, and asynchronous calls. A private execution supervisor owns the Task. The configured host Task
+Supervisor owns one control Task per call. See
+[Process Ownership](guides/execution.md#process-ownership) for Flow concurrency
+and cleanup limits. Code that integrates its own executor can use
+`validate_params/1`, `run/2`, and `validate_output/1` directly.
+
+The Action `run/2` callback must return one of:
+
+- `{:ok, result}`
+- `{:ok, result, effects}`
+- `{:continue, input, target}`
+- `{:error, reason}`
+- `{:error, reason, effects}`
+
+The `{:continue, input, target}` result ends the current executable and runs
+the selected Action or Flow in the same bounded Exec call. A third success
+element contains an optional effect list. Exec discards the third element of
+an error result. See
+[Dynamic Flows](guides/dynamic-flows.md).
+
+## Run Asynchronously
+
+`run_async/4` accepts the same run-to-completion targets and options as
+`run/4`. It returns a handle immediately.
+
+```elixir
+handle =
+  Jido.Exec.run_async(
+    MyApp.Actions.GreetUser,
+    %{name: "Ada", excited?: true},
+    %{request_id: "req-123"}
+  )
+
+{:ok, %{greeting: "Hello, Ada!"}} = Jido.Exec.await(handle)
+```
+
+The process that calls `run_async/4` owns the handle. Only that process can
+call `await/1`, `await/2`, `handle_message/2`, or `cancel/1`. Use
+`handle_message/2` to classify messages in an OTP callback without blocking:
+
+```elixir
+def handle_info(message, %{handle: handle} = state) do
+  case Jido.Exec.handle_message(handle, message) do
+    {:done, result} -> {:noreply, %{state | handle: nil, result: result}}
+    :ignore -> {:noreply, state}
+    {:error, error} -> {:stop, error, state}
+  end
+end
+```
+
+`await/2`, `handle_message/2`, and `cancel/1` are alternative one-shot
+terminal consumers. The default wait limit for `await/1` is 5 seconds. An
+`await/2` timeout cancels the work. The `timeout:` run option is a separate
+limit for the complete execution.
+
+`cancel/1` stops active in-memory Action and Flow work. It cannot undo side
+effects that already completed.
+
+## Capture A Call Frame
+
+Use `Jido.Instruction` when the intent to run an executable needs to be passed,
+logged, queued, or enriched before execution.
+
+```elixir
+instruction =
+  Jido.Instruction.new!(
+    target: MyApp.Actions.GreetUser,
+    params: %{name: "Ada"},
+    context: %{request_id: "req-123"}
+  )
+```
+
+An Instruction holds one Action module, Flow module, or runtime Flow target. It
+does not define a workflow, program, or runtime policy.
+
+Pass execution options to `Jido.Exec`.
+
+## Compose A Flow
+
+Use `Jido.Flow` when several actions must execute as one validated graph.
+
+```elixir
+defmodule MyApp.Actions.Notify do
+  use Jido.Action,
+    name: "notify",
+    schema: Zoi.object(%{message: Zoi.string()})
+
+  @impl true
+  def run(%{message: message}, _context) do
+    {:ok, %{message: message, status: "queued"}}
+  end
+end
+
+defmodule MyApp.Flows.GreetAndNotify do
+  use Jido.Flow,
+    name: "greet_and_notify",
+    schema: Zoi.object(%{name: Zoi.string()}),
+    output_schema: Zoi.map()
+
+  flow do
+    step "greet",
+      action: MyApp.Actions.GreetUser,
+      params: %{name: input(:name), excited?: false}
+
+    step "notify",
+      action: MyApp.Actions.Notify,
+      params: %{message: select(result("greet"), :greeting)}
+
+    output result("notify")
+  end
+end
+
+{:ok, result} =
+  Jido.Exec.run(MyApp.Flows.GreetAndNotify, %{name: "Ada"}, %{})
+```
+
+Each Flow module and canonical Flow has one explicit output expression. In a
+module Flow, `output` must be the final declaration. Flows also support
+ordered Choices, Map and Reduce collections, bounded Iterate components with
+State, independent components that can run in parallel, one Dispatch at the
+end of a Flow, and a step-wise execution API.
+
+### Use Inline Steps For Small Operations
+
+Version `3.0.0-beta.5` adds inline Step bodies for small operations that do not
+need a separate named Action.
+
+```elixir
+defmodule MyApp.Flows.SimpleGreeting do
+  use Jido.Flow,
+    name: "simple_greeting",
+    schema: Zoi.object(%{name: Zoi.string()}),
+    output_schema: Zoi.object(%{message: Zoi.string()})
+
+  flow do
+    step "normalize", name <- input(:name) do
+      {:ok, %{name: String.trim(name)}}
+    end
+
+    step "greet", name <- result("normalize", :name) do
+      {:ok, %{message: "Hello, " <> name <> "!"}}
+    end
+
+    output result("greet")
+  end
+end
+
+{:ok, %{message: "Hello, Ada!"}} =
+  Jido.Exec.run(MyApp.Flows.SimpleGreeting, %{name: " Ada "})
+```
+
+Binding sources use direct Flow references or data. Bodies use normal Elixir and
+compile to ordinary Actions. Use `inline:` to set the Action name, description,
+schemas, or context binding. Keep Step `needs:` and `meta:` options at the Step
+level.
+Use `MyApp.Flows.SimpleGreeting.step_action("greet")` to reuse its target in
+data definitions or a trusted Registry. Data definitions and JSON do not accept body code,
+closures, or MFAs. See [Build Your First Flow](guides/build-your-first-flow.livemd).
+
+Flow inline Actions are limited to direct Step bodies. Map, Reduce, Choice,
+Iterate, and Dispatch use Action modules. The separate
+[`Jido.Action.Inline` host API](guides/building-dsls-with-inline-actions.md)
+lets downstream compile-time DSLs define their own inline Action forms without
+Flow. Keep a named Action for custom validation hooks or a separate public
+module API.
+
+## Build A Flow At Runtime
+
+Use `Jido.Flow.new/1` when runtime data defines the graph. Each node has an
+explicit name, and each result reference uses that name.
+
+```elixir
+data = %{
+  output: Jido.Flow.Ref.result("greet"),
+  components: [
+    %{
+      kind: :step,
+      name: "greet",
+      action: MyApp.Actions.GreetUser,
+      params: %{name: Jido.Flow.Ref.input(:name), excited?: false}
+    }
+  ],
+  name: "runtime_greeting"
+}
+
+{:ok, runtime_flow} = Jido.Flow.new(data)
+{:ok, %{greeting: "Hello, Ada."}} = Jido.Exec.run(runtime_flow, %{name: "Ada"})
+```
+
+The data definitions and the Flow module DSL produce the same canonical Flow model.
+
+## Load A Flow From JSON Or A Map
+
+Use a versioned stored map when a database, web UI, or AI system defines the
+Flow. The host owns a flat `Jido.Flow.Registry` that maps stable identifiers to
+trusted Action modules, schemas, and data atoms.
+
+```elixir
+registry =
+  Jido.Flow.Registry.new!(%{
+    "actions/greet-user/v1" => {:action, MyApp.Actions.GreetUser},
+    "schemas/empty/v1" => {:schema, []},
+    "atoms/excited/v1" => {:atom, :excited?},
+    "atoms/name/v1" => {:atom, :name}
+  })
+
+{:ok, stored} = Jido.Flow.Codec.encode(runtime_flow, registry)
+json = JSON.encode!(stored)
+decoded = JSON.decode!(json)
+
+case Jido.Flow.Codec.decode(decoded, registry) do
+  {:ok, flow} ->
+    Jido.Flow.validate_executable(flow)
+
+  {:error, error} ->
+    {:error, Jido.Flow.Error.to_map(error)}
+end
+```
+
+For temporary storage or transport within one application version, the Codec
+can generate and return a Registry:
+
+```elixir
+{:ok, stored, temporary_registry} = Jido.Flow.Codec.encode(runtime_flow)
+{:ok, restored} = Jido.Flow.Codec.decode(stored, temporary_registry)
+```
+
+Generated identifiers can change when the Flow changes. Use an
+application-owned Registry for durable storage.
+
+`Jido.Flow.Codec.decode/2` does not execute the Flow. Invalid or incomplete maps
+return a structured error instead of raising. Stored identifiers cannot create
+atoms or select a module outside the host Registry.
+
+Use `Jido.Flow.Codec.diagnose/2` for a browser or AI editor that needs all
+independent stored-document and graph errors. It returns one ordered Splode
+error group with JSON paths and never returns a partial Flow.
+
+The Flow module DSL, data definitions, stored JSON Codec, and direct constructors produce
+one canonical `%Jido.Flow{}` model. The Codec uses explicit component kinds.
+It does not infer old records or module names.
+
+## Run A Flow Step By Step
+
+Run-to-completion and step-wise execution use the same engine:
+
+```elixir
+{:ok, execution} = Jido.Exec.start(runtime_flow, %{name: "Ada"})
+[work] = Jido.Exec.ready(execution)
+
+{:ok, %Jido.Exec.Work{status: :completed}, execution} =
+  Jido.Exec.step(execution, work.token)
+
+:succeeded = Jido.Exec.status(execution)
+{:ok, %{greeting: "Hello, Ada."}} = Jido.Exec.result(execution)
+```
+
+`wave/1` runs work from the current ready set. A failed runnable stops new
+dispatch; work already admitted can finish. `continue/1` runs until the Flow
+reaches a terminal result. Always pass the newest execution value to the next
+call. The caller owns this in-memory lifecycle. Jido does not persist or recover it.
+Jido rejects reuse of a stale execution revision. Each revision has its own
+work tokens. Descriptors expose component paths and support roles without
+application payloads. Use `Jido.Exec.native/1` for advanced native inspection.
+See [Debug Flows](guides/debugging-flows.md).
+
+## Observe Execution
+
+Telemetry covers Action, Flow, Flow node, and collection work-unit lifecycles.
+Direct Actions and Instructions emit `[:jido, :action, :start]`,
+`[:jido, :action, :stop]`, and `[:jido, :action, :error]`. Flows and their
+nodes use the `[:jido, :flow]` namespace. Map items, Reduce items, and Iterate
+iterations add work-unit spans in that namespace. One `execution_id`
+correlates nested work. Step and selected Choice Actions emit a target
+lifecycle with the Action module and selected option. An Action inside a Flow
+does not emit a separate direct Action lifecycle. Telemetry observes execution
+only; it does not control scheduling or results. A complete-call timeout closes
+all active Jido spans with an error event.
+
+See [Execution](guides/execution.md) for exact event names, measurements,
+metadata, nesting, and step-wise semantics.
+
+## Docs
+
+Start with the runnable [Getting Started](guides/getting-started.livemd)
+Livebook. ExDoc adds a **Run in Livebook** link to each `.livemd` guide.
+
+### Start Here
+
+- [Build Your First Flow](guides/build-your-first-flow.livemd)
+
+### Core Contracts
+
+- [Actions](guides/actions.md)
+- [Inline Actions](guides/inline-actions.md)
+- [Building DSLs With Inline Actions](guides/building-dsls-with-inline-actions.md)
+- [Instructions](guides/instructions.md)
+- [Flows](guides/flows.md)
+- [Dynamic Flows](guides/dynamic-flows.md)
+- [Schemas & Validation](guides/schemas-validation.md)
+- [Execution Contract](guides/execution.md)
+- [Public Contract Register](guides/public-contracts.md)
+
+### Author Flows
+
+- [Flow DSL](guides/flow-language.livemd)
+- [Steps And Output](guides/flow-steps.livemd)
+- [References And Data](guides/flow-references.livemd)
+- [Expressions And Host DSLs](guides/flow-expressions.md)
+- [Dependencies And Parallel Work](guides/flow-dependencies.livemd)
+- [Choices And Conditions](guides/flow-choices.livemd)
+- [Map And Reduce](guides/flow-collections.livemd)
+- [Iterate And State](guides/flow-iterate-state.livemd)
+- [Nested Flows](guides/nested-flows.livemd)
+- [Flow Modules](guides/flow-modules.md)
+- [Flow Data Definitions](guides/flow-data.md)
+- [Store Flows As JSON](guides/flow-storage.md)
+- [Inspect Flows](guides/flow-inspection.md)
+
+### Run And Operate
+
+- [Executing Flows](guides/flow-execution.livemd)
+- [Maps, Streams, And Optional Effects](guides/action-effects.livemd)
+- [Debug Flows](guides/debugging-flows.md)
+- [Runtime Configuration](guides/configuration.md)
+- [Security](guides/security.md)
+- [Testing](guides/testing.md)
+- [Execution Benchmarks](guides/benchmarks.md)
+
+### Upgrade
+
+- [Version 2 To Version 3 Migration Guide](guides/v2-to-v3-migration.md)
+- [Upgrade From v2 To v3 Skill](guides/v2-to-v3-upgrade-skill.md)
+
+## Jido Ecosystem
+
+- [Jido](https://github.com/agentjido/jido) is the core agent framework.
+- [Jido website](https://jido.run) contains project documentation and news.
+- [Jido ecosystem](https://jido.run/ecosystem) lists the related packages.
+- [Jido Workbench](https://github.com/agentjido/jido_workbench) provides
+  development and inspection tools.
+- [Jido Discord](https://jido.run/discord) is the community support channel.
+
+## Contributing
+
+See the [contribution guide](https://github.com/agentjido/jido_action/blob/main/CONTRIBUTING.md)
+for development and pull-request guidance.
+
+## License
+
+Copyright 2024-2026 Mike Hostetler
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
+
+## Deferred Effect Requests
+
+Return `{:ok, output, requests}` from an Action to
+request effects after success. Flow collects these opaque requests in canonical
+dependency order and returns the complete batch with its final output. Exec
+does not execute effects. Failed execution returns no executable batch.
+The optional third success element must be a proper list of effect requests.
+Run [Maps, Streams, And Optional Effects](guides/action-effects.livemd) for
+complete order approval and CSV export examples with integration tests.
+See [Execution](guides/execution.md#results-and-errors) for ordering, collections, continuations, and migration.

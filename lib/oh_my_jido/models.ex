@@ -15,7 +15,6 @@ defmodule OhMyJido.Models do
   This module never reads or evaluates repository configuration files.
   """
 
-  alias Jido.AI.ModelAliases
   alias Jido.AI.Reasoning.ReAct.ToolSelection
   alias OhMyJido.Context
   import OhMyJido.Config, only: [fetch: 2, get: 3]
@@ -138,10 +137,7 @@ defmodule OhMyJido.Models do
   @doc "Resolves and locally validates a model through the installed Jido/ReqLLM APIs."
   @spec resolve(term()) :: {:ok, ReqLLM.model_input()} | {:error, atom()}
   def resolve(model_input) do
-    resolved =
-      if is_atom(model_input),
-        do: ModelAliases.resolve_model(model_input),
-        else: Jido.AI.resolve_model(model_input)
+    resolved = Jido.AI.Models.resolve(model_input)
 
     if deep_fields?(resolved, @credential_keys) do
       {:error, :credentials_must_come_from_host}

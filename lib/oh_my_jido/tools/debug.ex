@@ -58,7 +58,6 @@ defmodule OhMyJido.Tools.Debug do
   @impl true
   def run(params, execution_context) do
     with {:ok, params} <- validate_params(params),
-         {:ok, params} <- Jido.Action.Schema.validate(schema(), params),
          {:ok, context} <- Context.fetch(execution_context),
          effect = %{
            operation: params.operation,

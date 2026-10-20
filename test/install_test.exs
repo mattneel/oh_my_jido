@@ -50,8 +50,20 @@ defmodule OhMyJido.InstallTest do
     assert {:oh_my_jido, path: @source} in project.deps
     assert {:jido, path: Path.join(@source, "vendor/jido"), override: true} in project.deps
     assert {:req_llm, path: Path.join(@source, "vendor/req_llm"), override: true} in project.deps
-    assert {:jido_ai, "== 2.4.0"} in project.deps
-    assert {:jido_action, "== 2.4.0"} in project.deps
+    assert {:jido_ai, path: Path.join(@source, "vendor/jido_ai"), override: true} in project.deps
+
+    assert {:jido_action, path: Path.join(@source, "vendor/jido_action"), override: true} in project.deps
+
+    assert {:jido_signal,
+            git: "https://github.com/agentjido/jido_signal.git",
+            ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+            override: true} in project.deps
+
+    assert {:zoi,
+            git: "https://github.com/mikehostetler/zoi.git",
+            ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9",
+            override: true} in project.deps
+
     refute Enum.any?(project.deps, &(elem(&1, 0) in [:snakepit, :igniter, :quickbeam]))
   end
 
@@ -90,14 +102,21 @@ defmodule OhMyJido.InstallTest do
             path: Path.join(@source, "vendor/snakepit"), override: true, runtime: false} in project.deps
   end
 
-  test "equivalent exact requirement declarations are preserved", %{target: target} do
-    existing = "{:jido_ai, \"2.4.0\", []}"
+  test "equivalent exact source revisions and reordered options are preserved", %{target: target} do
+    existing =
+      "{:jido_signal, override: true, ref: \"fd8d00555d6a64b4109619f4c26f1b75e8a91d41\", git: \"https://github.com/agentjido/jido_signal.git\"}"
+
     mix = String.replace(@consumer, "[{:kept,", "[#{existing}, {:kept,")
     igniter = fixture(mix) |> Install.plan(source: @source)
     assert {:ok, applied, _} = Igniter.Test.apply_igniter(igniter)
     project = consumer_project!(target, applied.assigns.test_files["mix.exs"])
-    assert {:jido_ai, "2.4.0", []} in project.deps
-    assert Enum.count(project.deps, &(elem(&1, 0) == :jido_ai)) == 1
+
+    assert {:jido_signal,
+            override: true,
+            ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+            git: "https://github.com/agentjido/jido_signal.git"} in project.deps
+
+    assert Enum.count(project.deps, &(elem(&1, 0) == :jido_signal)) == 1
   end
 
   test "equivalent existing relative source paths and option order are retained", %{
@@ -124,7 +143,11 @@ defmodule OhMyJido.InstallTest do
     for declaration <- [
           "{:jido, \"~> 3.0\"}",
           "{:req_llm, path: \"somewhere_else\", override: true}",
-          "{:jido_ai, \"~> 2.4\"}",
+          "{:jido_ai, \"== 2.4.0\"}",
+          "{:jido_ai, path: \"somewhere_else\", override: true}",
+          "{:jido_action, \"== 2.4.0\", override: true}",
+          "{:jido_signal, \"== 2.4.0\", override: true}",
+          "{:zoi, \"~> 0.18\"}",
           "{:oh_my_jido, git: \"https://example.invalid/host-choice.git\"}"
         ] do
       mix = String.replace(@consumer, "[{:kept,", "[#{declaration}, {:kept,")
@@ -160,7 +183,7 @@ defmodule OhMyJido.InstallTest do
           String.replace(
             @consumer,
             "[{:kept,",
-            "[{:jido_ai, \"== 2.4.0\"}, {:jido_ai, \"== 2.4.0\"}, {:kept,"
+            "[{:jido_ai, path: \"duplicate\", override: true}, {:jido_ai, path: \"duplicate\", override: true}, {:kept,"
           ),
           String.replace(@consumer, "deps: deps()", "deps: []"),
           String.replace(
@@ -208,8 +231,40 @@ defmodule OhMyJido.InstallTest do
     )
 
     igniter = Install.plan(fixture(), source: source)
-    assert Enum.any?(igniter.issues, &String.contains?(&1, "2.4.0"))
+    assert Enum.any?(igniter.issues, &String.contains?(&1, "3.0.0-beta.1"))
     refute Igniter.has_changes?(igniter)
+  end
+
+  test "all native V3 snapshots require their exact source provenance", %{target: target} do
+    for app <- [:jido, :jido_ai, :jido_action],
+        alteration <- [:missing_manifest, :wrong_ref, :legacy_manifest] do
+      source = source_fixture!(Path.join(target, "#{app}-#{alteration}"))
+      path = Path.join([source, "vendor", Atom.to_string(app), "UPSTREAM.json"])
+
+      case alteration do
+        :missing_manifest ->
+          File.rm!(path)
+
+        :wrong_ref ->
+          manifest = path |> File.read!() |> Jason.decode!()
+          File.write!(path, Jason.encode!(Map.put(manifest, "ref", String.duplicate("0", 40))))
+
+        :legacy_manifest ->
+          File.write!(
+            path,
+            Jason.encode!(%{
+              "package" => Atom.to_string(app),
+              "version" => "2.4.0",
+              "privacy_boundary_updates" => %{}
+            })
+          )
+      end
+
+      igniter = Install.plan(fixture(), source: source)
+      assert Enum.any?(igniter.issues, &String.contains?(&1, "#{app} native V3"))
+      refute Igniter.has_changes?(igniter)
+      assert igniter.tasks == []
+    end
   end
 
   test "dry-run never evaluates target executable configuration or writes target files", %{
@@ -217,12 +272,20 @@ defmodule OhMyJido.InstallTest do
   } do
     files = disk_fixture!(target)
 
-    capture_io(fn ->
-      File.cd!(target, fn ->
-        assert {:ok, :dry_run_with_changes} =
-                 Install.run(["--source", @source, "--dry-run"])
+    output =
+      capture_io(fn ->
+        File.cd!(target, fn ->
+          assert {:ok, :dry_run_with_changes} =
+                   Install.run(["--source", @source, "--dry-run"])
+        end)
       end)
-    end)
+
+    assert output =~ "vendored native Jido V3 Core and AI"
+    assert output =~ "Jido.Action ref 19c77f94"
+    assert output =~ "Jido.Signal ref fd8d0055"
+    assert output =~ "vendor/jido_ai"
+    refute output =~ "Jido.AI/Jido.Action == 2.4.0"
+    refute output =~ "patched Jido 2.4.0"
 
     for {path, content} <- files, do: assert(File.read!(Path.join(target, path)) == content)
     assert Enum.sort(File.ls!(target)) == [".formatter.exs", ".igniter.exs", "config", "mix.exs"]
@@ -285,7 +348,15 @@ defmodule OhMyJido.InstallTest do
     end)
 
     project = consumer_project!(target, File.read!(Path.join(target, "mix.exs")))
-    assert {:jido_ai, "== 2.4.0"} in project.deps
+    assert {:jido_ai, path: Path.join(@source, "vendor/jido_ai"), override: true} in project.deps
+
+    assert {:jido_action, path: Path.join(@source, "vendor/jido_action"), override: true} in project.deps
+
+    assert {:jido_signal,
+            git: "https://github.com/agentjido/jido_signal.git",
+            ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+            override: true} in project.deps
+
     assert {:jido, path: Path.join(@source, "vendor/jido"), override: true} in project.deps
 
     for {path, content} <- Map.delete(files, "mix.exs") do
@@ -372,6 +443,24 @@ defmodule OhMyJido.InstallTest do
 
     assert status == 0, output
     refute File.exists?(marker)
+  end
+
+  defp source_fixture!(source) do
+    File.mkdir_p!(source)
+    File.write!(Path.join(source, "mix.exs"), "raise \"source project must not execute\"\n")
+
+    for app <- [:jido, :jido_ai, :jido_action, :req_llm] do
+      directory = Path.join([source, "vendor", Atom.to_string(app)])
+      File.mkdir_p!(directory)
+      File.write!(Path.join(directory, "mix.exs"), "raise \"vendor project must not execute\"\n")
+
+      File.cp!(
+        Path.join([@source, "vendor", Atom.to_string(app), "UPSTREAM.json"]),
+        Path.join(directory, "UPSTREAM.json")
+      )
+    end
+
+    source
   end
 
   defp fixture(mix \\ @consumer) do

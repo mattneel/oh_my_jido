@@ -11,12 +11,13 @@ defmodule OhMyJido.Install do
   may fetch its pinned Igniter tooling on first use; it never fetches consumer
   dependencies, compiles the consumer, reads credentials, or starts its services.
 
-  Mix overrides are not transitive: the consumer must declare the patched Jido
-  and ReqLLM paths at its own dependency root. This installer adds those paths
-  and exact Jido.AI/Jido.Action 2.4.0 requirements without copying or modifying
-  the checkout's patched snapshots. Existing incompatible declarations are
-  refused rather than replaced. A literal `project/0` result using `deps: deps()`
-  and a literal private `deps/0` list are required; computed layouts are refused.
+  Mix overrides are not transitive: the consumer must declare the vendored native
+  Jido V3 Core, JidoAI V3, Jido Action V3, and patched ReqLLM paths at its own
+  dependency root. This installer adds those paths and exact compatible Signal
+  and Zoi source revisions without copying or modifying the snapshots.
+  Existing incompatible declarations are refused rather than replaced. A literal
+  `project/0` result using `deps: deps()` and a literal private `deps/0` list are
+  required; computed layouts are refused.
 
   Only `mix.exs` is changed. The standalone `elixir` bootstrap does not evaluate
   the target Mix project, formatter files, Igniter config, or application config.
@@ -86,8 +87,9 @@ defmodule OhMyJido.Install do
 
         Mix.shell().info("""
         OhMyJido source setup: #{Keyword.fetch!(opts, :source)}
-        Planned scope: mix.exs dependencies only; patched Jido 2.4.0 and ReqLLM 1.28.0,
-        Jido.AI/Jido.Action == 2.4.0#{if opts[:snakepit], do: ", patched Snakepit 0.14.0 (runtime: false)", else: "; no Snakepit"}.
+        Planned scope: mix.exs dependencies only; vendored native Jido V3 Core and AI,
+        vendored Jido.Action ref 19c77f94, Jido.Signal ref fd8d0055, pinned native Zoi,
+        patched ReqLLM 1.28.0#{if opts[:snakepit], do: ", patched Snakepit 0.14.0 (runtime: false)", else: "; no Snakepit"}.
         No consumer credentials, provider requests, consumer dependency fetch, or consumer service startup.
         """)
 
@@ -211,35 +213,80 @@ defmodule OhMyJido.Install do
     end
 
     defp validate_snapshots(source, snakepit?) do
-      snapshots = [{:jido, "2.4.0"}, {:req_llm, "1.28.0"}]
-      snapshots = if snakepit?, do: snapshots ++ [{:snakepit, "0.14.0"}], else: snapshots
+      snapshots = [
+        {:jido,
+         %{
+           "source" => "https://github.com/agentjido/jido",
+           "ref" => "8322de574c53d5c2096243d230c9de4f14803bda",
+           "branch_at_import" => "release/v3",
+           "upstream_version" => "3.0.0-beta.1"
+         }},
+        {:jido_ai,
+         %{
+           "source" => "https://github.com/agentjido/jido_ai",
+           "ref" => "1f19ff262081bc13eb30da7bff8bfe42685d63c8",
+           "branch_at_import" => "release/v3",
+           "upstream_version" => "2.3.0"
+         }},
+        {:jido_action,
+         %{
+           "source" => "https://github.com/agentjido/jido_action",
+           "ref" => "19c77f94e5c2513b2e684a289857fcd568f7eb29",
+           "upstream_version" => "3.0.0-beta.12"
+         }},
+        {:req_llm, %{"version" => "1.28.0"}}
+      ]
 
-      Enum.reduce_while(snapshots, :ok, fn {app, version}, :ok ->
+      snapshots =
+        if snakepit?, do: snapshots ++ [{:snakepit, %{"version" => "0.14.0"}}], else: snapshots
+
+      Enum.reduce_while(snapshots, :ok, fn {app, expected}, :ok ->
         root = Path.join([source, "vendor", Atom.to_string(app)])
 
         with true <- File.regular?(Path.join(root, "mix.exs")),
              {:ok, content} <- File.read(Path.join(root, "UPSTREAM.json")),
-             {:ok, manifest} <- Jason.decode(content),
-             %{"package" => package, "version" => ^version, "privacy_boundary_updates" => updates}
-             when is_map(updates) <- manifest,
-             true <- package == Atom.to_string(app) do
+             {:ok, %{"package" => package} = manifest} <- Jason.decode(content),
+             true <- package == Atom.to_string(app),
+             true <- Map.take(manifest, Map.keys(expected)) == expected,
+             true <- snapshot_provenance?(manifest) do
           {:cont, :ok}
         else
           _ ->
             {:halt,
              {:error,
-              "The selected checkout must contain its patched #{app} #{version} snapshot and UPSTREAM.json provenance in #{root}; Hex replacements are not supported."}}
+              "The selected checkout must contain its #{app} #{snapshot_description(expected)} snapshot and UPSTREAM.json provenance in #{root}; Hex replacements are not supported."}}
         end
       end)
     end
+
+    defp snapshot_provenance?(%{"ref" => _ref, "boundary_patches" => patches}),
+      do: is_list(patches)
+
+    defp snapshot_provenance?(%{"version" => _version, "privacy_boundary_updates" => updates}),
+      do: is_map(updates)
+
+    defp snapshot_provenance?(_manifest), do: false
+
+    defp snapshot_description(%{"upstream_version" => version, "ref" => ref}),
+      do: "native V3 (upstream version metadata #{version}, ref #{ref})"
+
+    defp snapshot_description(%{"version" => version}), do: "patched #{version}"
 
     defp dependencies(source, snakepit?) do
       dependencies = [
         {:oh_my_jido, path: source},
         {:jido, path: Path.join(source, "vendor/jido"), override: true},
+        {:jido_ai, path: Path.join(source, "vendor/jido_ai"), override: true},
         {:req_llm, path: Path.join(source, "vendor/req_llm"), override: true},
-        {:jido_ai, "== 2.4.0"},
-        {:jido_action, "== 2.4.0"}
+        {:jido_action, path: Path.join(source, "vendor/jido_action"), override: true},
+        {:jido_signal,
+         git: "https://github.com/agentjido/jido_signal.git",
+         ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+         override: true},
+        {:zoi,
+         git: "https://github.com/mikehostetler/zoi.git",
+         ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9",
+         override: true}
       ]
 
       if snakepit? do

@@ -661,7 +661,7 @@ defmodule OhMyJido.IntelligenceProtocolTest do
   end
 
   defp run(action, context, params) do
-    Jido.Exec.run(action, params, %{oh_my_jido: context}, max_retries: 0, timeout: 15_000)
+    Jido.Exec.run(action, params, %{oh_my_jido: context}, timeout: 15_000)
   end
 
   defp assert_resource_closed(pid),

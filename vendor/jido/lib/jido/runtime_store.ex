@@ -1,28 +1,9 @@
 defmodule Jido.RuntimeStore do
-  @moduledoc """
-  Instance-scoped runtime key/value store for mutable Jido coordination state.
-
-  `RuntimeStore` is an internal control-plane store owned by each Jido instance.
-  It backs ephemeral runtime data that needs a stable home outside individual
-  agent processes, such as logical parent-child relationship bindings.
-
-  The ETS table itself is owned by the Jido instance supervisor, while the
-  `RuntimeStore` process provides the logical API. That lets the table survive
-  `RuntimeStore` process restarts without making it durable beyond the life of
-  the owning Jido instance.
-
-  Values are organized into named hives so unrelated runtime concerns can share
-  the same store without colliding:
-
-      :ok = Jido.RuntimeStore.put(MyApp.Jido, :relationships, "child-1", %{parent_id: "p-1"})
-      {:ok, binding} = Jido.RuntimeStore.fetch(MyApp.Jido, :relationships, "child-1")
-      :ok = Jido.RuntimeStore.delete(MyApp.Jido, :relationships, "child-1")
-
-  The store is intentionally ephemeral. It is reset when the owning Jido
-  instance stops or restarts.
-  """
+  @moduledoc false
 
   use GenServer
+
+  @call_timeout Application.compile_env(:jido, :runtime_store_timeout, 5_000)
 
   @type hive :: term()
   @type key :: term()
@@ -34,18 +15,10 @@ defmodule Jido.RuntimeStore do
   def child_spec(opts) do
     name = Keyword.fetch!(opts, :name)
 
-    %{
-      id: name,
-      start: {__MODULE__, :start_link, [opts]},
-      restart: :permanent,
-      shutdown: 5_000,
-      type: :worker
-    }
+    %{super(opts) | id: name}
   end
 
-  @doc """
-  Starts a RuntimeStore process.
-  """
+  @doc false
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
     name = Keyword.fetch!(opts, :name)
@@ -75,50 +48,50 @@ defmodule Jido.RuntimeStore do
     ArgumentError -> :ok
   end
 
-  @doc """
-  Returns a value from the given hive, or `default` when no value exists.
-  """
+  @doc false
   @spec get(atom(), hive(), key(), value()) :: value()
   def get(instance, hive, key, default \\ nil) when is_atom(instance) do
     case fetch(instance, hive, key) do
       {:ok, value} -> value
-      :error -> default
+      _unavailable_or_missing -> default
     end
   end
 
-  @doc """
-  Fetches a value from the given hive.
-
-  Returns `{:ok, value}` when present, or `:error` when the key or store is
-  unavailable.
-  """
-  @spec fetch(atom(), hive(), key()) :: {:ok, value()} | :error
+  @doc false
+  @spec fetch(atom(), hive(), key()) ::
+          {:ok, value()} | :error | {:error, :not_running | :timeout}
   def fetch(instance, hive, key) when is_atom(instance) do
-    call(instance, {:fetch, hive, key}, :error)
+    call(instance, {:fetch, hive, key}, {:error, :not_running}, {:error, :timeout})
   end
 
-  @doc """
-  Stores a value in the given hive.
-  """
+  @doc false
   @spec put(atom(), hive(), key(), value()) :: :ok | {:error, term()}
   def put(instance, hive, key, value) when is_atom(instance) do
-    call(instance, {:put, hive, key, value}, {:error, :not_running})
+    call(instance, {:put, hive, key, value}, {:error, :not_running}, {:error, :timeout})
   end
 
-  @doc """
-  Deletes a value from the given hive.
-  """
+  @doc false
   @spec delete(atom(), hive(), key()) :: :ok | {:error, term()}
   def delete(instance, hive, key) when is_atom(instance) do
-    call(instance, {:delete, hive, key}, {:error, :not_running})
+    call(instance, {:delete, hive, key}, {:error, :not_running}, {:error, :timeout})
   end
 
-  @doc """
-  Lists all `{key, value}` entries in the given hive.
-  """
+  @doc false
   @spec list(atom(), hive()) :: [{key(), value()}]
   def list(instance, hive) when is_atom(instance) do
-    call(instance, {:list, hive}, [])
+    case fetch_all(instance, hive) do
+      {:ok, entries} -> entries
+      {:error, _reason} -> []
+    end
+  end
+
+  @doc false
+  @spec fetch_all(atom(), hive()) :: {:ok, [{key(), value()}]} | {:error, :not_running | :timeout}
+  def fetch_all(instance, hive) when is_atom(instance) do
+    case call(instance, {:list, hive}, {:error, :not_running}, {:error, :timeout}) do
+      entries when is_list(entries) -> {:ok, entries}
+      {:error, _reason} = error -> error
+    end
   end
 
   @impl true
@@ -155,26 +128,21 @@ defmodule Jido.RuntimeStore do
   def handle_call({:list, hive}, _from, %{table: table} = state) do
     entries =
       :ets.select(table, [
-        {{{hive, :"$1"}, :"$2"}, [], [{{:"$1", :"$2"}}]}
+        {{{:"$1", :"$2"}, :"$3"}, [{:"=:=", :"$1", {:const, hive}}], [{{:"$2", :"$3"}}]}
       ])
 
     {:reply, entries, state}
   end
 
-  defp call(instance, request, fallback) do
+  defp call(instance, request, fallback, timeout_fallback) do
     server = Jido.runtime_store_name(instance)
 
     try do
-      case GenServer.whereis(server) do
-        nil ->
-          fallback
-
-        _pid ->
-          GenServer.call(server, request)
-      end
+      GenServer.call(server, request, @call_timeout)
     catch
       :exit, {:noproc, _} -> fallback
       :exit, {:normal, _} -> fallback
+      :exit, {:timeout, {GenServer, :call, _details}} -> timeout_fallback
     end
   end
 end

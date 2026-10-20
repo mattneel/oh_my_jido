@@ -109,8 +109,22 @@ defmodule OhMyJido.Bench.Density.Metrics do
       session_coordinator_count: if(runtime, do: children_count(Runtime.sessions(runtime))),
       native_agent_supervisor_count:
         if(runtime,
-          do: children_count(Jido.agent_supervisor_name(Runtime.engine(runtime)))
+          do:
+            module_children_count(
+              Jido.agent_supervisor_name(Runtime.engine(runtime)),
+              Jido.AgentServer
+            )
         ),
+      native_plugin_lifecycle_count:
+        if(runtime,
+          do:
+            module_children_count(
+              Jido.agent_supervisor_name(Runtime.engine(runtime)),
+              Jido.AgentServer.PluginChild
+            )
+        ),
+      native_agent_supervisor_child_count:
+        if(runtime, do: children_count(Jido.agent_supervisor_name(Runtime.engine(runtime)))),
       leases:
         if(runtime,
           do: %{
@@ -187,6 +201,20 @@ defmodule OhMyJido.Bench.Density.Metrics do
     :exit, _reason -> nil
   end
 
+  defp module_children_count(name, module) do
+    case Process.whereis(name) do
+      nil ->
+        nil
+
+      pid ->
+        Enum.count(Supervisor.which_children(pid), fn {_id, child, _type, modules} ->
+          is_pid(child) and is_list(modules) and module in modules
+        end)
+    end
+  catch
+    :exit, _reason -> nil
+  end
+
   defp supervised_tree(nil), do: {[], 0}
   defp supervised_tree(pid), do: walk_supervisors([pid], MapSet.new(), 0)
 
@@ -241,6 +269,7 @@ defmodule OhMyJido.Bench.Density.Metrics do
       beam_rss_bytes: proc_kib(status, "VmRSS"),
       beam_rss_high_water_bytes: proc_kib(status, "VmHWM"),
       live_descendant_count: length(live),
+      live_descendants: live |> Enum.map(& &1.identity) |> Enum.sort_by(& &1.pid),
       descendant_rss_sum_bytes: Enum.sum(rss),
       descendant_rss_unavailable_count: length(live) - length(rss),
       descendant_scan_read_errors: errors,
@@ -276,17 +305,9 @@ defmodule OhMyJido.Bench.Density.Metrics do
         |> Enum.reduce({[], errors}, fn child, {found, failures} ->
           case File.read("/proc/#{child}/stat") do
             {:ok, stat} ->
-              case Regex.run(~r/\A\d+ \(.*\) ([A-Z]) /s, stat) do
-                [_, state] ->
-                  row = %{
-                    state: state,
-                    rss_bytes: proc_kib(read_text("/proc/#{child}/status"), "VmRSS")
-                  }
-
-                  {[row | found], failures}
-
-                _other ->
-                  {found, failures + 1}
+              case descendant_row(child, stat) do
+                {:ok, row} -> {[row | found], failures}
+                :error -> {found, failures + 1}
               end
 
             {:error, _reason} ->
@@ -295,6 +316,28 @@ defmodule OhMyJido.Bench.Density.Metrics do
         end)
 
       os_descendants(Enum.uniq(children) ++ rest, seen, new_rows ++ rows, errors)
+    end
+  end
+
+  defp descendant_row(pid, stat) do
+    with [_, name, fields] <- Regex.run(~r/\A\d+ \((.*)\) (.*)\z/s, stat),
+         [state, parent, group, session | _rest] = columns <- String.split(fields),
+         start when is_binary(start) <- Enum.at(columns, 19) do
+      {:ok,
+       %{
+         state: state,
+         rss_bytes: proc_kib(read_text("/proc/#{pid}/status"), "VmRSS"),
+         identity: %{
+           pid: pid,
+           name: name,
+           parent_pid: String.to_integer(parent),
+           process_group: String.to_integer(group),
+           session_id: String.to_integer(session),
+           start_ticks: String.to_integer(start)
+         }
+       }}
+    else
+      _invalid -> :error
     end
   end
 

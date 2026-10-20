@@ -1,11 +1,11 @@
 defmodule OhMyJido.Workspace do
   @moduledoc """
-  Canonical workspace paths over Jido's existing file-root policy.
+  Canonical workspace confinement for native coding-tool grants.
 
-  Every resolution supplies an explicit root to `Jido.Tools.Files.resolve_path/2`;
-  its application-wide roots remain an additional restriction. The dependency
-  returns a lexical path and accepts missing ancestors, so this adapter also
-  resolves symlinks, requires existing parents, and returns canonical paths.
+  The host's `:jido_action, :file_tool_roots` setting remains an optional
+  additional restriction: the entire workspace must be within a configured
+  canonical root. Every resolution rejects parent traversal, resolves symlinks,
+  requires existing parents, and returns a canonical path within the grant.
   `allow_missing: true` permits only a missing final component.
 
   Resolution is repeated at filesystem effects. It is not an OS sandbox against
@@ -37,12 +37,12 @@ defmodule OhMyJido.Workspace do
     with {:ok, context} <- Context.fetch(execution_context),
          :ok <- valid_path(path),
          {:ok, root} <- stable_root(context.workspace),
+         :ok <- configured_workspace(root),
          :ok <- reject_traversal(path),
          expanded = Path.expand(path, root),
          :ok <- inside(expanded, root),
          {:ok, resolved} <- canonical(expanded, Keyword.get(opts, :allow_missing, false), root),
-         :ok <- inside(resolved, root),
-         {:ok, _path} <- jido_resolve(resolved, root) do
+         :ok <- inside(resolved, root) do
       {:ok, resolved}
     end
   end
@@ -98,12 +98,41 @@ defmodule OhMyJido.Workspace do
     end
   end
 
-  defp jido_resolve(path, root) do
-    case Jido.Tools.Files.resolve_path(path, %{allowed_file_roots: [root]}) do
-      {:ok, resolved} -> {:ok, resolved}
-      {:error, _reason} -> {:error, :outside_workspace}
+  defp configured_workspace(root) do
+    with {:ok, roots} <- configured_roots() do
+      if roots == [] or Enum.any?(roots, &(inside(root, &1) == :ok)),
+        do: :ok,
+        else: {:error, :outside_workspace}
     end
   end
+
+  defp configured_roots do
+    case Application.get_env(:jido_action, :file_tool_roots, []) do
+      nil -> {:ok, []}
+      root when is_binary(root) -> canonical_roots([root])
+      roots when is_list(roots) -> canonical_roots(roots)
+      _invalid -> {:error, :outside_workspace}
+    end
+  end
+
+  defp canonical_roots(roots) do
+    Enum.reduce_while(roots, {:ok, []}, fn root, {:ok, acc} ->
+      case canonical_root(root) do
+        :empty -> {:cont, {:ok, acc}}
+        {:ok, canonical} -> {:cont, {:ok, [canonical | acc]}}
+        {:error, _reason} -> {:halt, {:error, :outside_workspace}}
+      end
+    end)
+  end
+
+  defp canonical_root(root) when is_binary(root) do
+    case String.trim(root) do
+      "" -> :empty
+      path -> new(path)
+    end
+  end
+
+  defp canonical_root(_invalid), do: {:error, :outside_workspace}
 
   defp canonical(path, allow_missing, boundary \\ nil) do
     [root | parts] = Path.split(path)

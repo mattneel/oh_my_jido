@@ -5,8 +5,6 @@ defmodule OhMyJido.Tools.Git do
     name: "git",
     description:
       "Inspect status/diff/log/patch context, commit explicit paths with sensitive approval, or create/remove an approved worktree. Mutations require edit permission; history rewriting and force removal are unavailable.",
-    category: "coding",
-    tags: ["git", "repository"],
     schema:
       Zoi.object(%{
         operation:
@@ -33,6 +31,12 @@ defmodule OhMyJido.Tools.Git do
       })
 
   alias OhMyJido.Git, as: Repository
+
+  @doc "Returns the Action category."
+  def category, do: "coding"
+
+  @doc "Returns tags that classify this Action."
+  def tags, do: ["git", "repository"]
 
   @doc false
   def capability, do: :git

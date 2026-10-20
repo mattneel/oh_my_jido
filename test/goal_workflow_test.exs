@@ -14,7 +14,7 @@ defmodule OhMyJido.GoalWorkflowTest do
       {Runtime,
        name: __MODULE__.Host,
        allow_test_scripts: true,
-       storage: {Jido.Storage.File, path: Path.join(root, ".store")},
+       storage: {Jido.Persistence.File, path: Path.join(root, ".store")},
        tools: [OhMyJido.Tools.Goal, OhMyJido.Tools.Shell, OhMyJido.Tools.Read]}
     )
 

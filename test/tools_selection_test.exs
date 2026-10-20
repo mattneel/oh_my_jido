@@ -53,4 +53,23 @@ defmodule OhMyJido.ToolsSelectionTest do
     assert {:error, {:invalid_bundle, ^name}} = Tools.select([name])
     assert_raise ArgumentError, fn -> String.to_existing_atom(name) end
   end
+
+  test "every built-in remains a native Action with an AI-owned tool description" do
+    actions = Tools.default()
+    tools = Jido.AI.ToolAdapter.from_actions(actions)
+
+    assert Enum.map(tools, & &1.name) == Enum.map(actions, & &1.name())
+
+    for action <- actions do
+      assert {:ok, %Jido.Executable{kind: :action, target: ^action}} =
+               Jido.Executable.resolve(action)
+    end
+
+    assert Read.category() == "filesystem"
+    assert Edit.category() == "filesystem"
+    assert Git.category() == "coding"
+    assert Git.tags() == ["git", "repository"]
+    assert Shell.category() == "coding"
+    assert Shell.tags() == ["shell", "process"]
+  end
 end

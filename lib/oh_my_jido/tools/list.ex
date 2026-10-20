@@ -5,7 +5,6 @@ defmodule OhMyJido.Tools.List do
     name: "list",
     description:
       "List repository file paths with ripgrep glob/ignore rules. Results are sorted and workspace-relative; symlink escapes and Git internals are excluded, and output limits are explicit.",
-    category: "filesystem",
     schema:
       Zoi.object(
         %{
@@ -28,6 +27,9 @@ defmodule OhMyJido.Tools.List do
       )
 
   alias OhMyJido.Search
+
+  @doc "Returns the Action category."
+  def category, do: "filesystem"
 
   @spec capability() :: :read
   def capability, do: :read

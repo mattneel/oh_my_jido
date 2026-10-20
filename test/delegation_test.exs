@@ -88,8 +88,9 @@ defmodule OhMyJido.DelegationTest do
     assert {:ok, %{children: %{"owned" => %{session: %{id: ^id}, status: :running}}}} =
              OhMyJido.inspect_session(parent)
 
-    assert {:ok, %{parent_id: parent_id}} =
-             Jido.parent_binding(Runtime.engine(parent.runtime), id)
+    assert {:ok, %{agent_pid: child_agent}} = OhMyJido.inspect_session(child.session)
+
+    assert %{runtime: %{parent: %{id: parent_id}}} = Jido.AgentServer.status(child_agent)
 
     assert parent_id == parent.id
     send(worker, :release)
@@ -143,8 +144,7 @@ defmodule OhMyJido.DelegationTest do
       send(worker, :release)
 
       wait_until(fn ->
-        {:ok, native} = Jido.AgentServer.state(parent_agent)
-        not Map.has_key?(native.children, "reused")
+        not Map.has_key?(Jido.AgentServer.children(parent_agent), "reused")
       end)
 
       assert {:error, {:tag_in_use, "reused"}} =
@@ -171,7 +171,30 @@ defmodule OhMyJido.DelegationTest do
       snapshot.children["reused"].status == :completed
     end)
 
-    :ok = OhMyJido.stop_session(child.session)
+    assert {:ok, %{agent_pid: recovered_agent}} = OhMyJido.inspect_session(child.session)
+    refute recovered_agent == agent
+    recovered_monitor = Process.monitor(recovered_agent)
+
+    # Killing the actor can destroy its Exec closure receipt. Tag collection
+    # permits replacement; it must not invent proof that the old effect settled.
+    assert {:error,
+            %{
+              reason: :cleanup_uncertain,
+              native: :confirmed,
+              pending_effects: ["tc_1"],
+              pending_resources: []
+            }} = OhMyJido.stop_session(child.session)
+
+    assert_receive {:DOWN, ^recovered_monitor, :process, ^recovered_agent, _reason}, 5_000
+
+    assert {:ok, %{agent_pid: nil, effects: %{"tc_1" => interrupted_effect}}} =
+             OhMyJido.inspect_session(child.session)
+
+    refute Map.has_key?(interrupted_effect, :completed_at)
+    refute Map.has_key?(Jido.AgentServer.children(parent_agent), "reused")
+
+    assert {:error, :session_stopped} = OhMyJido.Session.call(child.session, :context)
+    assert Process.alive?(parent_agent)
 
     {:ok, next} =
       OhMyJido.delegate(
@@ -237,8 +260,11 @@ defmodule OhMyJido.DelegationTest do
         request.messages
         |> Enum.reverse()
         |> Enum.find_value(fn
-          %{role: :user, content: content} -> Jido.AI.Turn.extract_from_content(content)
-          _message -> nil
+          %{role: :user, content: content} ->
+            Jido.AI.Model.Response.extract_from_content(content)
+
+          _message ->
+            nil
         end)
 
       request =
@@ -328,11 +354,10 @@ defmodule OhMyJido.DelegationTest do
     for child <- [one, two, writer] do
       run = child.run
 
-      assert {:ok, %{status: :running, active_run: ^run}} =
+      assert {:ok, %{status: :running, active_run: ^run, agent_pid: child_agent}} =
                OhMyJido.inspect_session(child.session)
 
-      assert {:ok, %{parent_id: parent_id}} =
-               Jido.parent_binding(Runtime.engine(parent.runtime), child.session.id)
+      assert %{runtime: %{parent: %{id: parent_id}}} = Jido.AgentServer.status(child_agent)
 
       assert parent_id == parent.id
     end

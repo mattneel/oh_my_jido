@@ -185,7 +185,7 @@ defmodule OhMyJido.ExperimentTest do
              status: :failed,
              result: [
                :error,
-               %{details: %{action: FaultAfterWrite, original_exception: %{__exception__: true}}}
+               %{details: %{action: FaultAfterWrite, exception: ArgumentError, retry: false}}
              ]
            } = raised
 
@@ -313,7 +313,7 @@ defmodule OhMyJido.ExperimentTest do
       Keyword.merge(
         [
           name: __MODULE__.Host,
-          storage: {Jido.Storage.File, path: Path.join(root, ".store")},
+          storage: {Jido.Persistence.File, path: Path.join(root, ".store")},
           tools: [OhMyJido.Tools.Shell, OhMyJido.Tools.Experiment, FaultAfterWrite]
         ],
         opts

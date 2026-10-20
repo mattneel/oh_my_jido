@@ -27,7 +27,7 @@ The first useful task can be a credential-free Read. Enable editing, execution, 
 
 ## Install from an approved source checkout
 
-The project declares `:oh_my_jido`, version `0.1.0`, and Elixir `~> 1.20`. No published Hex package or HexDocs release is claimed. The current integration uses approved, licensed Jido 2.4.0 and ReqLLM 1.28.0 native diagnostic snapshots. A consumer must use those path overrides as well as the library; substituting stock dependencies is not the documented privacy boundary.
+The project declares `:oh_my_jido`, version `0.1.0`, and Elixir `~> 1.20`; this branch targets the coherent native Jido V3 preview. No Hex publication is claimed. Preserve all four licensed Core/AI/Action/ReqLLM source overrides and exact Signal/Zoi Git revisions. Core is3.0.0-beta.1; upstream AI still reports2.3.0 despite its native V3 implementation. SDK `UPSTREAM.json` manifests and the branch README record provenance; stable2.4 evidence is historical, not V3 acceptance.
 
 From the consumer directory, use the standalone source bootstrap before its dependency graph is resolved:
 
@@ -38,7 +38,7 @@ mix deps.get
 mix compile
 ```
 
-Native Igniter previews the actual dependency change and application requires explicit confirmation flags. Only `mix.exs` changes; top-level Jido/ReqLLM path overrides and exact audited Jido.AI/Action requirements are added. The bootstrap never evaluates consumer Mix/config/formatter code. Its own first-run tooling may use ordinary Hex downloads; it does not fetch the consumer's dependencies or start its services. Literal project/dependency layouts are required, and incompatible existing choices are refused rather than silently replaced. Add `--snakepit` only when explicitly selecting the patched optional backend. The following manual recipe remains available for supported host-controlled layouts.
+Native Igniter previews the dependency change and applies only with explicit confirmation flags. Only `mix.exs` changes; four source overrides and exact Signal/Zoi Git refs are added. The bootstrap never evaluates consumer Mix/config/formatter code. Its tooling may use ordinary Hex downloads, but it does not resolve the consumer graph or start services. Incompatible/computed layouts are refused. Add `--snakepit` only for the patched optional backend.
 
 The independent [plain Mix host](../../examples/plain_mix/README.md) demonstrates the actual dependency pattern. In a host whose checkout layout is the same as `examples/plain_mix`, its `mix.exs` uses:
 
@@ -47,11 +47,17 @@ defp deps do
   root = Path.expand("../..", __DIR__)
 
   overrides =
-    Enum.map([:jido, :req_llm], fn app ->
+    Enum.map([:jido, :jido_ai, :jido_action, :req_llm], fn app ->
       {app, path: Path.join([root, "vendor", Atom.to_string(app)]), override: true}
     end)
 
-  [{:oh_my_jido, path: root}] ++ overrides
+  [
+    {:oh_my_jido, path: root},
+    {:jido_signal, git: "https://github.com/agentjido/jido_signal.git",
+     ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41", override: true},
+    {:zoi, git: "https://github.com/mikehostetler/zoi.git",
+     ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9", override: true}
+  ] ++ overrides
 end
 ```
 
@@ -80,7 +86,7 @@ defmodule MyApp.CodingSupervisor do
        Keyword.merge(runtime_options,
          name: runtime,
          bundles: :read_only,
-         storage: {Jido.Storage.File, path: storage_path}
+         storage: {Jido.Persistence.File, path: storage_path}
        )}
     ]
 

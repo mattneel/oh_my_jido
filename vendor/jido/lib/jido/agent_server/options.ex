@@ -1,243 +1,479 @@
 defmodule Jido.AgentServer.Options do
-  @moduledoc """
-  Options for starting an AgentServer.
+  @moduledoc false
 
-  > #### Internal Module {: .warning}
-  > This module is internal to the AgentServer implementation. Its API may
-  > change without notice.
-
-  Validates and normalizes startup options including agent configuration,
-  hierarchy settings, error policies, and dispatch configuration.
-  """
-
+  alias Jido.Agent
+  alias Jido.Agent.Validation
+  alias Jido.Error
   alias Jido.AgentServer.ParentRef
 
-  @type error_policy ::
-          :log_only
-          | :stop_on_error
-          | {:emit_signal, dispatch_cfg :: term()}
-          | {:max_errors, pos_integer()}
-          | (error :: term(), state :: map() -> {:ok, map()} | {:stop, term(), map()})
+  @default_max_postponed_signals 1_000
+  @default_turn_timeout 5_000
+  @default_directive_timeout 5_000
+  @default_readiness_timeout 5_000
+  @startup_completion_timeout 5_000
 
-  @type on_parent_death :: :stop | :continue | :emit_orphan
+  def startup_timeout(opts) when is_list(opts) do
+    readiness_timeout =
+      opts
+      |> Map.new()
+      |> Map.get(:readiness_timeout, @default_readiness_timeout)
+
+    readiness_timeout + @startup_completion_timeout
+  end
+
+  @runtime_fields %{
+    exec_opts: Zoi.any(description: "Executable runtime options") |> Zoi.default([]),
+    max_postponed_signals:
+      Zoi.any(description: "Postponed Signal admission limit")
+      |> Zoi.default(@default_max_postponed_signals),
+    turn_timeout:
+      Zoi.any(description: "Pre-commit Turn timeout")
+      |> Zoi.default(@default_turn_timeout),
+    max_directives_per_turn:
+      Zoi.any(description: "Directive count limit") |> Zoi.default(:infinity),
+    directive_timeout:
+      Zoi.any(description: "Plugin and external Directive timeout")
+      |> Zoi.default(@default_directive_timeout),
+    readiness_timeout:
+      Zoi.integer(description: "Plugin runtime readiness timeout")
+      |> Zoi.default(@default_readiness_timeout),
+    default_dispatch: Zoi.any(description: "Default outbound Signal dispatch") |> Zoi.optional(),
+    error_policy: Zoi.any(description: "Agent Server error policy") |> Zoi.default(:log_only),
+    on_parent_death: Zoi.atom(description: "Parent death policy") |> Zoi.default(:stop),
+    checkpoint_owner:
+      Zoi.any(description: "Optional runtime checkpoint owner PID") |> Zoi.optional(),
+    pool: Zoi.atom(description: "Owning Agent InstanceManager") |> Zoi.optional(),
+    idle_timeout: Zoi.any(description: "Idle timeout in milliseconds") |> Zoi.default(:infinity),
+    persistence: Zoi.any(description: "Optional Agent persistence adapter") |> Zoi.optional(),
+    debug_max_events: Zoi.integer(description: "Maximum event count") |> Zoi.default(500)
+  }
 
   @schema Zoi.struct(
             __MODULE__,
-            %{
-              agent: Zoi.any(description: "Agent module (atom) or instantiated agent struct"),
-              agent_module:
-                Zoi.atom(description: "Agent module for pre-built structs") |> Zoi.optional(),
-              jido:
-                Zoi.atom(description: "Jido instance name for registry scoping (default: Jido)")
-                |> Zoi.optional(),
-              partition:
-                Zoi.any(description: "Logical partition within a Jido instance")
-                |> Zoi.optional(),
-              id:
-                Zoi.string(description: "Instance ID (auto-generated if not provided)")
-                |> Zoi.optional(),
-              initial_state: Zoi.map(description: "Initial agent state") |> Zoi.default(%{}),
-              registry: Zoi.atom(description: "Registry module") |> Zoi.default(Jido.Registry),
-              register_global:
-                Zoi.boolean(description: "Register agent id in :registry during init")
-                |> Zoi.default(true),
-              default_dispatch:
-                Zoi.any(description: "Default dispatch config for Emit directives")
-                |> Zoi.optional(),
-              error_policy:
-                Zoi.any(description: "Error handling policy") |> Zoi.default(:log_only),
-              max_queue_size:
-                Zoi.integer(description: "Max directive queue size")
-                |> Zoi.min(1)
-                |> Zoi.default(10_000),
-              parent: Zoi.any(description: "Parent reference for hierarchy") |> Zoi.optional(),
-              on_parent_death:
-                Zoi.atom(description: "Behavior when parent dies")
-                |> Zoi.default(:stop),
-              spawn_fun:
-                Zoi.any(description: "Custom function for spawning children") |> Zoi.optional(),
-              skip_schedules:
-                Zoi.boolean(description: "Skip registering plugin schedules (useful for tests)")
-                |> Zoi.default(false),
-
-              # InstanceManager integration (set by Jido.Agent.InstanceManager)
-              lifecycle_mod:
-                Zoi.atom(description: "Lifecycle module implementing Jido.AgentServer.Lifecycle")
-                |> Zoi.default(Jido.AgentServer.Lifecycle.Noop),
-              pool:
-                Zoi.atom(description: "Manager name if started via Jido.Agent.InstanceManager")
-                |> Zoi.optional(),
-              pool_key:
-                Zoi.any(description: "Manager key if started via Jido.Agent.InstanceManager")
-                |> Zoi.optional(),
-              idle_timeout:
-                Zoi.any(
-                  description: "Idle timeout in ms before hibernate/stop (:infinity to disable)"
-                )
-                |> Zoi.default(:infinity),
-              storage:
-                Zoi.any(description: "Storage config (nil | Module | {Module, opts})")
-                |> Zoi.optional(),
-              restored_from_storage:
-                Zoi.boolean(description: "Whether the startup agent was already thawed")
-                |> Zoi.default(false),
-
-              # Debug mode
+            Map.merge(@runtime_fields, %{
+              agent: Zoi.any(description: "Validated Agent value"),
+              plugin_specs:
+                Zoi.any(description: "Validated startup Plugin specs") |> Zoi.optional(),
+              name: Zoi.any(description: "Optional OTP process name") |> Zoi.optional(),
+              jido: Zoi.any(description: "Optional Jido instance") |> Zoi.optional(),
+              partition: Zoi.any(description: "Logical Agent partition") |> Zoi.optional(),
+              registry: Zoi.any(description: "Optional Registry") |> Zoi.optional(),
+              register:
+                Zoi.boolean(description: "Register this Agent by id") |> Zoi.default(false),
+              parent: Zoi.any(description: "Optional logical parent") |> Zoi.optional(),
+              pool_key: Zoi.any(description: "Agent InstanceManager key") |> Zoi.optional(),
+              restore:
+                Zoi.any(description: "Persisted Agent restore policy") |> Zoi.default(:if_found),
+              restore_definition:
+                Zoi.any(description: "Definition source on restore") |> Zoi.default(:checkpoint),
+              state_version:
+                Zoi.integer(description: "Initial Agent commit revision")
+                |> Zoi.default(0),
               debug:
-                Zoi.boolean(description: "Enable debug mode with event buffer")
-                |> Zoi.default(false)
-            },
+                Zoi.boolean(description: "Enable the Agent event buffer") |> Zoi.default(false)
+            }),
             coerce: true
           )
+
+  @option_fields (Enum.map(Zoi.Struct.struct_fields(@schema), fn
+                    {key, _default} -> key
+                    key -> key
+                  end) -- [:plugin_specs]) ++ [:id, :initial_state, :restart]
 
   @type t :: unquote(Zoi.type_spec(@schema))
   @enforce_keys Zoi.Struct.enforce_keys(@schema)
   defstruct Zoi.Struct.struct_fields(@schema)
 
   @doc false
-  @spec schema() :: Zoi.schema()
   def schema, do: @schema
 
-  @doc """
-  Creates validated Options from a keyword list or map.
+  @doc false
+  def runtime_schema, do: Zoi.object(@runtime_fields)
 
-  Normalizes and validates all options, including:
-  - Generating an ID if not provided
-  - Validating the agent module/struct
-  - Validating error policy
-  - Parsing parent reference
+  @doc false
+  def runtime_config(%__MODULE__{} = opts), do: Map.take(opts, Map.keys(@runtime_fields))
 
-  Returns `{:ok, options}` or `{:error, reason}`.
-  """
-  @spec new(keyword() | map()) :: {:ok, t()} | {:error, term()}
+  @doc false
   def new(opts) when is_list(opts) do
-    opts |> Map.new() |> new()
+    if Keyword.keyword?(opts),
+      do: opts |> Map.new() |> new(),
+      else: invalid("options must be a keyword list")
   end
 
-  def new(attrs) when is_map(attrs) do
-    agent_partition = extract_agent_partition(attrs[:agent])
-    attrs = normalize_attrs(attrs, agent_partition)
+  def new(%{} = attrs) do
+    with :ok <- validate_identity_options(attrs),
+         :ok <-
+           reject_option(
+             attrs,
+             :directive_handler,
+             "does not support custom Directive handlers; use an Agent Plugin"
+           ),
+         :ok <-
+           reject_option(
+             attrs,
+             :exec_module,
+             "does not support custom Exec modules; use Jido.Exec"
+           ),
+         :ok <-
+           reject_option(
+             attrs,
+             :cron_specs,
+             "does not support cron_specs; use Jido.Plugin.Scheduler"
+           ),
+         :ok <- known_options(attrs),
+         {:ok, parent} <- build_parent(Map.get(attrs, :parent)),
+         :ok <- validate_registration(attrs),
+         :ok <- validate_parent_policy(Map.get(attrs, :on_parent_death, :stop)),
+         :ok <- validate_error_policy(Map.get(attrs, :error_policy, :log_only)),
+         {:ok, default_dispatch} <-
+           normalize_default_dispatch(Map.get(attrs, :default_dispatch)),
+         {:ok, persistence} <- resolve_persistence(attrs),
+         :ok <- validate_restore(Map.get(attrs, :restore, :if_found)),
+         :ok <- validate_restore_definition(Map.get(attrs, :restore_definition, :checkpoint)),
+         :ok <- validate_state_version(Map.get(attrs, :state_version, 0)),
+         :ok <- validate_debug(Map.get(attrs, :debug, false)),
+         :ok <- validate_debug_max_events(Map.get(attrs, :debug_max_events, 500)),
+         :ok <-
+           validate_timeout(Map.get(attrs, :turn_timeout, @default_turn_timeout), :turn_timeout),
+         :ok <-
+           validate_timeout(
+             Map.get(attrs, :directive_timeout, @default_directive_timeout),
+             :directive_timeout
+           ),
+         :ok <-
+           validate_timeout(
+             Map.get(attrs, :readiness_timeout, @default_readiness_timeout),
+             :readiness_timeout
+           ),
+         :ok <- validate_lifecycle(attrs),
+         {:ok, _exec_opts} <- validate_keyword(Map.get(attrs, :exec_opts, []), :exec_opts),
+         {:ok, _postponed_limit} <-
+           validate_limit(
+             Map.get(attrs, :max_postponed_signals, @default_max_postponed_signals),
+             :max_postponed_signals
+           ),
+         {:ok, _directive_limit} <-
+           validate_limit(
+             Map.get(attrs, :max_directives_per_turn, :infinity),
+             :max_directives_per_turn
+           ),
+         {:ok, agent, plugin_specs, _schema} <- build_agent(attrs) do
+      jido = Map.get(attrs, :jido)
+      register = Map.get(attrs, :register, not is_nil(jido))
 
-    with {:ok, _} <- validate_agent(attrs[:agent]),
-         {:ok, _} <- validate_partition(attrs[:partition], agent_partition),
-         {:ok, _} <- validate_error_policy(attrs[:error_policy]),
-         {:ok, parent} <- validate_parent(attrs[:parent]) do
-      attrs = Map.put(attrs, :parent, parent)
-      Zoi.parse(@schema, attrs)
+      normalized =
+        attrs
+        |> Map.take(Map.keys(%__MODULE__{agent: nil}) -- [:__struct__])
+        |> Map.merge(%{
+          agent: agent,
+          plugin_specs: plugin_specs,
+          registry: Map.get(attrs, :registry, registry(jido)),
+          register: register,
+          default_dispatch: default_dispatch,
+          parent: parent,
+          persistence: persistence
+        })
+
+      Zoi.parse(@schema, normalized)
     end
   end
 
-  def new(_), do: {:error, Jido.Error.validation_error("Options requires a keyword list or map")}
+  def new(_value), do: invalid("options must be a map or keyword list")
 
-  @doc """
-  Creates validated Options from a keyword list or map, raising on error.
-  """
-  @spec new!(keyword() | map()) :: t()
-  def new!(opts) do
-    case new(opts) do
-      {:ok, options} -> options
-      {:error, reason} -> raise Jido.Error.validation_error("Invalid Options", details: reason)
+  defp known_options(attrs) do
+    case Map.keys(attrs) -- @option_fields do
+      [] -> :ok
+      keys -> invalid("contains unknown options", %{keys: keys})
     end
   end
 
-  # Normalize attributes with defaults
-  defp normalize_attrs(attrs, agent_partition) do
-    id =
-      case Map.get(attrs, :id) do
-        nil -> extract_agent_id(attrs[:agent]) || Jido.Util.generate_id()
-        "" -> extract_agent_id(attrs[:agent]) || Jido.Util.generate_id()
-        id when is_binary(id) -> id
-        id when is_atom(id) -> Atom.to_string(id)
-      end
-
-    partition =
-      case Map.fetch(attrs, :partition) do
-        {:ok, nil} -> agent_partition
-        {:ok, partition} -> partition
-        :error -> agent_partition
-      end
-
-    jido_instance = Map.get(attrs, :jido, Jido)
-    registry = Map.get(attrs, :registry, Jido.registry_name(jido_instance))
-    attrs = Map.put(attrs, :jido, jido_instance)
-
-    attrs
-    |> Map.put(:id, id)
-    |> Map.put(:partition, partition)
-    |> Map.put(:registry, registry)
+  defp reject_option(attrs, field, message) do
+    if Map.has_key?(attrs, field), do: invalid(message), else: :ok
   end
 
-  defp extract_agent_id(%{id: id}) when is_binary(id) and id != "", do: id
-  defp extract_agent_id(_), do: nil
+  defp build_agent(attrs) do
+    agent = Map.get(attrs, :agent)
+    id = Map.get(attrs, :id)
+    initial_state = Map.get(attrs, :initial_state)
 
-  defp extract_agent_partition(%{state: state}) when is_map(state) do
-    Map.get(state, :__partition__)
+    instantiate_agent(agent, id, initial_state)
   end
 
-  defp extract_agent_partition(_), do: nil
+  defp instantiate_agent(%Agent{id: nil, state: nil} = definition, id, initial_state) do
+    Validation.instantiate_with_plugins(definition, instance_overrides(id, initial_state))
+  end
 
-  defp validate_agent(nil), do: {:error, Jido.Error.validation_error("agent is required")}
+  defp instantiate_agent(%Agent{id: id, state: state} = agent, requested_id, initial_state)
+       when is_binary(id) and is_map(state) and not is_struct(state) do
+    with {:ok, agent, specs, schema} <- Validation.validate_instance_with_plugins(agent) do
+      if is_nil(requested_id) and is_nil(initial_state) do
+        {:ok, agent, specs, schema}
+      else
+        invalid("cannot override an Agent instance with Server options", %{
+          agent_id: agent.id,
+          id: requested_id,
+          initial_state: initial_state
+        })
+      end
+    end
+  end
 
-  defp validate_agent(agent) when is_atom(agent) do
-    case Code.ensure_loaded(agent) do
-      {:module, _} ->
-        if function_exported?(agent, :new, 0) or function_exported?(agent, :new, 1) or
-             function_exported?(agent, :new, 2) do
-          {:ok, agent}
-        else
-          {:error,
-           Jido.Error.validation_error("agent module must implement new/0, new/1, or new/2")}
+  defp instantiate_agent(%Agent{} = agent, _id, _initial_state), do: Agent.validate(agent)
+
+  defp instantiate_agent(module, id, initial_state) when is_atom(module) and not is_nil(module) do
+    overrides = instance_overrides(id, initial_state)
+
+    with {:module, ^module} <- Code.ensure_loaded(module) do
+      if function_exported?(module, :__agent_config__, 0) do
+        Validation.new_from_module_with_plugins(module, module.__agent_config__(), overrides)
+      else
+        result =
+          cond do
+            function_exported?(module, :new, 1) -> module.new(overrides)
+            function_exported?(module, :new, 0) -> module.new()
+            true -> invalid("Agent module must implement new/0 or new/1", %{module: module})
+          end
+
+        with {:ok, agent} <- normalize_agent_result(result, module),
+             :ok <- validate_requested_id(agent, id, module) do
+          Validation.validate_instance_with_plugins(agent)
         end
+      end
+    else
+      {:error, reason} ->
+        invalid("Agent module could not be loaded", %{module: module, reason: reason})
+    end
+  rescue
+    error -> constructor_failed(module, :error, error)
+  catch
+    kind, reason -> constructor_failed(module, kind, reason)
+  end
 
-      {:error, _} ->
-        {:error, Jido.Error.validation_error("agent module not found: #{inspect(agent)}")}
+  defp instantiate_agent(value, _id, _initial_state),
+    do: invalid("agent is required", %{agent: value})
+
+  defp normalize_agent_result({:ok, %Agent{} = agent}, _module), do: {:ok, agent}
+  defp normalize_agent_result(%Agent{} = agent, _module), do: {:ok, agent}
+  defp normalize_agent_result({:error, reason}, _module), do: {:error, reason}
+
+  defp normalize_agent_result(value, module),
+    do: invalid("Agent constructor returned an invalid value", %{module: module, value: value})
+
+  defp instance_overrides(id, initial_state) do
+    []
+    |> maybe_put(:id, id)
+    |> maybe_put(:state, initial_state)
+  end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
+
+  defp build_parent(nil), do: {:ok, nil}
+  defp build_parent(parent), do: ParentRef.new(parent)
+
+  defp validate_requested_id(_agent, nil, _module), do: :ok
+  defp validate_requested_id(%Agent{id: id}, id, _module), do: :ok
+
+  defp validate_requested_id(%Agent{id: actual}, expected, module) do
+    invalid("Agent constructor ignored the requested id", %{
+      module: module,
+      expected_id: expected,
+      actual_id: actual
+    })
+  end
+
+  defp constructor_failed(module, kind, reason) do
+    invalid("Agent constructor failed", %{module: module, kind: kind, reason: reason})
+  end
+
+  defp validate_restore_definition(value) when value in [:checkpoint, :current], do: :ok
+
+  defp validate_restore_definition(value),
+    do:
+      invalid("restore_definition must be :checkpoint or :current", %{restore_definition: value})
+
+  defp validate_identity_options(attrs) do
+    with :ok <- checkpoint_owner(Map.get(attrs, :checkpoint_owner)),
+         :ok <- validate_optional_atom(Map.get(attrs, :jido), :jido),
+         :ok <- validate_optional_atom(Map.get(attrs, :registry), :registry),
+         :ok <- validate_name(Map.get(attrs, :name)) do
+      :ok
     end
   end
 
-  defp validate_agent(%{__struct__: _} = agent), do: {:ok, agent}
+  defp validate_optional_atom(nil, _field), do: :ok
 
-  defp validate_agent(_),
-    do: {:error, Jido.Error.validation_error("agent must be a module or struct")}
+  defp validate_optional_atom(value, _field) when is_atom(value) and not is_nil(value), do: :ok
 
-  @doc """
-  Validates an error policy value.
-  """
-  @spec validate_error_policy(term()) :: {:ok, error_policy()} | {:error, term()}
-  def validate_error_policy(nil), do: {:ok, :log_only}
-  def validate_error_policy(:log_only), do: {:ok, :log_only}
-  def validate_error_policy(:stop_on_error), do: {:ok, :stop_on_error}
-  def validate_error_policy({:emit_signal, _cfg} = policy), do: {:ok, policy}
-
-  def validate_error_policy({:max_errors, n} = policy) when is_integer(n) and n > 0,
-    do: {:ok, policy}
-
-  def validate_error_policy(fun) when is_function(fun, 2), do: {:ok, fun}
-
-  def validate_error_policy(other) do
-    {:error, Jido.Error.validation_error("invalid error_policy: #{inspect(other)}")}
+  defp validate_optional_atom(value, field) do
+    invalid("#{field} must be an atom or nil", %{field => value})
   end
 
-  defp validate_partition(nil, _agent_partition), do: {:ok, nil}
-  defp validate_partition(partition, nil), do: {:ok, partition}
-  defp validate_partition(partition, partition), do: {:ok, partition}
+  defp validate_name(nil), do: :ok
+  defp validate_name(name) when is_atom(name) and not is_nil(name), do: :ok
+  defp validate_name({:global, _term}), do: :ok
 
-  defp validate_partition(partition, agent_partition) do
+  defp validate_name({:via, module, _term}) when is_atom(module) and not is_nil(module),
+    do: :ok
+
+  defp validate_name(name), do: invalid("name is invalid", %{name: name})
+
+  defp validate_registration(attrs) do
+    register = Map.get(attrs, :register, not is_nil(Map.get(attrs, :jido)))
+    registry = Map.get(attrs, :registry, registry(Map.get(attrs, :jido)))
+
+    cond do
+      not is_boolean(register) ->
+        invalid("register must be a boolean", %{register: register})
+
+      register and not is_nil(Map.get(attrs, :name)) ->
+        invalid("name and register: true cannot be used together", %{
+          name: Map.get(attrs, :name),
+          register: register
+        })
+
+      register and (not is_atom(registry) or is_nil(registry)) ->
+        invalid("register: true requires an Agent Registry", %{
+          registry: registry,
+          register: register
+        })
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_parent_policy(policy) when policy in [:stop, :continue, :emit_orphan], do: :ok
+
+  defp validate_parent_policy(policy),
+    do: invalid("on_parent_death is invalid", %{on_parent_death: policy})
+
+  defp validate_error_policy(policy)
+       when policy in [:log_only, :stop_on_error],
+       do: :ok
+
+  defp validate_error_policy({:max_errors, count}) when is_integer(count) and count > 0, do: :ok
+
+  defp validate_error_policy({:emit_signal, nil}) do
+    invalid("emit_signal error policy requires an external dispatch target", %{
+      error_policy: {:emit_signal, nil}
+    })
+  end
+
+  defp validate_error_policy({:emit_signal, dispatch}) do
+    case Jido.Signal.Dispatch.validate_opts(dispatch) do
+      {:ok, _dispatch} -> :ok
+      {:error, reason} -> invalid("emit_signal dispatch is invalid", %{reason: reason})
+    end
+  end
+
+  defp validate_error_policy(fun) when is_function(fun, 2), do: :ok
+
+  defp validate_error_policy(policy),
+    do: invalid("error_policy is invalid", %{error_policy: policy})
+
+  defp normalize_default_dispatch(nil), do: {:ok, nil}
+
+  defp normalize_default_dispatch(dispatch) do
+    case Jido.Signal.Dispatch.validate_opts(dispatch) do
+      {:ok, normalized} -> {:ok, normalized}
+      {:error, reason} -> invalid("default_dispatch is invalid", %{reason: reason})
+    end
+  rescue
+    error -> invalid("default_dispatch is invalid", %{reason: error})
+  catch
+    kind, reason -> invalid("default_dispatch is invalid", %{reason: {kind, reason}})
+  end
+
+  defp validate_timeout(:infinity, field) when field != :readiness_timeout, do: :ok
+  defp validate_timeout(timeout, _field) when is_integer(timeout) and timeout > 0, do: :ok
+
+  defp validate_timeout(timeout, field) do
+    requirement =
+      if field == :readiness_timeout,
+        do: "a positive integer",
+        else: ":infinity or a positive integer"
+
+    invalid("#{field} must be #{requirement}", %{field => timeout})
+  end
+
+  defp validate_lifecycle(attrs) do
+    pool = Map.get(attrs, :pool)
+
+    if not is_nil(pool) and not is_atom(pool) do
+      invalid("pool must be an atom", %{pool: pool})
+    else
+      validate_timeout(Map.get(attrs, :idle_timeout, :infinity), :idle_timeout)
+    end
+  end
+
+  defp resolve_persistence(attrs) do
+    config = Map.get(attrs, :persistence, :inherit)
+
+    case Jido.Persistence.resolve_config(config, Map.get(attrs, :jido)) do
+      {:ok, persistence} ->
+        {:ok, persistence}
+
+      {:error, reason} ->
+        invalid("persistence adapter is invalid", %{reason: reason})
+    end
+  end
+
+  defp validate_restore(restore) when restore in [false, :if_found, :required], do: :ok
+
+  defp validate_restore(restore) do
+    invalid("restore must be false, :if_found, or :required", %{restore: restore})
+  end
+
+  defp validate_state_version(version) when is_integer(version) and version >= 0, do: :ok
+
+  defp validate_state_version(version) do
+    invalid("state_version must be a non-negative integer", %{state_version: version})
+  end
+
+  defp validate_debug(debug) when is_boolean(debug), do: :ok
+  defp validate_debug(debug), do: invalid("debug must be a boolean", %{debug: debug})
+
+  defp validate_debug_max_events(limit) when is_integer(limit) and limit > 0, do: :ok
+
+  defp validate_debug_max_events(limit) do
+    invalid("debug_max_events must be a positive integer", %{debug_max_events: limit})
+  end
+
+  defp registry(nil), do: nil
+  defp registry(jido), do: Jido.registry_name(jido)
+
+  defp invalid(message, details \\ %{}) do
     {:error,
-     Jido.Error.validation_error("partition does not match pre-built agent state", %{
-       partition: partition,
-       agent_partition: agent_partition
-     })}
+     Jido.Error.validation_error("Agent Server #{message}", kind: :config, details: details)}
   end
 
-  defp validate_parent(nil), do: {:ok, nil}
+  def validate_keyword(value, _field) when is_list(value) and value == [], do: {:ok, value}
 
-  defp validate_parent(%ParentRef{} = parent), do: {:ok, parent}
-
-  defp validate_parent(attrs) when is_map(attrs) do
-    ParentRef.new(attrs)
+  def validate_keyword(value, field) when is_list(value) do
+    if Keyword.keyword?(value) do
+      {:ok, value}
+    else
+      {:error, Error.validation_error("#{field} must be a keyword list", field: field)}
+    end
   end
 
-  defp validate_parent(_) do
-    {:error, Jido.Error.validation_error("parent must be nil or a ParentRef")}
+  def validate_keyword(_value, field) do
+    {:error, Error.validation_error("#{field} must be a keyword list", field: field)}
   end
+
+  defp validate_limit(:infinity, _field), do: {:ok, :infinity}
+  defp validate_limit(value, _field) when is_integer(value) and value >= 0, do: {:ok, value}
+
+  defp validate_limit(value, field) do
+    {:error,
+     Error.validation_error("#{field} must be :infinity or a non-negative integer",
+       field: field,
+       details: %{value: value}
+     )}
+  end
+
+  defp checkpoint_owner(nil), do: :ok
+  defp checkpoint_owner(pid) when is_pid(pid), do: :ok
+  defp checkpoint_owner(_), do: invalid("checkpoint_owner must be a PID")
 end

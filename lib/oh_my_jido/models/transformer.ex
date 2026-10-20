@@ -262,7 +262,9 @@ defmodule OhMyJido.Models.Transformer do
   defp prompt_inputs(context, config, state) do
     with {:ok, runtime} <- options_map(get(context.metadata, :runtime_config, %{})),
          {:ok, task} <- options_map(get(context.metadata, :task_metadata, %{})) do
-      native_prompt = config.system_prompt || get(get(state, :context, %{}), :system_prompt, nil)
+      native_prompt =
+        config.system_prompt ||
+          get(get(get(state, :context, %{}), :metadata, %{}), :system_prompt, nil)
 
       runtime =
         runtime

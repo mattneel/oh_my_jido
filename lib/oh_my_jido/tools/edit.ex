@@ -5,7 +5,6 @@ defmodule OhMyJido.Tools.Edit do
     name: "edit",
     description:
       "Apply exact nonoverlapping replacements against one original SHA256 snapshot. Ambiguous targets require an explicit one-based occurrence. Stale snapshots never overwrite another writer.",
-    category: "filesystem",
     schema:
       Zoi.object(
         %{
@@ -33,6 +32,9 @@ defmodule OhMyJido.Tools.Edit do
       )
 
   alias OhMyJido.Files
+
+  @doc "Returns the Action category."
+  def category, do: "filesystem"
 
   @spec capability() :: :edit
   def capability, do: :edit

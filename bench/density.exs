@@ -19,14 +19,18 @@ defmodule OhMyJido.Bench.Density do
       do: raise(ArgumentError, "density evidence already exists; choose a new output path")
 
     host = Metrics.host()
+    {:ok, %{capabilities: %{tools: %{enabled: true}}}} = OhMyJido.Models.describe(Native.model())
 
     unless Enum.all?(host.executables, fn {_name, executable} -> is_binary(executable) end) do
       raise ArgumentError, "density workload requires sh, setsid, mkfifo, cat, kill and sleep"
     end
 
-    unless is_nil(Process.whereis(@runtime)) and is_nil(Process.whereis(@drivers)) do
+    unless is_nil(Process.whereis(@runtime)) and is_nil(Process.whereis(@drivers)) and
+             is_nil(Process.whereis(Native.finch())) do
       raise ArgumentError, "a density benchmark is already running in this VM"
     end
+
+    gateway_warmup = warmup_gateway(config)
 
     cwd = File.cwd!()
     environment = Metrics.environment_fingerprint()
@@ -51,15 +55,7 @@ defmodule OhMyJido.Bench.Density do
 
     worker =
       Task.Supervisor.async_nolink(@drivers, fn ->
-        # Only this benchmark's dedicated native storage tables lose their heir;
-        # controller teardown must not transfer them into the host Jido supervisor.
-        :ok = Jido.Storage.ETS.create_tables(table: @storage)
-
-        for table <- :ets.all(),
-            :ets.info(table, :owner) == self(),
-            String.starts_with?(Atom.to_string(:ets.info(table, :name)), "#{@storage}_") do
-          :ets.setopts(table, {:heir, :none})
-        end
+        initialize_storage!()
 
         run_populations(supervisor, observer, root, config, deadline)
       end)
@@ -73,13 +69,15 @@ defmodule OhMyJido.Bench.Density do
       supervisor_stopped: shutdown,
       runtime_stopped: is_nil(Process.whereis(@runtime)),
       driver_supervisor_stopped: is_nil(Process.whereis(@drivers)),
+      gateway_stopped: is_nil(Process.whereis(Native.finch())),
       disposable_root_removed: match?({:ok, _paths}, removed) and not File.exists?(root),
       host_cwd_unchanged: File.cwd!() == cwd,
       host_environment_unchanged: Metrics.environment_fingerprint() == environment,
       os_live_descendants_before: before.os.live_descendant_count,
       os_live_descendants_after: after_sample.os.live_descendant_count,
       os_descendants_returned_to_baseline:
-        before.os.live_descendant_count == after_sample.os.live_descendant_count
+        before.os.live_descendant_count == after_sample.os.live_descendant_count and
+          before.os.live_descendants == after_sample.os.live_descendants
     }
 
     complete = length(populations) == length(config.populations)
@@ -91,6 +89,7 @@ defmodule OhMyJido.Bench.Density do
             :supervisor_stopped,
             :runtime_stopped,
             :driver_supervisor_stopped,
+            :gateway_stopped,
             :disposable_root_removed,
             :host_cwd_unchanged,
             :host_environment_unchanged,
@@ -107,8 +106,13 @@ defmodule OhMyJido.Bench.Density do
       host: host,
       configuration: Map.drop(config, [:output]),
       workload: %{
-        model_boundary: "installed Jido.AI.Test explicit ReAct script; no provider or network",
+        model_boundary:
+          "installed Jido.AI.Test explicit ReAct script over loopback HTTP/SSE; no external provider",
         request_transformer: Atom.to_string(Native.Transformer),
+        gateway_warmup:
+          "one bounded native scripted request initializes VM-owned OTP resolver infrastructure before the empty-runtime baseline; temporary session, checkpoint, runtime and workspace are retired",
+        gateway_pool_scope:
+          "one benchmark-owned native Finch per population; ephemeral scripted endpoint pools are stopped with that supervised child, never retained in the host's shared Finch",
         model_latency:
           "simulated gateway sleep after successful Models.Transformer delegation, inside native runner",
         tool_latency: "bounded host authorization sleep plus actual filesystem and shell work",
@@ -135,6 +139,7 @@ defmodule OhMyJido.Bench.Density do
         cleanup_deadline_ms: @cleanup_ms
       },
       before: before,
+      gateway_warmup: gateway_warmup,
       after: after_sample,
       populations: populations,
       errors: errors,
@@ -228,6 +233,114 @@ defmodule OhMyJido.Bench.Density do
     values
   end
 
+  defp warmup_gateway(config) do
+    started = Metrics.now()
+    descendants_before = Metrics.snapshot(nil, started).os.live_descendants
+    initialization_timeout = config.run_timeout_ms + @cleanup_ms
+    deadline = started + initialization_timeout * 1_000
+    task = Task.async(fn -> warmup_gateway_request(config) end)
+    remaining = max(div(deadline - Metrics.now(), 1_000), 0)
+    {supervisor, root, model_calls} = Task.await(task, remaining)
+    true = await_teardown(supervisor, task.pid, deadline)
+    false = File.exists?(root)
+
+    %{
+      result: "passed",
+      elapsed_ms: Metrics.elapsed(started),
+      request_timeout_ms: config.run_timeout_ms,
+      initialization_timeout_ms: initialization_timeout,
+      source:
+        "native Jido.AI.Test.ReActScript -> MockLLM loopback HTTP/SSE through ReqLLM; OTP native resolver is VM-owned",
+      live_descendants_before: descendants_before,
+      live_descendants_after: Metrics.snapshot(nil, started).os.live_descendants,
+      model_calls: model_calls,
+      session_stopped: true,
+      checkpoint_removed: true,
+      runtime_stopped: true,
+      gateway_stopped: is_nil(Process.whereis(Native.finch())),
+      disposable_root_removed: true
+    }
+  end
+
+  defp warmup_gateway_request(config) do
+    initialize_storage!()
+    suffix = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
+    root = Path.join(System.tmp_dir!(), "omj-density-gateway-warmup-#{suffix}")
+    File.mkdir!(root)
+
+    try do
+      {:ok, supervisor} =
+        Supervisor.start_link(
+          [Native.gateway_child_spec(), {Runtime, runtime_options(config)}],
+          strategy: :one_for_one
+        )
+
+      try do
+        {supervisor, root, warmup_native_session(root, config)}
+      after
+        Supervisor.stop(supervisor, :normal, @cleanup_ms)
+      end
+    after
+      File.rm_rf!(root)
+    end
+  end
+
+  defp warmup_native_session(root, config) do
+    metadata = Native.metadata("gateway-warmup", self(), config)
+
+    {:ok, session} =
+      OhMyJido.start_session(@runtime,
+        id: "gateway-warmup",
+        workspace: root,
+        model: Native.model(),
+        tools: [],
+        permissions: [],
+        metadata: metadata
+      )
+
+    {query, options} = Native.warmup_script()
+    {:ok, run} = OhMyJido.prompt(session, query, options)
+
+    {:ok, %{status: :completed, answer: answer, tools: []}} =
+      OhMyJido.await(session, run, timeout: config.run_timeout_ms)
+
+    true = answer == Native.final_answer("gateway-warmup")
+    [%{iteration: 1}] = model_calls = warmup_model_calls([])
+    :ok = OhMyJido.stop_session(session)
+    :ok = delete_checkpoint(session.id)
+
+    {:error, :not_found} =
+      Jido.Persistence.ETS.get(
+        OhMyJido.Persistence.session_key({@runtime, session.id}),
+        table: @storage
+      )
+
+    model_calls
+  end
+
+  defp warmup_model_calls(calls) do
+    receive do
+      {:density_delay, "gateway-warmup", :model, iteration, requested, elapsed} ->
+        call = %{iteration: iteration, requested_ms: requested, elapsed_ms: elapsed}
+        warmup_model_calls([call | calls])
+    after
+      0 -> Enum.reverse(calls)
+    end
+  end
+
+  defp initialize_storage! do
+    # Only this benchmark's dedicated native storage tables lose their heir.
+    # The owning workload/warmup Task must delete them on exit, not transfer
+    # temporary checkpoint tables into the host Jido application.
+    {:error, :not_found} = Jido.Persistence.ETS.get(<<>>, table: @storage)
+
+    for table <- :ets.all(),
+        :ets.info(table, :owner) == self(),
+        String.starts_with?(Atom.to_string(:ets.info(table, :name)), "#{@storage}_") do
+      :ets.setopts(table, {:heir, :none})
+    end
+  end
+
   defp runtime_options(config) do
     [
       name: @runtime,
@@ -237,7 +350,7 @@ defmodule OhMyJido.Bench.Density do
       default_role: :coding,
       model_roles: %{coding: Native.model()},
       tools: Native.tools(),
-      storage: {Jido.Storage.ETS, table: @storage},
+      storage: {Jido.Persistence.ETS, table: @storage},
       max_sessions: Enum.max(config.populations),
       max_active: config.active,
       max_processes: config.active,
@@ -272,6 +385,7 @@ defmodule OhMyJido.Bench.Density do
       child =
         Supervisor.child_spec({Runtime, runtime_options(config)}, shutdown: div(@cleanup_ms, 2))
 
+      {:ok, _gateway_pid} = Supervisor.start_child(supervisor, Native.gateway_child_spec())
       {:ok, _runtime_pid} = Supervisor.start_child(supervisor, child)
 
       report =
@@ -290,6 +404,8 @@ defmodule OhMyJido.Bench.Density do
           stop_registered_sessions()
           Supervisor.terminate_child(supervisor, @runtime)
           Supervisor.delete_child(supervisor, @runtime)
+          Supervisor.terminate_child(supervisor, Native.finch())
+          Supervisor.delete_child(supervisor, Native.finch())
           Jido.AI.Test.reset_react_scripts()
         end
 
@@ -403,7 +519,10 @@ defmodule OhMyJido.Bench.Density do
       result:
         if(
           idle_ok and session_probe_ok and admission_ok and bounds_ok and clean and
-            error_counts(jobs) == %{}, do: "passed", else: "failed"),
+            error_counts(jobs) == %{},
+          do: "passed",
+          else: "failed"
+        ),
       elapsed_ms: Metrics.elapsed(origin),
       limits: %{
         max_sessions: Enum.max(config.populations),
@@ -428,7 +547,8 @@ defmodule OhMyJido.Bench.Density do
         max_file_bytes: 8_192,
         max_read_bytes: 8_192,
         context_policy: %{max_messages: 80, keep_recent: 16, max_bytes: 120_000},
-        storage: "dedicated Jido.Storage.ETS tables; checkpoints removed on session retirement"
+        storage:
+          "dedicated Jido.Persistence.ETS records; checkpoints removed on session retirement"
       },
       baseline: baseline,
       idle: %{
@@ -495,15 +615,20 @@ defmodule OhMyJido.Bench.Density do
 
   defp retire_slot!(slot) do
     :ok = OhMyJido.stop_session(slot.session)
-    :ok = Jido.Storage.ETS.delete_checkpoint({@runtime, slot.session.id}, table: @storage)
+    :ok = delete_checkpoint(slot.session.id)
     {:ok, _paths} = File.rm_rf(slot.workspace)
+  end
+
+  defp delete_checkpoint(id) do
+    key = OhMyJido.Persistence.session_key({@runtime, id})
+    Jido.Persistence.ETS.delete(key, table: @storage)
   end
 
   defp stop_registered_sessions do
     if Process.whereis(Runtime.registry(@runtime)) do
       Enum.each(OhMyJido.list_sessions(@runtime), fn session ->
         OhMyJido.stop_session(session)
-        Jido.Storage.ETS.delete_checkpoint({@runtime, session.id}, table: @storage)
+        delete_checkpoint(session.id)
       end)
     end
   end
@@ -535,7 +660,7 @@ defmodule OhMyJido.Bench.Density do
 
         {:ok, session} ->
           OhMyJido.stop_session(session)
-          Jido.Storage.ETS.delete_checkpoint({@runtime, session.id}, table: @storage)
+          delete_checkpoint(session.id)
           %{status: "unexpected_admission", offered_sessions: count + 1, latency_ms: elapsed}
 
         {:error, reason} ->
@@ -1047,7 +1172,8 @@ defmodule OhMyJido.Bench.Density do
   defp await_teardown(supervisor, worker, deadline) do
     ready =
       not Process.alive?(supervisor) and not Process.alive?(worker) and
-        is_nil(Process.whereis(@runtime)) and is_nil(Process.whereis(@drivers))
+        is_nil(Process.whereis(@runtime)) and is_nil(Process.whereis(@drivers)) and
+        is_nil(Process.whereis(Native.finch()))
 
     cond do
       ready ->

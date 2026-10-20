@@ -5,7 +5,6 @@ defmodule OhMyJido.Tools.Read do
     name: "read",
     description:
       "Read exact UTF-8 text or detect binary data. Inclusive line ranges retain original newline bytes; the SHA256 snapshot always covers the whole file.",
-    category: "filesystem",
     schema:
       Zoi.object(
         %{
@@ -25,6 +24,9 @@ defmodule OhMyJido.Tools.Read do
       )
 
   alias OhMyJido.Files
+
+  @doc "Returns the Action category."
+  def category, do: "filesystem"
 
   @spec capability() :: :read
   def capability, do: :read

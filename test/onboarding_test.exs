@@ -126,7 +126,7 @@ defmodule OhMyJido.OnboardingTest do
     workspace: root
   } do
     name = __MODULE__.Restored
-    storage = {Jido.Storage.File, path: Path.join(root, ".sessions")}
+    storage = {Jido.Persistence.File, path: Path.join(root, ".sessions")}
     start_supervised!({OhMyJido, name: name, bundles: :read_only, storage: storage})
     {:ok, original} = OhMyJido.start_session(name, workspace: root, permissions: [:read, :edit])
     assert :ok = OhMyJido.checkpoint(original)

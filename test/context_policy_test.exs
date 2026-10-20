@@ -1,7 +1,8 @@
 defmodule OhMyJido.ContextPolicyTest do
   use ExUnit.Case, async: true
 
-  alias Jido.AI.Context, as: NativeContext
+  alias Jido.AI.Model.Response
+  alias Jido.AI.Thread.Projection
   alias OhMyJido.ContextPolicy
   alias ReqLLM.Message.ContentPart
 
@@ -10,36 +11,45 @@ defmodule OhMyJido.ContextPolicyTest do
     id = "Ask before deciding-0"
     arguments = %{"question" => "Which public API must remain?"}
     wire_call = ReqLLM.ToolCall.new(id, "question", Jason.encode!(arguments))
-    native_call = ReqLLM.ToolCall.to_map(wire_call)
-    answer = Jido.AI.Turn.format_tool_result_content({:ok, %{answer: "Keep the API"}, []})
+    answer = Response.format_tool_result_content({:ok, %{answer: "Keep the API"}, []})
 
-    pending =
-      NativeContext.new()
-      |> NativeContext.append_user("Ask before deciding")
-      |> NativeContext.append_assistant("", [native_call])
+    assert {:ok, pending} =
+             Projection.append(Jido.Session.new(), [
+               ReqLLM.Context.user("Ask before deciding"),
+               ReqLLM.Context.assistant("", tool_calls: [wire_call])
+             ])
 
-    running = NativeContext.append_tool_result(pending, id, "question", answer)
-    assert {:ok, observed} = ContextPolicy.compact(policy, NativeContext.to_messages(running))
+    assert {:ok, running} =
+             Projection.append(pending, [ReqLLM.Context.tool_result(id, "question", answer)])
+
+    assert {:ok, running_messages} = Projection.evidence_messages(running)
+    assert {:ok, observed} = ContextPolicy.compact(policy, running_messages)
 
     checkpoint =
       observed.state |> ContextPolicy.checkpoint() |> Jason.encode!() |> Jason.decode!()
 
     assert {:ok, restored} = ContextPolicy.restore(checkpoint)
 
-    completed =
-      pending
-      |> NativeContext.append_tool_result(id, "question", answer,
-        refs: %{request_id: "request-1", run_id: "request-1", signal_id: "result-event-1"}
-      )
-      |> NativeContext.append_assistant("The operator constraint is retained.")
-      |> NativeContext.append_user("Continue without changing the API")
+    assert {:ok, completed} =
+             Projection.append(
+               pending,
+               [ReqLLM.Context.tool_result(id, "question", answer)],
+               %{request_id: "request-1", run_id: "request-1", signal_id: "result-event-1"}
+             )
 
-    assert {:ok, next} = ContextPolicy.compact(restored, NativeContext.to_messages(completed))
+    assert {:ok, completed} =
+             Projection.append(completed, [
+               ReqLLM.Context.assistant("The operator constraint is retained."),
+               ReqLLM.Context.user("Continue without changing the API")
+             ])
+
+    assert {:ok, completed_messages} = Projection.messages(completed)
+    assert {:ok, next} = ContextPolicy.compact(restored, completed_messages)
     assert next.compacted
     assert next.state.completed_tools == observed.state.completed_tools
     assert next.state.pending_tools == %{}
     assert Enum.any?(next.messages, &(message_text(&1) =~ "Keep the API"))
-    assert Enum.any?(next.messages, &(Map.get(&1, :tool_calls) == [native_call]))
+    assert Enum.any?(next.messages, &(Map.get(&1, :tool_calls) == [wire_call]))
 
     assert {:ok, canonical} = ReqLLM.Context.normalize(next.messages)
     assert {:ok, normalized} = ContextPolicy.compact(next.state, canonical.messages)
@@ -56,10 +66,8 @@ defmodule OhMyJido.ContextPolicyTest do
 
     assert {:ok, restored} = ContextPolicy.restore(checkpoint)
 
-    projected =
-      NativeContext.new()
-      |> NativeContext.append_messages(normalized.messages)
-      |> NativeContext.to_messages()
+    assert {:ok, projected_session} = Projection.append(Jido.Session.new(), normalized.messages)
+    assert {:ok, projected} = Projection.messages(projected_session)
 
     assert {:ok, repeated} = ContextPolicy.compact(restored, projected)
     assert repeated.state.completed_tools == observed.state.completed_tools
@@ -88,8 +96,7 @@ defmodule OhMyJido.ContextPolicyTest do
     changed_result =
       Enum.map(canonical.messages, fn
         %ReqLLM.Message{role: :tool, tool_call_id: ^id} ->
-          changed =
-            Jido.AI.Turn.format_tool_result_content({:ok, %{answer: "Replace the API"}, []})
+          changed = Response.format_tool_result_content({:ok, %{answer: "Replace the API"}, []})
 
           ReqLLM.Context.tool_result(id, "question", changed)
 
@@ -101,6 +108,18 @@ defmodule OhMyJido.ContextPolicyTest do
              ContextPolicy.compact(restored, changed_result)
   end
 
+  test "native model entry timestamps remain portable provenance during compaction" do
+    assert {:ok, policy} = ContextPolicy.new()
+    [message] = Jido.AI.Model.Messages.entries([ReqLLM.Context.user("Keep the native entry")])
+    assert %DateTime{} = message.timestamp
+    assert {:ok, projection} = ContextPolicy.compact(policy, [message])
+    assert message in projection.messages
+    assert {:ok, _restored} = ContextPolicy.restore(ContextPolicy.checkpoint(projection.state))
+
+    assert {:error, :invalid_context_messages} =
+             ContextPolicy.compact(policy, [%{message | timestamp: self()}])
+  end
+
   test "native multimodal tool evidence keeps image bytes immutable and enforces the full byte budget" do
     assert {:ok, policy} = ContextPolicy.new(max_messages: 3, keep_recent: 3)
     id = "artifact-image-1"
@@ -108,37 +127,44 @@ defmodule OhMyJido.ContextPolicyTest do
     image = ContentPart.image(bytes, "image/png")
 
     content =
-      Jido.AI.Turn.format_tool_result_content(
+      Response.format_tool_result_content(
         {:ok, %{path: "diagram.png", __content_parts__: [image]}, []}
       )
 
-    pending =
-      NativeContext.new()
-      |> NativeContext.append_user("Inspect the diagram")
-      |> NativeContext.append_assistant("", [
-        %{id: id, name: "artifact", arguments: %{"path" => "diagram.png"}}
-      ])
+    tool_call = ReqLLM.ToolCall.new(id, "artifact", Jason.encode!(%{"path" => "diagram.png"}))
 
-    observed_context = NativeContext.append_tool_result(pending, id, "artifact", content)
+    assert {:ok, pending} =
+             Projection.append(Jido.Session.new(), [
+               ReqLLM.Context.user("Inspect the diagram"),
+               ReqLLM.Context.assistant("", tool_calls: [tool_call])
+             ])
 
-    assert {:ok, observed} =
-             ContextPolicy.compact(policy, NativeContext.to_messages(observed_context))
+    assert {:ok, observed_context} =
+             Projection.append(pending, [ReqLLM.Context.tool_result(id, "artifact", content)])
+
+    assert {:ok, observed_messages} = Projection.evidence_messages(observed_context)
+    assert {:ok, observed} = ContextPolicy.compact(policy, observed_messages)
 
     checkpoint =
       observed.state |> ContextPolicy.checkpoint() |> Jason.encode!() |> Jason.decode!()
 
     assert {:ok, restored} = ContextPolicy.restore(checkpoint)
 
-    completed =
-      pending
-      |> NativeContext.append_tool_result(id, "artifact", content,
-        refs: %{request_id: "image-request", run_id: "image-request", signal_id: "image-event"}
-      )
-      |> NativeContext.append_assistant("The diagram is visible.")
-      |> NativeContext.append_user("Explain the diagram")
+    assert {:ok, completed} =
+             Projection.append(
+               pending,
+               [ReqLLM.Context.tool_result(id, "artifact", content)],
+               %{request_id: "image-request", run_id: "image-request", signal_id: "image-event"}
+             )
 
-    assert {:ok, projected} =
-             ContextPolicy.compact(restored, NativeContext.to_messages(completed))
+    assert {:ok, completed} =
+             Projection.append(completed, [
+               ReqLLM.Context.assistant("The diagram is visible."),
+               ReqLLM.Context.user("Explain the diagram")
+             ])
+
+    assert {:ok, completed_messages} = Projection.messages(completed)
+    assert {:ok, projected} = ContextPolicy.compact(restored, completed_messages)
 
     assert projected.state.completed_tools == observed.state.completed_tools
     result = Enum.find(projected.messages, &(Map.get(&1, :tool_call_id) == id))
@@ -148,13 +174,15 @@ defmodule OhMyJido.ContextPolicyTest do
     assert {:ok, normalized} = ContextPolicy.compact(projected.state, canonical.messages)
     assert normalized.state.completed_tools == observed.state.completed_tools
 
-    changed =
-      pending
-      |> NativeContext.append_tool_result(id, "artifact", [
-        hd(content),
-        ContentPart.image(bytes <> <<0>>, "image/png")
-      ])
-      |> NativeContext.to_messages()
+    assert {:ok, changed_context} =
+             Projection.append(pending, [
+               ReqLLM.Context.tool_result(id, "artifact", [
+                 hd(content),
+                 ContentPart.image(bytes <> <<0>>, "image/png")
+               ])
+             ])
+
+    assert {:ok, changed} = Projection.evidence_messages(changed_context)
 
     assert {:error, {:tool_evidence_conflict, ^id}} = ContextPolicy.compact(restored, changed)
 
@@ -389,7 +417,7 @@ defmodule OhMyJido.ContextPolicyTest do
     assert next.retained.unresolved_work == ["Test"]
   end
 
-  test "summary continuity survives native Jido projection which drops message metadata" do
+  test "summary continuity survives native Jido projection without relying on message metadata" do
     assert {:ok, state} = ContextPolicy.new(max_messages: 2, keep_recent: 1)
 
     messages = [
@@ -400,10 +428,10 @@ defmodule OhMyJido.ContextPolicyTest do
 
     assert {:ok, first} = ContextPolicy.compact(state, messages)
 
-    native =
-      Jido.AI.Context.new()
-      |> Jido.AI.Context.append_messages(first.messages)
-      |> Jido.AI.Context.to_messages()
+    messages = Enum.map(first.messages, &Map.delete(&1, :metadata))
+    assert {:ok, session} = Projection.append(Jido.Session.new(), messages)
+    assert {:ok, native} = Projection.messages(session)
+    assert Enum.all?(native, &(&1.metadata == %{}))
 
     assert {:ok, second} = ContextPolicy.compact(first.state, native)
 
@@ -461,7 +489,7 @@ defmodule OhMyJido.ContextPolicyTest do
       String.duplicate("Use guarded snapshot edits; skill text grants no permissions. ", 100)
 
     envelope =
-      Jido.AI.Turn.format_tool_result_content(
+      Response.format_tool_result_content(
         {:ok, %{name: "snapshot", instructions: instructions, authority: :guidance_only}}
       )
 
@@ -492,5 +520,5 @@ defmodule OhMyJido.ContextPolicyTest do
     do: %{role: :tool, tool_call_id: id, name: name, content: content}
 
   defp message_text(message),
-    do: Jido.AI.Turn.extract_from_content(Map.get(message, :content))
+    do: Response.extract_from_content(Map.get(message, :content))
 end

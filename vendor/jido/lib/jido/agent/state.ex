@@ -1,95 +1,166 @@
 defmodule Jido.Agent.State do
-  @moduledoc """
-  Internal helper module for agent state management.
+  @moduledoc false
 
-  > #### Internal Module {: .warning}
-  > This module is internal to the Agent implementation. Its API may
-  > change without notice.
-
-  Handles deep merging and validation of agent state.
-  """
-
-  alias Jido.Action.Schema
+  alias Jido.Error
   alias Jido.Util.DeepMerge
+  alias Zoi.Types.Meta
 
-  @doc """
-  Merges new attributes into existing state using recursive map and keyword-list semantics.
-  """
-  @spec merge(map(), map() | keyword()) :: map()
-  def merge(current_state, attrs) when is_list(attrs) do
-    merge(current_state, Map.new(attrs))
+  @doc false
+  def defaults_from_schema(%Zoi.Types.Map{fields: fields}) do
+    Enum.reduce(fields, %{}, fn
+      {key, %{meta: %Meta{required: required} = meta}}, defaults when required != false ->
+        if Meta.default?(meta),
+          do: Map.put(defaults, key, Meta.default(meta)),
+          else: defaults
+
+      {_key, _field_schema}, defaults ->
+        defaults
+    end)
   end
 
-  def merge(current_state, attrs) when is_map(attrs) do
-    DeepMerge.merge(current_state, attrs)
+  @doc false
+  def initialize(state, schema) when is_map(state) and not is_struct(state) do
+    initial = schema |> defaults_from_schema() |> DeepMerge.merge(state)
+
+    schema = %{schema | unrecognized_keys: :error}
+    state_result(Zoi.parse(schema, initial, parse_defaults: true, immutable_refinements: true))
   end
 
-  @doc """
-  Validates state against a schema (NimbleOptions or Zoi).
-  Returns validated state as a map.
+  def initialize(state, _schema) do
+    {:error,
+     Error.validation_error("Agent instance state must be a map",
+       kind: :config,
+       details: %{state: state}
+     )}
+  end
 
-  By default (non-strict mode), extra fields not in the schema are preserved.
-  In strict mode, only schema-defined fields are kept.
-  """
-  @spec validate(map(), term(), keyword()) :: {:ok, map()} | {:error, term()}
-  def validate(state, schema, opts \\ [])
+  @spec validate_schema(term()) :: :ok | {:error, Error.ValidationError.t()}
+  def validate_schema(%Zoi.Types.Map{fields: fields} = schema) when is_list(fields),
+    do: validate_state_schema(schema)
 
-  def validate(state, [], _opts), do: {:ok, state}
+  def validate_schema(schema) do
+    {:error,
+     Error.validation_error("Agent schema must be a field-based Zoi object",
+       field: :schema,
+       details: %{schema: schema}
+     )}
+  end
 
-  def validate(state, schema, opts) when is_list(schema) do
-    strict? = Keyword.get(opts, :strict, false)
-    known_keys = Keyword.keys(schema)
+  @spec validate(term(), Zoi.schema()) :: {:ok, map()} | {:error, Error.ValidationError.t()}
+  def validate(state, %Zoi.Types.Map{} = schema)
+      when is_map(state) and not is_struct(state) do
+    schema = %{schema | unrecognized_keys: :error}
 
-    state_to_validate = Map.take(state, known_keys)
-    extra_fields = Map.drop(state, known_keys)
-
-    case Schema.validate(schema, state_to_validate) do
-      {:ok, validated} ->
-        if strict? do
-          {:ok, validated}
-        else
-          {:ok, Map.merge(validated, extra_fields)}
-        end
-
-      {:error, _} = error ->
-        error
+    case Zoi.validate(schema, state) do
+      :ok -> {:ok, state}
+      {:error, errors} -> state_result({:error, errors})
     end
   end
 
-  def validate(state, schema, opts) do
-    strict? = Keyword.get(opts, :strict, false)
+  def validate(state, _schema) do
+    {:error,
+     Error.validation_error("Agent state must be a map",
+       field: :state,
+       details: %{state: state}
+     )}
+  end
 
-    case Schema.validate(schema, state) do
-      {:ok, validated} ->
-        if strict? do
-          {:ok, validated}
-        else
-          known_keys = Schema.known_keys(schema)
-          extra_fields = Map.drop(state, known_keys)
-          {:ok, Map.merge(validated, extra_fields)}
-        end
+  @doc false
+  @spec validate_candidate(term(), Zoi.schema()) ::
+          {:ok, map()} | {:error, Error.ValidationError.t()}
+  def validate_candidate(state, %Zoi.Types.Map{} = schema)
+      when is_map(state) and not is_struct(state) do
+    missing_keys =
+      for {key, %{meta: %Meta{required: required} = meta}} <- schema.fields,
+          required != false,
+          Meta.default?(meta),
+          not Map.has_key?(state, key),
+          do: key
 
-      {:error, _} = error ->
-        error
+    missing_keys = Enum.sort(missing_keys)
+
+    if missing_keys == [] do
+      validate(state, schema)
+    else
+      {:error,
+       Error.validation_error("Agent candidate state omits defaulted fields",
+         field: :state,
+         details: %{missing_keys: missing_keys}
+       )}
     end
   end
 
-  @doc """
-  Builds initial state from schema defaults.
-  """
-  @spec defaults_from_schema(term()) :: map()
-  def defaults_from_schema([]), do: %{}
+  def validate_candidate(state, schema), do: validate(state, schema)
 
-  def defaults_from_schema(schema) when is_list(schema) do
-    Enum.reduce(schema, %{}, fn {key, opts}, acc ->
-      case Keyword.fetch(opts, :default) do
-        {:ok, default} -> Map.put(acc, key, default)
-        :error -> acc
+  defp state_result({:ok, state}), do: {:ok, state}
+
+  defp state_result({:error, errors}) do
+    {:error,
+     Error.validation_error("Agent state does not match its schema",
+       field: :state,
+       details: %{errors: errors}
+     )}
+  end
+
+  defp validate_state_schema(schema) do
+    with :ok <- static_schema(schema), do: validation_only_schema(schema)
+  end
+
+  defp validation_only_schema(%{__struct__: type, meta: %Zoi.Types.Meta{} = meta} = schema) do
+    cond do
+      Enum.any?(meta.effects, &match?({:transform, _}, &1)) ->
+        schema_policy_error(:transform, type)
+
+      Map.get(schema, :coerce) == true ->
+        schema_policy_error(:coercion, type)
+
+      type in [Zoi.Types.Codec, Zoi.Types.Lazy, Zoi.Types.StringBoolean] ->
+        schema_policy_error(:input_conversion, type)
+
+      true ->
+        schema
+        |> Map.take([:inner, :fields, :schemas, :key_type, :value_type, :unrecognized_keys])
+        |> Map.values()
+        |> validation_only_schema()
+    end
+  end
+
+  defp validation_only_schema(values) when is_list(values) do
+    Enum.reduce_while(values, :ok, fn value, :ok ->
+      case validation_only_schema(value) do
+        :ok -> {:cont, :ok}
+        {:error, _} = error -> {:halt, error}
       end
     end)
   end
 
-  def defaults_from_schema(zoi_schema) do
-    Jido.Agent.Schema.defaults_from_zoi_schema(zoi_schema)
+  defp validation_only_schema(values) when is_tuple(values),
+    do: values |> Tuple.to_list() |> validation_only_schema()
+
+  defp validation_only_schema(values) when is_map(values),
+    do: values |> Map.values() |> validation_only_schema()
+
+  defp validation_only_schema(_value), do: :ok
+
+  defp schema_policy_error(reason, type) do
+    {:error,
+     Error.validation_error("Agent state schemas must contain only defaults and validation rules",
+       field: :schema,
+       details: %{reason: reason, schema_type: type}
+     )}
+  end
+
+  defp static_schema(schema) do
+    case Jido.Action.validate_static_data(schema) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        {:error,
+         Error.validation_error("Agent schema must contain static data",
+           field: :schema,
+           details: %{reason: reason}
+         )}
+    end
   end
 end

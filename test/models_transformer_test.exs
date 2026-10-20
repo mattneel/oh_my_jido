@@ -1,6 +1,7 @@
 defmodule OhMyJido.Models.TransformerTest do
   use Jido.AI.TestCase, async: false
 
+  alias Jido.AI.Model.{Options, Response}
   alias Jido.AI.Reasoning.ReAct.{Config, State}
   alias OhMyJido.{Context, ContextPolicy}
   alias OhMyJido.Models.Transformer
@@ -92,6 +93,33 @@ defmodule OhMyJido.Models.TransformerTest do
     end
 
     def authorize(_context, _capability, _effect, _opts), do: {:error, :not_granted}
+  end
+
+  defmodule ObservedRequests do
+    @behaviour Jido.AI.Reasoning.ReAct.RequestTransformer
+
+    @impl true
+    def transform_request(request, state, config, %{oh_my_jido: context} = runtime_context) do
+      with {:ok, projected} <-
+             OhMyJido.Models.Transformer.transform_request(
+               request,
+               state,
+               config,
+               runtime_context
+             ) do
+        {_host, options} = context.host
+
+        Enum.each(projected.messages, fn
+          %{role: :tool, name: "edit_fixture"} = message ->
+            send(Keyword.fetch!(options, :observer), {:native_model_rejection, message})
+
+          _message ->
+            :ok
+        end)
+
+        {:ok, projected}
+      end
+    end
   end
 
   defmodule Registry do
@@ -523,7 +551,7 @@ defmodule OhMyJido.Models.TransformerTest do
              Transformer.transform_request(base, state, config, %{oh_my_jido: context})
 
     assert override.llm_opts[:telemetry] == [payloads: :none]
-    effective = Config.merge_llm_opts(config, base.llm_opts, override.llm_opts, override.model)
+    effective = Options.merge(base.llm_opts, override.llm_opts, override.model)
     assert effective[:telemetry] == [payloads: :none]
     assert is_function(effective[:stream_error_normalizer], 2)
     assert effective[:stream_error_normalizer] != raw_normalizer
@@ -760,7 +788,10 @@ defmodule OhMyJido.Models.TransformerTest do
       Config.new(
         model: :fast,
         tools: [ReadAction, EditAction],
-        request_transformer: Transformer,
+        request_transformer: ObservedRequests,
+        stream_content: true,
+        store_content: true,
+        tool_max_retries: 0,
         llm_opts: react_llm_opts(script)
       )
 
@@ -774,14 +805,17 @@ defmodule OhMyJido.Models.TransformerTest do
       result.trace
       |> Enum.filter(&(&1.kind == :tool_completed))
       |> Map.new(fn event ->
-        content = Jido.AI.Turn.format_tool_result_content(event.data.result)
+        content = Response.format_tool_result_content(event.data.result)
         {event.tool_name, Jason.decode!(content)}
       end)
 
     assert %{"ok" => true, "result" => %{"content" => "observed fixture contents"}} =
              completed["read_fixture"]
 
-    assert %{"ok" => false} = completed["edit_fixture"]
+    refute Map.has_key?(completed, "edit_fixture")
+    assert_receive {:native_model_rejection, %{content: [part]}}
+    assert %{"ok" => false, "error" => "Unknown tool: edit_fixture"} = Jason.decode!(part.text)
+    refute_receive {:authorized, :edit, _effect}
     assert_receive {:authorized, :read, %{path: "fixture.ex"}}
 
     assert File.read!(Path.join(root, "fixture.ex")) == "observed fixture contents"
@@ -808,7 +842,7 @@ defmodule OhMyJido.Models.TransformerTest do
 
   defp request(config, state) do
     %{
-      messages: Jido.AI.Context.to_messages(state.context),
+      messages: State.messages(state.context),
       model: config.model,
       tools: config.tools,
       llm_opts: Config.llm_opts(config)

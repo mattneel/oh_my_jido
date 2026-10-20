@@ -11,7 +11,7 @@ defmodule OhMyJido.EvalPythonTest do
                    "Opt-in: configure Snakepit's Python runtime with grpcio >= 1.84.0, protobuf >= 7.35.1 and its requirements"
                )
 
-  alias OhMyJido.{Context, Eval, Tool}
+  alias OhMyJido.{Context, Eval, Runtime, Session, Tool}
 
   defmodule Echo do
     use Jido.Action,
@@ -114,6 +114,63 @@ defmodule OhMyJido.EvalPythonTest do
     assert {:ok, second} = Eval.info(eval, other.session_id, :python)
     refute first.worker == second.worker
     assert {:ok, %{display: "42"}} = Eval.execute(eval, context, :python, "value + 2")
+  end
+
+  test "successful Python completion receipts release the sole native session resource slot", %{
+    eval: eval,
+    context: context
+  } do
+    start_supervised!(
+      Supervisor.child_spec(
+        {Runtime, name: __MODULE__.NativeHost, tools: [OhMyJido.Tools.Eval], max_resources: 1},
+        shutdown: 10_000
+      )
+    )
+
+    assert {:ok, session} =
+             OhMyJido.start_session(__MODULE__.NativeHost,
+               workspace: context.workspace,
+               permissions: [:eval],
+               metadata: %{eval: eval}
+             )
+
+    assert {:ok, session_context} = Session.call(session, :context)
+
+    assert {:ok,
+            %{
+              status: :ok,
+              kernel_state: :ready,
+              effects: :completed,
+              execution_id: first_id
+            }} = Eval.execute(eval, session_context, :python, "value = 40")
+
+    assert {:ok, %{worker: worker, controller: controller}} =
+             Eval.info(eval, session.id, :python)
+
+    assert {:ok,
+            %{
+              status: :ok,
+              display: "42",
+              kernel_state: :ready,
+              effects: :completed,
+              execution_id: second_id
+            }} = Eval.execute(eval, session_context, :python, "value + 2")
+
+    refute first_id == second_id
+
+    assert {:ok, %{status: :ok, display: "43", kernel_state: :ready}} =
+             Eval.execute(eval, session_context, :python, "value + 3")
+
+    assert {:ok, %{worker: ^worker, controller: ^controller}} =
+             Eval.info(eval, session.id, :python)
+
+    coordinator = GenServer.whereis(Runtime.via(session))
+    coordinator_monitor = Process.monitor(coordinator)
+    controller_monitor = Process.monitor(controller)
+    assert :ok = OhMyJido.stop_session(session)
+    assert_receive {:DOWN, ^coordinator_monitor, :process, ^coordinator, :shutdown}, 10_000
+    assert_receive {:DOWN, ^controller_monitor, :process, ^controller, _reason}, 10_000
+    assert {:error, :not_open} = Eval.info(eval, session.id, :python)
   end
 
   test "public worker RPC cannot forge ownership or an active host-effect nonce", %{

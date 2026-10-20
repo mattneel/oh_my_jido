@@ -48,6 +48,19 @@ defmodule OhMyJido.WorkspacePolicyTest do
     assert File.read!(Path.join(fixture.allowed, "file")) == "allowed"
   end
 
+  test "configured roots are canonical and invalid policies fail closed", fixture do
+    alias_path = Path.join(fixture.base, "configured-link")
+    File.ln_s!(fixture.allowed, alias_path)
+    allowed = context(fixture.allowed)
+    Application.put_env(:jido_action, :file_tool_roots, alias_path)
+    assert {:ok, _path} = Workspace.resolve(allowed, "file")
+
+    for roots <- [[fixture.allowed, 1], [Path.join(fixture.base, "missing")], :invalid] do
+      Application.put_env(:jido_action, :file_tool_roots, roots)
+      assert {:error, :outside_workspace} = Workspace.resolve(allowed, "file")
+    end
+  end
+
   defp context(root) do
     %Context{
       session_id: "policy-test",

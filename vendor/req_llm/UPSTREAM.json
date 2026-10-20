@@ -4,7 +4,7 @@
   "source": "https://github.com/agentjido/req_llm",
   "license": "Apache-2.0",
   "originalCopyright": "Copyright 2026 Mike Hostetler <mike.hostetler@gmail.com>",
-  "purpose": "Narrow native streaming failure safety patch; no replacement transport",
+  "purpose": "Narrow native streaming safety and host-owned connection-pool selection patches; no replacement transport",
   "excludedNonRuntimeFiles": [
     "AGENTS.md",
     ".hex"
@@ -25,6 +25,18 @@
       {
         "path": "lib/req_llm/streaming/web_socket_client.ex",
         "change": "Normalizes attach/task failures and forwarded native WebSocket error events with the request's bound model context."
+      }
+    ],
+    "inventory_note": "The files inventory and unmodifiedSnapshotDigest retain original upstream hashes and lengths; modified files carry local notices."
+  },
+  "streaming_finch_ownership_update": {
+    "date": "2026-10-19",
+    "contributors": "Oh-My-Jido contributors",
+    "license": "Apache-2.0",
+    "modified_upstream_files": [
+      {
+        "path": "lib/req_llm/streaming.ex",
+        "change": "Honor the existing req_http_options[:finch] atom or keyword-list name when selecting the native streaming Finch instance. Retain the configured application default and explicit low-level finch_name fallback. Native StreamServer/Finch transport, request options, connection-pool settings, retry and provider behavior remain unchanged; no global pool configuration or shutdown is added."
       }
     ],
     "inventory_note": "The files inventory and unmodifiedSnapshotDigest retain original upstream hashes and lengths; modified files carry local notices."

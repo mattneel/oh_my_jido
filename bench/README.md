@@ -16,9 +16,10 @@ MIX_ENV=test mix run bench/density.exs -- --output bench/results/density-new.jso
 
 Linux procfs and `sh`, `setsid`, `mkfifo`, `cat`, `kill`, and `sleep` are required.
 Use the installed, approved native dependency overrides in this repository.
-No account, API key, subscription, provider request, or network service is needed.
-The fixture host refuses credential callbacks and unexpected effects. This is
-not a live-provider performance measurement.
+No account, API key, subscription, external provider request, or external service
+is needed. Native scripts exercise ReqLLM over an actual temporary loopback
+HTTP/SSE model server. The fixture host refuses credential callbacks and
+unexpected effects. This is not a live-provider performance measurement.
 
 The command writes one complete JSON document. Existing evidence is never
 overwritten; choose a new `--output` path for a second run. Without `--output`, a
@@ -71,9 +72,32 @@ host metadata collection precede the benchmark-work deadline. Supervisor
 teardown has a separate 15000 ms bound. Slow or failed native work produces
 failed/partial evidence, not invented terminal timings.
 
+Before any measured baseline, one bounded actual native scripted gateway request
+initializes the VM-owned OTP resolver used by loopback HTTP/SSE. Its temporary
+session, checkpoint, runtime, owned Finch, ETS tables and workspace are fully
+retired before the empty-runtime snapshot. `gateway_warmup` records the observed
+model call,
+request/initialization bounds, teardown and cold/warm OS descendant identities.
+This is infrastructure initialization, not an exclusion or a baseline reset after
+measured work: shared `inet_gethost` processes are never killed or claimed as
+session-owned. Measured workloads still must return exactly to the baseline.
+
+The measured model label is explicitly `anthropic:claude-sonnet-4-6`; startup
+requires actual catalog metadata with tool capability enabled. Missing/retired
+model capabilities are never treated as tool permission. Each population owns
+an ordinary supervised Finch selected through native `req_http_options[:finch]`.
+Its temporary loopback endpoint pools are stopped between populations and at
+final teardown; no benchmark request may accumulate pools in the application's
+shared Finch. `after_sessions` is sampled before this fixture Finch is stopped,
+so VM-wide BEAM counts there include its still-owned endpoint pools.
+
 Each population first measures an empty-runtime baseline and then the requested
-number of actual idle sessions. Idle acceptance observes coordinator and native
-agent supervisor counts and zero active leases. With population `N`, the offered
+number of actual idle sessions. Idle acceptance counts native Agent actors from
+their preserved OTP module metadata, not every worker under AgentSupervisor.
+`native_plugin_lifecycle_count` and `native_agent_supervisor_child_count` retain
+the separate Plugin lifecycle and total-child observations without a hardcoded
+multiplier. Coordinator/actor counts must match the session population, with zero
+active leases. With population `N`, the offered
 concurrency sweep is the distinct values of `1`, `min(8,N)`, and `min(9,N)` for
 default active capacity; `--active` changes the last two values accordingly.
 Each wave offers its entire batch behind one start barrier. There is no driver
@@ -154,6 +178,7 @@ performance merely because p99 is present.
 |---|---|
 | `host` | Actual kernel/architecture/CPU/physical memory, cgroup constraints when available, Elixir/OTP/ERTS build, scheduler and VM limits, loaded application versions, executable paths, source and loaded-BEAM fingerprints |
 | `configuration` / `workload` | Exact requested population/workload/sleep bounds and interpretation |
+| `gateway_warmup` | One actual native scripted model request before baselines, observed gateway delay, bounded initialization, full temporary-resource teardown, and cold/warm OS descendant identities |
 | `populations[].baseline` | Same empty supervised runtime immediately before that population |
 | `populations[].idle` | Idle samples, observed invariant, pressure distributions, and resident/VM-memory/process deltas from the empty runtime |
 | `populations[].active[].admission` | Offered, admitted, rejected, model-capacity-rejected, completed, and failed/unobserved counts; queued is zero because this workload has no backlog |
@@ -161,7 +186,7 @@ performance merely because p99 is present.
 | `populations[].active[].waves[].jobs[]` | Actual per-attempt timings, native run identity/status, effect/process evidence, invariant checks, errors, and measured delay observations |
 | `populations[].active[].waves[].samples[]` | Raw VM memory/process/port/runnable counts, OS RSS/descendants, active leases, runtime mailboxes, observer mailbox, and in-flight driver attempts |
 | `populations[].saturation` | Actual session-capacity probe, first observed model-rejection load, observed lease peak, admission/resource-bound invariants, and explicit non-queue semantics |
-| `populations[].cleanup` / `cleanup` | Population removal, supervisor termination, disposable-root removal, cwd/env preservation, and before/after live OS descendant counts |
+| `populations[].cleanup` / `cleanup` | Population removal, supervisor termination, disposable-root removal, cwd/env preservation, and exact before/after live OS descendant counts and identities |
 | `errors` / population error alternative | Safe error codes/types; unavailable work is failed/partial, never success or a synthetic timing |
 
 `os.beam_rss_bytes` comes from Linux `VmRSS`; it includes the VM's resident heap,
@@ -177,9 +202,12 @@ allocator retention, and prior evidence can change absolute RSS across phases.
 
 Sampling itself costs work and can miss short-lived mailbox/process peaks; its
 observed duration is reported. Empty mailboxes do not prove zero scheduling
-latency. OS before/after equality is a count comparison, not an identity proof;
-actual Shell cleanup status and stopped supervisors provide separate lifecycle
-evidence. No unmeasured performance improvement, provider throughput, or scaling
+latency. Current reports retain each live descendant's PID, procfs start ticks,
+name, parent, process group and session, and require exact identity and count
+equality after teardown; no arbitrary helper process is excluded. Historical
+reports lacking `live_descendants` prove count equality only. Actual Shell
+cleanup status and stopped supervisors provide separate lifecycle evidence.
+No unmeasured performance improvement, provider throughput, or scaling
 claim follows from a `passed` result. `passed` means this finite workload and its
 recorded cleanup/admission invariants passed; exit status is nonzero for failed
 or partial runs.

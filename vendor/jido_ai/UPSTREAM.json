@@ -1,0 +1,1411 @@
+{
+  "package": "jido_ai",
+  "source": "https://github.com/agentjido/jido_ai",
+  "ref": "1f19ff262081bc13eb30da7bff8bfe42685d63c8",
+  "branch_at_import": "release/v3",
+  "upstream_version": "2.3.0",
+  "version_note": "Upstream release/v3 still declares 2.3.0; this snapshot implements native V3 Agent profiles, the request Coordinator and Flow execution. Its version was not relabelled.",
+  "selected_runtime": {
+    "jido": {
+      "ref": "8322de574c53d5c2096243d230c9de4f14803bda",
+      "upstream_version": "3.0.0-beta.1",
+      "reason": "This is the exact native V3 Core revision pinned in this SDK's upstream mix.exs."
+    },
+    "jido_action": {
+      "ref": "19c77f94e5c2513b2e684a289857fcd568f7eb29",
+      "upstream_version": "3.0.0-beta.12"
+    },
+    "jido_signal": {
+      "ref": "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+      "upstream_version": "3.0.0-beta.4"
+    },
+    "zoi": {
+      "ref": "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9",
+      "upstream_version": "0.18.11"
+    }
+  },
+  "incompatible_discovered_core_tip": {
+    "ref": "2ce0e40e18cc1ecc64882aaf492de6f06bb5fd73",
+    "upstream_version": "3.0.0-beta.2",
+    "reason": "This later Core and its Action beta.21 use a new provider/route/component/Exec contract not implemented by this AI snapshot. The preview uses the coherent native V3 revisions explicitly pinned upstream, not a V2 fallback."
+  },
+  "privacy_limit": "Protection covers requests admitted after private activation. Previously admitted public work is not retroactively made private by later adoption. OhMyJido managed and own-agent integrations require private activation from startup.",
+  "license": "Apache-2.0",
+  "purpose": "Immutable native V3 source snapshot; see boundary_patches for any explicit local additions.",
+  "inventory_note": "files describe the original selected upstream source bytes before explicit local boundary patches.",
+  "boundary_patches": [
+    {
+      "path": "lib/jido_ai/orchestration/request_scope.ex",
+      "change": "Request tool selection can only narrow exact declared names and targets; it retains the original forward-context, unsafe-once, retry and effect metadata rather than reconstructing authority from request data.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "path": "lib/jido_ai/private_diagnostics.ex",
+      "added": true,
+      "change": "Opt-in native Agent module privacy, bounded failure/status projection and propagation of the licensed native Exec private-diagnostics option.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "path": "lib/jido_ai/execution/request_transform.ex",
+      "change": "Keep exact declared catalog entries and their authority/retry/forward-context metadata when narrowing. Reject added, renamed or replaced targets; bound private transformer failures before native error observation.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "modified_files": [
+        "lib/jido_ai/orchestration/plugin/agent_server.ex",
+        "lib/jido_ai/orchestration/plugin.ex",
+        "lib/jido_ai/orchestration/coordinator.ex",
+        "lib/jido_ai/orchestration/delivery.ex",
+        "lib/jido_ai/error.ex",
+        "lib/jido_ai/tool_result.ex",
+        "lib/jido_ai/tools/executor.ex",
+        "lib/jido_ai/observe.ex",
+        "lib/jido_ai/observe/sanitize.ex",
+        "lib/jido_ai/execution/call_model.ex",
+        "lib/jido_ai/execution/execute_tool.ex",
+        "lib/jido_ai/execution/tool_interception.ex",
+        "lib/jido_ai/control.ex",
+        "lib/jido_ai/instructions.ex",
+        "lib/jido_ai/capability.ex",
+        "lib/jido_ai/actions/tool_calling/call_with_tools.ex",
+        "lib/jido_ai/validation.ex"
+      ],
+      "change": "Carry authoritative opt-in privacy into existing native Coordinator/Delivery/Exec tasks, protect OTP status and escaping callbacks, and project opaque failure diagnostics before telemetry/log/storage. Successful model/tool values and ordinary native diagnostics remain unchanged. No provider transport or reasoning loop is replaced.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "path": "lib/jido_ai/execution/tool_identity.ex",
+      "added": true,
+      "modified_files": [
+        "lib/jido_ai/execution/tool_interception.ex"
+      ],
+      "change": "Hand tools a typed identity-only carrier constructed from the authoritative native Agent snapshot. Core intentionally removes prepared Plugin inputs after commit; this carrier preserves only Agent module and ID without copying unrelated Plugin resources, private host grants, or request/model input. Native request Coordinator, model transport and tool interception remain unchanged.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "path": "lib/jido_ai/dsl.ex",
+      "change": "Wait for the declared native tool module to compile before deriving its public name. This removes a compile-order-dependent dotted-module fallback for valid tools while retaining ToolCatalog name, schema and execution-policy validation.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "modified_files": [
+        "lib/jido_ai/tool_interceptor.ex",
+        "lib/jido_ai/execution/tool_attempt.ex",
+        "lib/jido_ai/execution/tool_interception.ex"
+      ],
+      "change": "Add an optional declared-interceptor lifecycle callback pair. Build its observer from the full trusted native ToolAttempt context before forward-context narrowing, attach it only to the existing target Exec options, and invoke callbacks directly with existing private/error containment. Native controller proofs and opaque tokens pass through unchanged; lifecycle receipts cannot replace execution results. Profiles without the pair retain their original path.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19"
+    },
+    {
+      "path": "lib/jido_ai/test/react_script.ex",
+      "change": "Preserve caller req_http_options, including a host-owned Finch instance, when installing the native MockLLM gateway defaults. Fixture retry/receive-timeout defaults remain authoritative; unrelated caller HTTP settings are retained. The actual ReqLLM HTTP/SSE transport and native script execution remain unchanged.",
+      "contributors": "Oh-My-Jido contributors",
+      "date": "2026-10-19",
+      "license": "Apache-2.0"
+    }
+  ],
+  "files": [
+    {
+      "path": ".formatter.exs",
+      "bytes": 1210,
+      "sha256": "606a0fe10d64eec4a05d374336456bbcec782ff682ad9a7489f50399bb501ddc"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 11396,
+      "sha256": "5ef76176b7be1574f8006b1060a94f01518fc133ea1fb3136819d0fa7b473c8f"
+    },
+    {
+      "path": "README.md",
+      "bytes": 4126,
+      "sha256": "3e9e4c357220ce6f27d32fc5c06ab744d75f9110cc1969aac8052fabd1e0211a"
+    },
+    {
+      "path": "lib/jido_ai/action_input.ex",
+      "bytes": 2523,
+      "sha256": "0287c2be0b7af886d3ec9a58090238f04507c98333364cb598a6136c3ef751c8"
+    },
+    {
+      "path": "lib/jido_ai/actions/chat/run_capability.ex",
+      "bytes": 538,
+      "sha256": "5ac1a7be399c55356dbf3ba3948d90c3361ac3f1dab49b0a5f24926e5ecaaec6"
+    },
+    {
+      "path": "lib/jido_ai/actions/helpers.ex",
+      "bytes": 10265,
+      "sha256": "cebdb787d97cb351bc8a88219b29e226c38f8ba7faa3de1d43dba884c112075e"
+    },
+    {
+      "path": "lib/jido_ai/actions/invoke_callback.ex",
+      "bytes": 203,
+      "sha256": "25b62295138f810fc66ecd1deda2490421516293322506804076ae53f3e8d529"
+    },
+    {
+      "path": "lib/jido_ai/actions/llm/chat.ex",
+      "bytes": 2747,
+      "sha256": "7e25cbe6edad990a74c3ff70a8082552212eeab916a5df01b121ff91633628fb"
+    },
+    {
+      "path": "lib/jido_ai/actions/llm/complete.ex",
+      "bytes": 2212,
+      "sha256": "707d5848a38a1ac1ea52cfd21180534a6c9c343e059282cc908404909aa7f41d"
+    },
+    {
+      "path": "lib/jido_ai/actions/llm/embed.ex",
+      "bytes": 2672,
+      "sha256": "581b86b482440780c0602689ded96572280cb9c779c4ba02d338464cbaca9338"
+    },
+    {
+      "path": "lib/jido_ai/actions/llm/generate_object.ex",
+      "bytes": 3383,
+      "sha256": "f492ee3ca7aa82cc0cd6bcf7b5dd1ec18c0e737b885f0ebfdfce0d3b5192e572"
+    },
+    {
+      "path": "lib/jido_ai/actions/llm/request.ex",
+      "bytes": 6323,
+      "sha256": "9335499d38eadc397c58b8287093947e4da7d7c553657df082a586ec025d5953"
+    },
+    {
+      "path": "lib/jido_ai/actions/planning/decompose.ex",
+      "bytes": 6056,
+      "sha256": "6d8d9f88ec4cdab7733b7b5702d814239a541ad6af2ab0d2ca78008a9ff182f2"
+    },
+    {
+      "path": "lib/jido_ai/actions/planning/plan.ex",
+      "bytes": 6045,
+      "sha256": "780062c00384997c8ff67bc543b253504633cd5840e6565cfb6d096f80176f67"
+    },
+    {
+      "path": "lib/jido_ai/actions/planning/prioritize.ex",
+      "bytes": 8401,
+      "sha256": "21ba36b965928295ad6cc7ca728975fba1e9539d7de8c5858fe2c0ba8c41b5dc"
+    },
+    {
+      "path": "lib/jido_ai/actions/planning/request.ex",
+      "bytes": 983,
+      "sha256": "c55e4bdd84d893b34a2e1ed4278efd84b63f6645975eee28415cb6759df5e5c4"
+    },
+    {
+      "path": "lib/jido_ai/actions/planning/run_capability.ex",
+      "bytes": 562,
+      "sha256": "2efa8349c1cceb2e6276a3d6842a85a026e156cde7dcb8fe3e268ff0a7902fb3"
+    },
+    {
+      "path": "lib/jido_ai/actions/quota/get_status.ex",
+      "bytes": 954,
+      "sha256": "9bfb8bd7488cb06ebb29ba74796e751ebb21eb8e02f530dd6b6cf0b0b5a8a396"
+    },
+    {
+      "path": "lib/jido_ai/actions/quota/request.ex",
+      "bytes": 1199,
+      "sha256": "dacf0caf73c1b2bbf52ed42e418fe47476c3939eba2e90399d8813fe03864734"
+    },
+    {
+      "path": "lib/jido_ai/actions/quota/reset.ex",
+      "bytes": 940,
+      "sha256": "9605c96995cf8cca9687f8979b8cbf9596d1239222dba7f40050edc6b9e39fde"
+    },
+    {
+      "path": "lib/jido_ai/actions/quota/run_capability.ex",
+      "bytes": 574,
+      "sha256": "06b939ec1abae4ae94c18f032694afd6e098d2d5341835fb71c4a6eecca3673e"
+    },
+    {
+      "path": "lib/jido_ai/actions/reasoning/analyze.ex",
+      "bytes": 7468,
+      "sha256": "bb371fca6e32ddb9b077dbb8d5d786a74598a8386f12ddd1d42011dcdefc06c2"
+    },
+    {
+      "path": "lib/jido_ai/actions/reasoning/explain.ex",
+      "bytes": 7899,
+      "sha256": "18deebfc3a0ee99ed1eaa2074eaee0617573319981bf208d8b202ebcbcdb15cd"
+    },
+    {
+      "path": "lib/jido_ai/actions/reasoning/infer.ex",
+      "bytes": 6316,
+      "sha256": "de45a6b79c65dafd824bbfc1c4881b54b30e55aea178f50fb62dea5124152b70"
+    },
+    {
+      "path": "lib/jido_ai/actions/reasoning/run_capability.ex",
+      "bytes": 834,
+      "sha256": "7ab42c0f6b44c8ca19489a9eddd5369c3543eead0d42281c13cf86601e0ce08a"
+    },
+    {
+      "path": "lib/jido_ai/actions/reasoning/run_strategy.ex",
+      "bytes": 8504,
+      "sha256": "ed6be7a981c25198d767425d675aefbb0fa6714c967c6821ec2e300521ae05fb"
+    },
+    {
+      "path": "lib/jido_ai/actions/retrieval/clear_memory.ex",
+      "bytes": 1019,
+      "sha256": "f052fa2a134f5195354bc9ded8b38ab9c7b07cfc6cdbca503b9a6039b85ca5eb"
+    },
+    {
+      "path": "lib/jido_ai/actions/retrieval/recall_memory.ex",
+      "bytes": 1386,
+      "sha256": "11e3d9d1259e5a88441e8ad83cb54307a8c24edb5a7733fe9fa76647e6017f29"
+    },
+    {
+      "path": "lib/jido_ai/actions/retrieval/request.ex",
+      "bytes": 926,
+      "sha256": "f96261a9b142a2bef80714a1312b48ee7ed9f219649e8659368b56ffc6a41269"
+    },
+    {
+      "path": "lib/jido_ai/actions/retrieval/run_capability.ex",
+      "bytes": 598,
+      "sha256": "ec3226e296ce967e1477efaaec832a0f1e342691830afd63490f9214df8fb2e5"
+    },
+    {
+      "path": "lib/jido_ai/actions/retrieval/upsert_memory.ex",
+      "bytes": 1294,
+      "sha256": "07bf21c27658a91e4e4a5e083b39d2172789eb50abfd6d8c5cf7aa26c9d0fcf8"
+    },
+    {
+      "path": "lib/jido_ai/actions/skill/load_resource.ex",
+      "bytes": 10968,
+      "sha256": "fda9b225c5cb0daa46c16013d3675cbf0e2e7ffcd98f224eef62cfcd7bfcf657"
+    },
+    {
+      "path": "lib/jido_ai/actions/skill/load_skill.ex",
+      "bytes": 8096,
+      "sha256": "82b3fc0808d8e140fdd8e0d14d767f22a7e3858af0edcdc74467983714ad78e2"
+    },
+    {
+      "path": "lib/jido_ai/actions/skill/runtime_context.ex",
+      "bytes": 580,
+      "sha256": "ca2e75b1ac51ffceff2c7fa03a8c6a852d25dac16d7d82de02ad7025cca54a8c"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/call_with_tools.ex",
+      "bytes": 5741,
+      "sha256": "69c7901b0adfc6ecfcd815f0329544308bcca166e6a762046a2b2a1a6d9795b6"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/decide.ex",
+      "bytes": 1417,
+      "sha256": "3d0cc569637e54ebdc01d632abe97bc77cb85462a93228befe8a75cab6414bdf"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/execute_tool.ex",
+      "bytes": 3925,
+      "sha256": "abca49167c1fdc7e03a9bfba915a02a855a67b1f98b2aec15e3ba97bd95c51f7"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/list_tools.ex",
+      "bytes": 7678,
+      "sha256": "bbf4f3ea2ab35e0193ac149e982e67cdbc5ad5b89b689cac40c798f1315a7c6f"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/model_flow.ex",
+      "bytes": 324,
+      "sha256": "39828dc101694b4464fc9966296629e462d36d5cfc15e528ea7d6008f8688772"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/request_model.ex",
+      "bytes": 977,
+      "sha256": "dcf649637bfe61a15e60b3e6f0447adf777f69af4654b1afa5f19354dd65b3d6"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/run_tools.ex",
+      "bytes": 467,
+      "sha256": "a20fb2c34b55c1a8667add3cc01782103588d22d318a2bbbdfcb2894129d46b5"
+    },
+    {
+      "path": "lib/jido_ai/actions/tool_calling/tools_flow.ex",
+      "bytes": 414,
+      "sha256": "757820ee1d175178e71ae398a30313b9db75bf31d57f98be3237fa2f0d4798fe"
+    },
+    {
+      "path": "lib/jido_ai/agent/definition.ex",
+      "bytes": 2276,
+      "sha256": "483f9dcfebbb6a9ed785f824647c352b1d65b8e3e81f00fe3d3e32de7d13c04c"
+    },
+    {
+      "path": "lib/jido_ai/agent/initial_state.ex",
+      "bytes": 3247,
+      "sha256": "2499f6916b11e86bd667df70cf3241e2644d99c33c6dba3bc6f2172e6e36f834"
+    },
+    {
+      "path": "lib/jido_ai/agent/interface.ex",
+      "bytes": 1828,
+      "sha256": "42d057107872dd1430dc5aaf6c0fea3acdba0a141ef6d07cfcfa55165fbf88d6"
+    },
+    {
+      "path": "lib/jido_ai/agent.ex",
+      "bytes": 1752,
+      "sha256": "65f1c5848cce7a82debc39e0ccdc2c1527289913b5aba886f853fd7a33f4db4e"
+    },
+    {
+      "path": "lib/jido_ai/authoring/codec.ex",
+      "bytes": 2382,
+      "sha256": "c710d64764c2c12c1fb052cfa2d26b56f276e122b0c0e997a7e69c5ab2932077"
+    },
+    {
+      "path": "lib/jido_ai/authoring.ex",
+      "bytes": 10301,
+      "sha256": "5db42d2ea077861dd4d4809e585f2942e49c60be95303152895795bc879467b8"
+    },
+    {
+      "path": "lib/jido_ai/capability.ex",
+      "bytes": 4604,
+      "sha256": "1867c98b7d95c964d7991410fc2055efe07c38efbd766f42bb751a00ea535497"
+    },
+    {
+      "path": "lib/jido_ai/configuration/apply.ex",
+      "bytes": 1323,
+      "sha256": "757b65826ca93f250bc2e0b727d3cec548bc5a0723748854ed3f7541c39a56f3"
+    },
+    {
+      "path": "lib/jido_ai/configuration/change.ex",
+      "bytes": 1008,
+      "sha256": "4742bae9831656d700802bd9f019295cb7e60e594e1c1e02c07611e822617645"
+    },
+    {
+      "path": "lib/jido_ai/configuration/plugin/agent.ex",
+      "bytes": 595,
+      "sha256": "bd527152084a6071cb33584dc01fd5c3e7f9598ff4eb3dfc9bf08caf41c85325"
+    },
+    {
+      "path": "lib/jido_ai/configuration/plugin/agent_server.ex",
+      "bytes": 237,
+      "sha256": "3df6129cf3a8beab306cb8cc62fbf63ee12c955ebbb0e8ebe07791cca9ac44a8"
+    },
+    {
+      "path": "lib/jido_ai/configuration/plugin.ex",
+      "bytes": 7195,
+      "sha256": "d388775182294843c57a43662b4d8f7f3c606e4d78dcd3b335ede1487c41dcaf"
+    },
+    {
+      "path": "lib/jido_ai/configuration.ex",
+      "bytes": 5567,
+      "sha256": "2c49f31f25349d7af94347b48d6d09b527091e5ad7380014505a2fd0dfa55fd7"
+    },
+    {
+      "path": "lib/jido_ai/control.ex",
+      "bytes": 2136,
+      "sha256": "bd86ac9c44624d89507d88b10954ba67227514fadb5ffbb8c419e288d6820cf1"
+    },
+    {
+      "path": "lib/jido_ai/dsl/compiler.ex",
+      "bytes": 372,
+      "sha256": "51667a1ceaaf3d260e3d9c2bc2e8d990d8f40657d9850b2147466a516614cc86"
+    },
+    {
+      "path": "lib/jido_ai/dsl/entities.ex",
+      "bytes": 4943,
+      "sha256": "3c58a1aaa044d8f233dbdb89a150293e36ace04cdf3aece9418cd90e22b9919b"
+    },
+    {
+      "path": "lib/jido_ai/dsl/macros.ex",
+      "bytes": 3073,
+      "sha256": "2ee53d9fbc493315c85a5e0aaee9a6fd318b7fa17dc187fe5564899bfc164f7c"
+    },
+    {
+      "path": "lib/jido_ai/dsl/state_size_transformer.ex",
+      "bytes": 1050,
+      "sha256": "ed2e4d8e2bb9ce14b0a55c1921cc8586b93fb8a31cc2321c0060f55724fa288a"
+    },
+    {
+      "path": "lib/jido_ai/dsl.ex",
+      "bytes": 16288,
+      "sha256": "82e5c8d834bac7680a83f0a6515ec3e1f41e526b008df1bec5fc0c89bfe41ce2"
+    },
+    {
+      "path": "lib/jido_ai/effects/applier.ex",
+      "bytes": 2603,
+      "sha256": "05491f84cb32c82044b474a2b47798c8c3a54342c040a3be3135975576e9105f"
+    },
+    {
+      "path": "lib/jido_ai/effects/candidate.ex",
+      "bytes": 3084,
+      "sha256": "0c5b5356f282cebe7f9d927ae97e2213e90be3cf607dbb80a35eec6bf4087fad"
+    },
+    {
+      "path": "lib/jido_ai/effects/policy.ex",
+      "bytes": 13226,
+      "sha256": "076f184acbb4d6ac7276b5239b5cb2fe8a3abb53dc6c40dd481925a4fd3c52b7"
+    },
+    {
+      "path": "lib/jido_ai/effects/state.ex",
+      "bytes": 191,
+      "sha256": "a3aabaa29ecf33a7369a2290bb62cf53bdc573f43fcad23ecf2714347d2aa61d"
+    },
+    {
+      "path": "lib/jido_ai/effects.ex",
+      "bytes": 2767,
+      "sha256": "684e964506d141beb77855436617522c8859dff172961c005f77a933cb67b388"
+    },
+    {
+      "path": "lib/jido_ai/error/sanitize.ex",
+      "bytes": 2482,
+      "sha256": "8d3a64ecb0d705dee9679078b21187e792f40a89677e041e76d85e0e8abc6a14"
+    },
+    {
+      "path": "lib/jido_ai/error.ex",
+      "bytes": 21952,
+      "sha256": "951e1bd2258512e546ed57ad11f16704bce173a3729099028eb3669d6ac2cafa"
+    },
+    {
+      "path": "lib/jido_ai/execution/call_model.ex",
+      "bytes": 8300,
+      "sha256": "c423e17993ca96d28643c36858c227d83a2963be167801bfcfd7b1f0b6267154"
+    },
+    {
+      "path": "lib/jido_ai/execution/check_control.ex",
+      "bytes": 565,
+      "sha256": "32050724ae6d6c50627b7c12629238de56aaa2cfe0a9f7eda1d85238aae92732"
+    },
+    {
+      "path": "lib/jido_ai/execution/checkpoint.ex",
+      "bytes": 8781,
+      "sha256": "6b202255c6c64ca06ec2a247bd33d1178996c8b16bfd258d245d6daa97325408"
+    },
+    {
+      "path": "lib/jido_ai/execution/continue.ex",
+      "bytes": 1333,
+      "sha256": "53de5ad564d1bae638f0c6f2f518698ac52ad31507b8cd6557ec04635f73edf3"
+    },
+    {
+      "path": "lib/jido_ai/execution/decide.ex",
+      "bytes": 10213,
+      "sha256": "645bf5fefd30b2ce92bb3a7ab481b410e1231f927bc9308d969d11923f8f1a97"
+    },
+    {
+      "path": "lib/jido_ai/execution/execute_tool.ex",
+      "bytes": 833,
+      "sha256": "54bccbae0f00a453f54a2702344c9ebe4df0adb573898ccbceab7cd7095d6c53"
+    },
+    {
+      "path": "lib/jido_ai/execution/flow.ex",
+      "bytes": 680,
+      "sha256": "94dc51716b0d478f87b27758b3589d80db863af54f3fa852382004e35faeca6f"
+    },
+    {
+      "path": "lib/jido_ai/execution/model_flow.ex",
+      "bytes": 284,
+      "sha256": "11156c0c2380ba50f3fb21a3aeb109f340110cf7fc0fe6965d8655f8e7658311"
+    },
+    {
+      "path": "lib/jido_ai/execution/next_batch.ex",
+      "bytes": 1804,
+      "sha256": "29c7bf09a2eeca2a64f35343b8948c945f72442ffa0f6a6b5f7c1e1590e073c0"
+    },
+    {
+      "path": "lib/jido_ai/execution/output_state.ex",
+      "bytes": 3526,
+      "sha256": "6ff824c8854996b27df512ddd9a7d77fbdcc96594527eb0165626c9e0f0e0b66"
+    },
+    {
+      "path": "lib/jido_ai/execution/pending_input.ex",
+      "bytes": 2238,
+      "sha256": "396394391dd4306448ce3b6c978ccd5ecee9d52b2d42934b85d24b47e06feed9"
+    },
+    {
+      "path": "lib/jido_ai/execution/preflight.ex",
+      "bytes": 578,
+      "sha256": "19ac1f3bdd0d9c61ad033701f80fa7ae25e9cce91d6c9fd3fff7e939b14f5a54"
+    },
+    {
+      "path": "lib/jido_ai/execution/prepare.ex",
+      "bytes": 3232,
+      "sha256": "d9361d62d0cc2d273c437af4c5ca4799de9b33d48a57ef1d84603d543f554dac"
+    },
+    {
+      "path": "lib/jido_ai/execution/request_transform.ex",
+      "bytes": 7782,
+      "sha256": "cc91efcfbc2464248a58fda6354600f99af8b2ba4c5bac6b5dc566ba28ffb09d"
+    },
+    {
+      "path": "lib/jido_ai/execution/state.ex",
+      "bytes": 3783,
+      "sha256": "b01abfa6b6d04c9396a1211ec1c57bcbafcc8777288ab2d7f50634d9a0fb6829"
+    },
+    {
+      "path": "lib/jido_ai/execution/state_size.ex",
+      "bytes": 1087,
+      "sha256": "e29159c3f9e658cb01739adc29d360a5db7473faad86eadb364f1b91dab863c4"
+    },
+    {
+      "path": "lib/jido_ai/execution/tool_attempt.ex",
+      "bytes": 2364,
+      "sha256": "fa8c05442a6b8edf2b1f76e116f12e4885b16a6ff1dd787d6c33973ca1f6410d"
+    },
+    {
+      "path": "lib/jido_ai/execution/tool_cycle.ex",
+      "bytes": 1491,
+      "sha256": "b0ffb1524f9b1c10076f094142f91f8eb2967adb0989c19cb1a05722b283aa44"
+    },
+    {
+      "path": "lib/jido_ai/execution/tool_hook.ex",
+      "bytes": 755,
+      "sha256": "9f01048a1b0794fa98c1a7b500481cc92ae4aec3ffd5199a2d8d9008afffd800"
+    },
+    {
+      "path": "lib/jido_ai/execution/tool_interception.ex",
+      "bytes": 4140,
+      "sha256": "d4db8d3be40978ef917c0ad5c876dcec0a11e71368c572a4e6c1ae71861c95fd"
+    },
+    {
+      "path": "lib/jido_ai/execution/tools_flow.ex",
+      "bytes": 425,
+      "sha256": "14adb65715d52907d45c96c2d02a6f4edec14cf6fdce2d64947e287018ff710d"
+    },
+    {
+      "path": "lib/jido_ai/instructions.ex",
+      "bytes": 1448,
+      "sha256": "dfee0d9fac9c63993ca2d6c20e4187aa2214f7f49b51b0d320b7d085e11d0724"
+    },
+    {
+      "path": "lib/jido_ai/model/content.ex",
+      "bytes": 9715,
+      "sha256": "35ddc855a1e6caf42aa965f3992e789b9700028f600be574a5e994dcdca859d4"
+    },
+    {
+      "path": "lib/jido_ai/model/generate.ex",
+      "bytes": 2783,
+      "sha256": "802bc7c88d40ad2356025d1af59f28479483d702f09287ad6ee2964c80cd1ee7"
+    },
+    {
+      "path": "lib/jido_ai/model/messages.ex",
+      "bytes": 3840,
+      "sha256": "c2a37f9a8392d0b900d9a3bd9801903f62c846de008275e9dacf0642a5afb89e"
+    },
+    {
+      "path": "lib/jido_ai/model/options.ex",
+      "bytes": 3326,
+      "sha256": "a570a5db591f2d91c61504d2a75b21ad92f5a5bff387d8f5f756df0dcbad4683"
+    },
+    {
+      "path": "lib/jido_ai/model/response.ex",
+      "bytes": 19082,
+      "sha256": "b1c6b735dd5ad29a31fb469605b4f7cd324935cf9e46f85211ec3aa5e1c34593"
+    },
+    {
+      "path": "lib/jido_ai/model/transport.ex",
+      "bytes": 3047,
+      "sha256": "a84d6b2bdd383b2312e77d57b2162bb9bde615176f24bd417f1ff336d736b202"
+    },
+    {
+      "path": "lib/jido_ai/model_router.ex",
+      "bytes": 1606,
+      "sha256": "851f26ed60487255cc1afc7c8ed2a9b40f47bea1c7ee982fb2261d03e1da3a72"
+    },
+    {
+      "path": "lib/jido_ai/models.ex",
+      "bytes": 4763,
+      "sha256": "5be30d188bfc081f0c444a26c989f9b027c10cf3f7a31c1cdc3836e7c898981d"
+    },
+    {
+      "path": "lib/jido_ai/observe/content.ex",
+      "bytes": 8462,
+      "sha256": "3146795ee91744c79b8fed3da321b83182e744cce132bfb61b99f6a6dc13525a"
+    },
+    {
+      "path": "lib/jido_ai/observe/event.ex",
+      "bytes": 3278,
+      "sha256": "525922320115a7e9672a0fa1a46504f9c5a6085bffdf326c51ea6f97e5e9c1e8"
+    },
+    {
+      "path": "lib/jido_ai/observe/sanitize.ex",
+      "bytes": 13508,
+      "sha256": "b8c39f29e5a86270a73282b905413c164f75915d8154b71c9565de01566c79d5"
+    },
+    {
+      "path": "lib/jido_ai/observe/telemetry.ex",
+      "bytes": 3040,
+      "sha256": "20fce59a3afc145d74a0b9a8ee804ef5301d3b14750d4327b265ef65e115589f"
+    },
+    {
+      "path": "lib/jido_ai/observe.ex",
+      "bytes": 9456,
+      "sha256": "f5e709335fc59a04a2f05735a5b88be2a52d782447e094ed3dbab8a8d717bc91"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/activity.ex",
+      "bytes": 2409,
+      "sha256": "95ff4041e20905f8700fa6a0f8b9238eb568608f45fe917a17fe9a5df0e0e7e0"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/binding.ex",
+      "bytes": 908,
+      "sha256": "35212ee9c0339734a0c2f07663be531e512f3ebbfb5ccd064a09ef511c78451f"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/cancel.ex",
+      "bytes": 1785,
+      "sha256": "685f5525e0debb83ab69a13146849015429090f27abf63dab2a165a5b1b18fb7"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/change.ex",
+      "bytes": 492,
+      "sha256": "f2c9f88228a997731734590696383b1127fc4cf2f3cedfacd8f774f664598ecb"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/control_action.ex",
+      "bytes": 1140,
+      "sha256": "5197b2856f31d474492afa7ab81c58a4e2bbbe8f3438c6960a0dd7a7f6a16079"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/coordinator.ex",
+      "bytes": 32195,
+      "sha256": "7c14ddbf4fdc2f2f998c6ce2542bc9ae7b0eed0e33daf34572ebd5741dd29384"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/delivery.ex",
+      "bytes": 11751,
+      "sha256": "bb348164c7235681e31d10adb7f9d1e453be40deb5ec9ef19a5a46aca47e53ad"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/delivery_receipt.ex",
+      "bytes": 355,
+      "sha256": "e82a014eab8f79df5c60b7ec6f47aa9cad507a3f6c77313204d860c0e851ed7f"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/execution_binding.ex",
+      "bytes": 1494,
+      "sha256": "344447445fea2d070d36e5b93f9759299ed93b112fbdde4300210407dc0674c9"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/execution_bridge.ex",
+      "bytes": 6982,
+      "sha256": "8e2b9767e1684382c50583faee7e1aaa18a781da7e4a35ceb0475c7888278e77"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/history_action.ex",
+      "bytes": 1118,
+      "sha256": "74ee349f9f1cd02dafba58e7e6a78f8bb9c9e2f172b0cddffe87637d936f9a87"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/ignore_signal.ex",
+      "bytes": 184,
+      "sha256": "35b562b7e193d4bc039518c8699ae6dbc10c555752a0dc3cfb8887886927b9f7"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/inspection.ex",
+      "bytes": 9503,
+      "sha256": "9e84a01b142f2c8497a188aa1f5491e334973fa01cd5220d152b9fb6d3fe6305"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/plugin/agent.ex",
+      "bytes": 1021,
+      "sha256": "f0a8719f7b9ef3aa3de8da8c677841963d3e5e0cceb5357806348efe839e6f2a"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/plugin/agent_server.ex",
+      "bytes": 602,
+      "sha256": "9d07d9025414f513a1ac0e1c339178345596dbb15a22e9cf89b164e5063646ff"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/plugin.ex",
+      "bytes": 9946,
+      "sha256": "647053a3451691d3e9aa40db27aab80deec7c909096f7fd2e79247f5ad632137"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/progress.ex",
+      "bytes": 914,
+      "sha256": "f7e0d7a5f1f5345a23390d320b3e6dafe2808ece77612d790bc6b2371c793972"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/publish.ex",
+      "bytes": 793,
+      "sha256": "51ac4b295c1a676a610606cab5cdfdd183c1f7309cb0a841347f1ebb41285d0d"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/request_scope.ex",
+      "bytes": 2284,
+      "sha256": "b51073939a3d3e02f35fc8527c304316c03a982e6f96a4e8984ca3a42770065c"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/settle.ex",
+      "bytes": 3427,
+      "sha256": "6b446713199792790dcf82c0db78422edfe927b3cd3e0e2831cf34c42f4c460d"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/start.ex",
+      "bytes": 4577,
+      "sha256": "9224805fc41f5f3546f1ed36ba8af20213dbc148cebff1f252f21d6c7eb02c30"
+    },
+    {
+      "path": "lib/jido_ai/orchestration/transcript.ex",
+      "bytes": 3600,
+      "sha256": "be84161f7f332fe4a210f0a04f4386977f183858113f9df9de6b0c0a5f4caa7f"
+    },
+    {
+      "path": "lib/jido_ai/orchestration.ex",
+      "bytes": 14017,
+      "sha256": "c624879992cf75773b77b73a13083592c07a8459628e605abf7142a740a88902"
+    },
+    {
+      "path": "lib/jido_ai/output.ex",
+      "bytes": 15878,
+      "sha256": "0929eb0835ba7635999bd81429a23e9e8a5ad7d82c6a14020170ec39e16eeccb"
+    },
+    {
+      "path": "lib/jido_ai/pending_input_server.ex",
+      "bytes": 6423,
+      "sha256": "f63112b84974f3346bd182975b6c226557393d9a8e22e4f917ab386ce4ef59b5"
+    },
+    {
+      "path": "lib/jido_ai/plugin_config.ex",
+      "bytes": 363,
+      "sha256": "a532cafed7519b1166f8d3252b84d101db09fceba0ba42baad4a58dd4e40863a"
+    },
+    {
+      "path": "lib/jido_ai/plugins/chat/agent.ex",
+      "bytes": 294,
+      "sha256": "22e082e42e687d91c988d7a7a43550ec94daf512374d2bfb9da4ea018e678692"
+    },
+    {
+      "path": "lib/jido_ai/plugins/chat.ex",
+      "bytes": 4334,
+      "sha256": "9146523719a55939bb1da290a5b54d52001b0e3ff88b7b65d10fea2cbc6a44a7"
+    },
+    {
+      "path": "lib/jido_ai/plugins/model_routing/agent.ex",
+      "bytes": 313,
+      "sha256": "8104298d3acd37e1b6266022ed722d4794d046187e3a276e5def6cf9f06ffe06"
+    },
+    {
+      "path": "lib/jido_ai/plugins/model_routing.ex",
+      "bytes": 4557,
+      "sha256": "e5e43b15f4513dd005ba22863e74786c8287c0fab4e68e0ad99e3e808b761cc8"
+    },
+    {
+      "path": "lib/jido_ai/plugins/planning/agent.ex",
+      "bytes": 306,
+      "sha256": "777ac0536ea0be6c2f00e55a4f0e35ab33852cf859619c24e40c6e12da4afa8e"
+    },
+    {
+      "path": "lib/jido_ai/plugins/planning.ex",
+      "bytes": 3372,
+      "sha256": "568ca9f4498cf588205a78fb42c008e1847bc1f5b5b4b8273f217d9e156b2c3b"
+    },
+    {
+      "path": "lib/jido_ai/plugins/policy/agent.ex",
+      "bytes": 295,
+      "sha256": "1ff5224e9b5763d905f65d48a208ec9b3cdb8c343c0d37cb348b6ad93209e2fd"
+    },
+    {
+      "path": "lib/jido_ai/plugins/policy/agent_server.ex",
+      "bytes": 365,
+      "sha256": "adacbab83d06a0445f97f13244b23abb65ff014d5d50bf00e7692df24d5fdaa1"
+    },
+    {
+      "path": "lib/jido_ai/plugins/policy.ex",
+      "bytes": 6175,
+      "sha256": "b9ad6f87ecdf59f65e2740a711890ce36eee8c19331c90831df53ad7d773b6f5"
+    },
+    {
+      "path": "lib/jido_ai/plugins/quota/agent.ex",
+      "bytes": 297,
+      "sha256": "f8bde1223b8d77577b51dfac7c948df48612f7114836fb80a9cea6b436338f94"
+    },
+    {
+      "path": "lib/jido_ai/plugins/quota/agent_server.ex",
+      "bytes": 206,
+      "sha256": "5018e69a8122b7dfd55a62424f75044476345bdecc8f7b63fc0847e598fefd87"
+    },
+    {
+      "path": "lib/jido_ai/plugins/quota.ex",
+      "bytes": 7138,
+      "sha256": "e0cb68cb5c3c1c01a9f3b326d11fbf7dca4ac4c55dcceeb83a69f20618065247"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/adaptive.ex",
+      "bytes": 594,
+      "sha256": "4fbeaa4a902fffd98e8d999bcff07f85edb1fccbfb1a40d355c0a0a421c31f8a"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/algorithm_of_thoughts.ex",
+      "bytes": 626,
+      "sha256": "fc09dfff83c2f22f98fbce1ac4c2aad1368ced69e99a17acfa2ebaf52a22a1ef"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/chain_of_draft.ex",
+      "bytes": 605,
+      "sha256": "44e869804b15be09dfd6e5eea593da0146f2f94b5093dbdf80057725a9294c24"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/chain_of_thought.ex",
+      "bytes": 611,
+      "sha256": "cc1d1fa1253663c1a114fa14180979ef6b224f10624b66fbd483dddf89852d65"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/graph_of_thoughts.ex",
+      "bytes": 614,
+      "sha256": "a07e7210b160263b700a5cab761219a98b61967abc82d3e5c6abeba79bf3718e"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/tree_of_thoughts.ex",
+      "bytes": 611,
+      "sha256": "bf86988dd72e19b47b62a6ebc08fdc69450e7f7c2ccc8417c84f74b6b3a07627"
+    },
+    {
+      "path": "lib/jido_ai/plugins/reasoning/trm.ex",
+      "bytes": 574,
+      "sha256": "40ed50a1f13067009d2038f680090ef01f50ce4191d83ccac2284a9f409c1997"
+    },
+    {
+      "path": "lib/jido_ai/plugins/retrieval.ex",
+      "bytes": 7273,
+      "sha256": "6d447722af40058deb2b1a51150a1c279b1ea0ba232eeba70f62f9d3abcb65cb"
+    },
+    {
+      "path": "lib/jido_ai/portable.ex",
+      "bytes": 18253,
+      "sha256": "8e08d7dd91499f5be4628d41f195c8144b83bb21d6fc971cb381490417a0d7f9"
+    },
+    {
+      "path": "lib/jido_ai/profile/references.ex",
+      "bytes": 8663,
+      "sha256": "b132c08d0305f8dd8839f8d284a78ddd017636faed9f1afb6920dec9c9a298cd"
+    },
+    {
+      "path": "lib/jido_ai/profile.ex",
+      "bytes": 39997,
+      "sha256": "1dbd1cfd1a67714f8caba443c46e3b15e8d571c1d00440d492ca0e1dd3673ee0"
+    },
+    {
+      "path": "lib/jido_ai/prompt_builder.ex",
+      "bytes": 2772,
+      "sha256": "c1f52224120201e0d111c2535cd78a2bc7f4018499caa6612f35f975606b8576"
+    },
+    {
+      "path": "lib/jido_ai/query.ex",
+      "bytes": 10123,
+      "sha256": "50562cab034a6cb1af9b232b77c753d53e41d1a89b42411c90edca3ee028a31a"
+    },
+    {
+      "path": "lib/jido_ai/quota/store.ex",
+      "bytes": 9556,
+      "sha256": "8236c8187e4bf1f99f9c2fab0a21847af1fb379a786e05f79bbb913aebdb32b6"
+    },
+    {
+      "path": "lib/jido_ai/quota.ex",
+      "bytes": 2857,
+      "sha256": "604b9229b3eb349e6c30affa0819420eecfd7be60480e3492bb08ca9af5e34a9"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/adaptive/selection.ex",
+      "bytes": 8754,
+      "sha256": "2c9d3f73d8a1a9e3dd2e804d66a494624d9c89569beeb3a1db1c1705aca54461"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/adaptive.ex",
+      "bytes": 1015,
+      "sha256": "effc2d2b13eee8a168c5ba67250b8e945b0649b2a0b664a3475651e7335b0f56"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/algorithm_of_thoughts/machine.ex",
+      "bytes": 15741,
+      "sha256": "294583a0667c99ac1216533e572f582fe58d96eaeb625ad2cac1a8be7b599567"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/algorithm_of_thoughts/result.ex",
+      "bytes": 1640,
+      "sha256": "e40f63020da2fbc83ff31274f80850e488d74050a9aedd8399f0dd50d44f0e5f"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/algorithm_of_thoughts.ex",
+      "bytes": 4327,
+      "sha256": "a9a0f62237b34154878f82f95361b17aeb7273b0aad1209771b2edf1ccf8ab83"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/chain_of_draft.ex",
+      "bytes": 1662,
+      "sha256": "d54e6d75ace033879adb0ed1212173dd4b60b55374f1320fae19be5fa9b1d56c"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/chain_of_thought.ex",
+      "bytes": 1664,
+      "sha256": "04a1ce640ad917660f72201d2d885f1a37abec189177ba60f07f3522752e4162"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/graph_of_thoughts/machine.ex",
+      "bytes": 29493,
+      "sha256": "1baf5135ba7cbc45b431486a5a85a4b79d1cf13fd0d9fba7564c71ce852ed482"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/graph_of_thoughts.ex",
+      "bytes": 2130,
+      "sha256": "470074ac565888fcd495c28cbe9edc65bd5a34f9ce8eca09251345d973c5b473"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/graph_search.ex",
+      "bytes": 5844,
+      "sha256": "6c2fd84acab1d1c29d29114a45dd4305e7ee2193ea30c91e74ca723a1df88092"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/linear.ex",
+      "bytes": 6368,
+      "sha256": "2230bf2f8cda3e59577c42f714c8d20b166c718c8aaa64fce7d2a54cc5906b7c"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/actions/cancel.ex",
+      "bytes": 1572,
+      "sha256": "3e78cb7ded3c2169419592898e4a2ea716b728b540f5ebfebd1704b1853a4213"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/actions/collect.ex",
+      "bytes": 3275,
+      "sha256": "b2f488bea15aca0bcfa8d1ee62411356453d7b1d92c76301b19725fc7665da3c"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/actions/continue.ex",
+      "bytes": 3105,
+      "sha256": "52acefca72cac9c31a39e95e9269928a1cf594a678a0e2eb700f3206fd4bbc26"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/actions/helpers.ex",
+      "bytes": 4633,
+      "sha256": "60aff43a724df67e49d389a8d5326cc221eb29defafa06d4746b114e0633823c"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/actions/start.ex",
+      "bytes": 3510,
+      "sha256": "668238e8f988c3814592bdfb4a1fa4b0f0b9867cf3082017f6eb3c49bbffd75f"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/authoring.ex",
+      "bytes": 4315,
+      "sha256": "2d16443a9fea8761a3dd15848fb3457b045b0f861e41e8a0c5c50871cbb0e935"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/checkpoint.ex",
+      "bytes": 8125,
+      "sha256": "57c134892270c4fb78387f9b741e7f33bb9782c9ca50a573f394e6c3873dc05e"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/config.ex",
+      "bytes": 14713,
+      "sha256": "dbb4a5a6cbb076ea1344fc092bff0cfcf0c26d9589e31ec9ac98ba1bbfcbd4dc"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/pending_tool_call.ex",
+      "bytes": 2697,
+      "sha256": "70b9a01be0022f65feba0b472ad15a8293a1f572c9c062092faf68e2afbdc212"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/request_transformer.ex",
+      "bytes": 2945,
+      "sha256": "950929366c34588367dfdc81f17ed4394409741252e91225e043edb175abcadb"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/runner.ex",
+      "bytes": 15518,
+      "sha256": "db46602db8cee83c9b1b69c9e131bf5375d8621ca198df33f398608422f802ca"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/state.ex",
+      "bytes": 12673,
+      "sha256": "637de90d47ccd6c104c9045a0a277f88853b14e88cc83e7e2fd7f4076d210c32"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/token.ex",
+      "bytes": 6707,
+      "sha256": "b7c14c9a8fa663218e3f5275a6e18bf213c5360432ab6b327169e7192444d012"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react/tool_selection.ex",
+      "bytes": 3307,
+      "sha256": "e9b67aec6855ded087f077ef857e5e461b203575e95ce70ba78eda26d1270599"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/react.ex",
+      "bytes": 8487,
+      "sha256": "0c4674541caeb567591894473ddd5f3f271fbfdad722eb58ceeea14e636f01ee"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/recursive.ex",
+      "bytes": 4644,
+      "sha256": "d4321b9a62b6357f30793f326b6ce72a8170e17011c3e24aa878b627a075e97c"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/tree_of_thoughts/machine.ex",
+      "bytes": 40248,
+      "sha256": "5ad2ef3d4db3defdaf7fee3bc21120cfdcc93b5e066d0ed68cc8b171a845cf84"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/tree_of_thoughts/result.ex",
+      "bytes": 3958,
+      "sha256": "c4d0b1e83e4492547050590008617f2a86ef0ef8f5d6e8b4d55ed2234e6e63cf"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/tree_of_thoughts.ex",
+      "bytes": 1731,
+      "sha256": "1db5654d74e44b63fdb8d99e216f143087efe355c6b2c6680bba7fdfab0a6fca"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/tree_search.ex",
+      "bytes": 7487,
+      "sha256": "a611f35bc1d4a7f82d63260d3f6ba15537b32bcb236bd484a823c560ba16e8d2"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/trm/act.ex",
+      "bytes": 13678,
+      "sha256": "8b9866f8aa429511aa4912123e9d94c19c7480a237bdbba3c3795bc0300080f4"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/trm/helpers.ex",
+      "bytes": 6211,
+      "sha256": "14b0c25e717ad600bc2ecebf7a262c32f1cb4014f5319d0aafb030ce5c23aa0d"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/trm/machine.ex",
+      "bytes": 26113,
+      "sha256": "f4ec8b5026c6be489644b39f567dfaca343c5539abf40e18f6e3dae56322162b"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/trm/reasoning.ex",
+      "bytes": 15850,
+      "sha256": "47ba8192a228ee97a32b43d4c11951c6df1d63de8813632e42d30052538e0eca"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/trm/supervision.ex",
+      "bytes": 17998,
+      "sha256": "45c6f41c03f6d51ce73a48d833f5daa6ee9853d9e78cc7937ad937390b26c716"
+    },
+    {
+      "path": "lib/jido_ai/reasoning/trm.ex",
+      "bytes": 2066,
+      "sha256": "71ea914b978feb1b1030c8153a1bf05b8cea65abbfbc3cfd3d93db9b7e2283b7"
+    },
+    {
+      "path": "lib/jido_ai/reasoning.ex",
+      "bytes": 8936,
+      "sha256": "8d10973763a0b2c502b768a0fad8e7f0d85390f1757139f7da3073403ace094d"
+    },
+    {
+      "path": "lib/jido_ai/reasoning_capability.ex",
+      "bytes": 2248,
+      "sha256": "479e329d166c37901b6860ca31c624b0c21cb3edcb1a2f7cfa0d1185f41ab09f"
+    },
+    {
+      "path": "lib/jido_ai/request/metadata.ex",
+      "bytes": 3917,
+      "sha256": "39d9ee74529b3aee4f0fece9d446bade369a264322d85d1d93500a1776bef0f6"
+    },
+    {
+      "path": "lib/jido_ai/request/record.ex",
+      "bytes": 2062,
+      "sha256": "e45999ddd9ec85d8b50c2808817597a01704319d26f639763c5dca0bc2cf72d4"
+    },
+    {
+      "path": "lib/jido_ai/request/stream.ex",
+      "bytes": 4292,
+      "sha256": "566a1b8386afbdc29a07e653c530152a3ea9082ea49cd4c61bc11cd7a4e1e01e"
+    },
+    {
+      "path": "lib/jido_ai/request.ex",
+      "bytes": 15450,
+      "sha256": "ceb5100985f2475fccf8b982c100601b72790fc9edd9678fa5ead8e8059c7458"
+    },
+    {
+      "path": "lib/jido_ai/retrieval/store.ex",
+      "bytes": 4333,
+      "sha256": "46a213ca8d6af8dbed821e2fa7d2afce3f10c2b400d44b76bfad575181c4386b"
+    },
+    {
+      "path": "lib/jido_ai/schema_input.ex",
+      "bytes": 3795,
+      "sha256": "a54c99867c4e3bb7b0d26389ffba0d74f48d2c47d7cbdf0c0110de7d3fb85d89"
+    },
+    {
+      "path": "lib/jido_ai/signal/definition.ex",
+      "bytes": 2044,
+      "sha256": "1ca71a8abee04d9ef1fbbddba5ff1a4dfca8fc26b938f43ffec963511cafd441"
+    },
+    {
+      "path": "lib/jido_ai/signal/embed_result.ex",
+      "bytes": 682,
+      "sha256": "a036d04b403f3c68ccf34f31af8b0d774aae8d34e94f636061914b92deaf31bd"
+    },
+    {
+      "path": "lib/jido_ai/signal/helpers.ex",
+      "bytes": 1416,
+      "sha256": "961ab3b04871bc55ba7ebe6efda0bbac6b37de04510f3f3e4785d14df6c2ea58"
+    },
+    {
+      "path": "lib/jido_ai/signal/llm_delta.ex",
+      "bytes": 1079,
+      "sha256": "c668e96b4fe138cbaadb2f3135114a5f58755b87c0c1329fa641ed9fb7a36e74"
+    },
+    {
+      "path": "lib/jido_ai/signal/llm_response.ex",
+      "bytes": 3574,
+      "sha256": "7efcecbda66635e120c87313d9562a62ba3b8194edd84432f3479741abcc0751"
+    },
+    {
+      "path": "lib/jido_ai/signal/request_completed.ex",
+      "bytes": 744,
+      "sha256": "8c0060fbaf1886eb549889d093741818b6d3fc776d872073db7939269dc778b6"
+    },
+    {
+      "path": "lib/jido_ai/signal/request_error.ex",
+      "bytes": 710,
+      "sha256": "cb45eabf2efe8188612b4f4e55c80b6ed663ef2e4a620e00b6e9aadaee9fa1cf"
+    },
+    {
+      "path": "lib/jido_ai/signal/request_failed.ex",
+      "bytes": 734,
+      "sha256": "e6ca7eeae5c88075357d954c59b3aea741c16a37bfe09bb3415da79f71e04f1d"
+    },
+    {
+      "path": "lib/jido_ai/signal/request_started.ex",
+      "bytes": 747,
+      "sha256": "ca13f4106ead4d3912398debf1a5ede3950eb083e8071406d7dffbaa4e0fdacf"
+    },
+    {
+      "path": "lib/jido_ai/signal/tool_result.ex",
+      "bytes": 854,
+      "sha256": "a92aa2fca895bb0cfc5f3f1de4838cf6da23c0b9ee64c9759843c46eec136352"
+    },
+    {
+      "path": "lib/jido_ai/signal/tool_started.ex",
+      "bytes": 884,
+      "sha256": "13811d1b5d074be686fda64214d1cf4cf4793278a5883b2f29a877f967fbe77a"
+    },
+    {
+      "path": "lib/jido_ai/signal/usage.ex",
+      "bytes": 1007,
+      "sha256": "cf0e6955d48cb364a5ad58fde79a2ba12718585d232286328cc89d7fcaa113fc"
+    },
+    {
+      "path": "lib/jido_ai/signal.ex",
+      "bytes": 4536,
+      "sha256": "c5340896b0bf9bcda923af96b0df4774318036cdfc35130f643c8c07d95ebc12"
+    },
+    {
+      "path": "lib/jido_ai/skill/activation.ex",
+      "bytes": 11058,
+      "sha256": "b95fc57ec1ad7f3161cd30426533338091816da5fadbf5a6ba33d4022ca42a86"
+    },
+    {
+      "path": "lib/jido_ai/skill/agent_integration.ex",
+      "bytes": 9117,
+      "sha256": "7d6bd0a84b884804d05545ae12d0a31d1d592f2f1f4478b01e99f10fe7d9c119"
+    },
+    {
+      "path": "lib/jido_ai/skill/diagnostics.ex",
+      "bytes": 5334,
+      "sha256": "6346cfde144aed621d536808ed038d7c3a281ad6e8773f937bb47988eeec249e"
+    },
+    {
+      "path": "lib/jido_ai/skill/discovery.ex",
+      "bytes": 19522,
+      "sha256": "49b963cfe86ec3bdbfb16c6f70bcb52ed9997aae37cd981474ad33f3c915992b"
+    },
+    {
+      "path": "lib/jido_ai/skill/error.ex",
+      "bytes": 3559,
+      "sha256": "9c2742710b67f76a4bc6a8fa4db4def7f51c3db7ab2e0e50f8d119674dbf1436"
+    },
+    {
+      "path": "lib/jido_ai/skill/loader.ex",
+      "bytes": 22401,
+      "sha256": "d7bf6130ff99e1702731f54d62261949b86c81fe0477c25b4267151703574cee"
+    },
+    {
+      "path": "lib/jido_ai/skill/prompt.ex",
+      "bytes": 7731,
+      "sha256": "3349b2e601c75856667c61ebf220199f69366c24039cfbf7f38b242304c0b663"
+    },
+    {
+      "path": "lib/jido_ai/skill/registry.ex",
+      "bytes": 13353,
+      "sha256": "ddb900db4683b3a4701e2e53af36cba4d11e20490ec83748857c0d0019c1e833"
+    },
+    {
+      "path": "lib/jido_ai/skill/resource_policy.ex",
+      "bytes": 3401,
+      "sha256": "54e12b573c571f53db7301c6500837b690130f0b16b331685f0c04c6e5b2a0c5"
+    },
+    {
+      "path": "lib/jido_ai/skill/resource_provider.ex",
+      "bytes": 14801,
+      "sha256": "74013026396a643f19143c5b3dfa2fafd4d1b986e2b4ce7f59ff5836ad5dbdda"
+    },
+    {
+      "path": "lib/jido_ai/skill/resources.ex",
+      "bytes": 26401,
+      "sha256": "3d3ab433e4a1ac35b1c48817af425109be6c720b87510b1d8007a5b9b6ebee5d"
+    },
+    {
+      "path": "lib/jido_ai/skill/runtime.ex",
+      "bytes": 2230,
+      "sha256": "341149d5099c1dcfd3867718e55bff3eec69f35cfde91278a2328ebfdd48cb73"
+    },
+    {
+      "path": "lib/jido_ai/skill/source.ex",
+      "bytes": 5993,
+      "sha256": "993a0f0dc0721704dc954acea6c70333e18453a4c5c4679b37df09cb2d67b41b"
+    },
+    {
+      "path": "lib/jido_ai/skill/spec.ex",
+      "bytes": 6569,
+      "sha256": "8b744304d569b17b9fe39f433bdc1169de7d87b56d97a5489dc7c4f21a1849bf"
+    },
+    {
+      "path": "lib/jido_ai/skill.ex",
+      "bytes": 7956,
+      "sha256": "365c335095d7f1dcdc02a43f376ad15b86437dd04a20371bc02271fc8743b0b7"
+    },
+    {
+      "path": "lib/jido_ai/test/mock_llm.ex",
+      "bytes": 19200,
+      "sha256": "f5d524e833280c3dc7846d878f067079f693d07ad440884847869315841a8d24"
+    },
+    {
+      "path": "lib/jido_ai/test/react_script.ex",
+      "bytes": 15056,
+      "sha256": "09b01c7af490c1f0d269ef6dbd38245de41e869dfc9724758c4df4ce6ba73eb7"
+    },
+    {
+      "path": "lib/jido_ai/test.ex",
+      "bytes": 6600,
+      "sha256": "5af657fcc58ad58d093cb48f953c037cc417851c6baa2009713c01b6c8cca973"
+    },
+    {
+      "path": "lib/jido_ai/test_case.ex",
+      "bytes": 754,
+      "sha256": "0a9dbc603d60cfcbad8fde610067de7d3dd8e6a9e63fa2cca0dd6480b346ed9d"
+    },
+    {
+      "path": "lib/jido_ai/thread/control/apply.ex",
+      "bytes": 346,
+      "sha256": "ce272b1ef409e736c47bdd8a4f60ba2f1c6e6a74c70b22a738a0302911bccda8"
+    },
+    {
+      "path": "lib/jido_ai/thread/control/change.ex",
+      "bytes": 459,
+      "sha256": "969ed3d28e3d0a7306e42e73237296d24df518d889a6ffd86604b77cb88b61b9"
+    },
+    {
+      "path": "lib/jido_ai/thread/control/plugin/agent.ex",
+      "bytes": 792,
+      "sha256": "58c8cd89a8f87adab88641b723799e573203ccca267b3d3619362a78a380bb43"
+    },
+    {
+      "path": "lib/jido_ai/thread/control/plugin.ex",
+      "bytes": 349,
+      "sha256": "f63e00b7e3fef0d94bf4802612bfbf4f559deb47ffc41624617bbe942e9daacc"
+    },
+    {
+      "path": "lib/jido_ai/thread/control.ex",
+      "bytes": 11045,
+      "sha256": "e53a4485e91c2d806447d3fc39fcc1dc9da678feff8b8d4196d9857c9476d55d"
+    },
+    {
+      "path": "lib/jido_ai/thread/operation.ex",
+      "bytes": 2239,
+      "sha256": "808a275f4516bd28ff2964ed9e6a2e17c9b61106f1f3c34129fd0c9e45134810"
+    },
+    {
+      "path": "lib/jido_ai/thread/projection.ex",
+      "bytes": 12976,
+      "sha256": "9eb4a620a88815bed3dc516d03dd64fc3cf749bc2ce8c9c55c6599c684f24051"
+    },
+    {
+      "path": "lib/jido_ai/tool_adapter.ex",
+      "bytes": 12861,
+      "sha256": "3f362c4a3588a4a62eb7c3b7c1550a4dfd9e48ec03302af962d842496a0f6c8c"
+    },
+    {
+      "path": "lib/jido_ai/tool_catalog.ex",
+      "bytes": 9030,
+      "sha256": "bbc38c37c2f23e84788e370c60a0de5057c06699aae4dda66efe1830d5bb265a"
+    },
+    {
+      "path": "lib/jido_ai/tool_context.ex",
+      "bytes": 1285,
+      "sha256": "f57a9789d9a834d626ec94689642777801a0a91219676d5e7c82d62555b37a0a"
+    },
+    {
+      "path": "lib/jido_ai/tool_interceptor.ex",
+      "bytes": 9088,
+      "sha256": "538c211d9323a91a740087a5f20e1fe2028514906f90ea18c733f8702acc9af7"
+    },
+    {
+      "path": "lib/jido_ai/tool_result.ex",
+      "bytes": 4955,
+      "sha256": "8fdb277b0a2450c205e35f7703b1af57b24ae865525447149141b6b917c5694a"
+    },
+    {
+      "path": "lib/jido_ai/tool_source.ex",
+      "bytes": 12576,
+      "sha256": "6cf2ee1aa62a57e133b2edb6426b698e1d403a4e01572d6c42cb841db3b17462"
+    },
+    {
+      "path": "lib/jido_ai/tools/executor.ex",
+      "bytes": 12130,
+      "sha256": "c634f8683b99434625a4bcf9778a733783744f45fdbd9deaa3374ffd759e148b"
+    },
+    {
+      "path": "lib/jido_ai/usage/stream.ex",
+      "bytes": 2426,
+      "sha256": "2c50594bf5c31fae50090b6b396160bf1a9d0038cd202ad21b440a900b3efd4c"
+    },
+    {
+      "path": "lib/jido_ai/usage.ex",
+      "bytes": 8056,
+      "sha256": "e1fe9f3f51a9453a844cb0a4f14226c6b9409a2147cea6b1b0253d0effc43c10"
+    },
+    {
+      "path": "lib/jido_ai/validation.ex",
+      "bytes": 11690,
+      "sha256": "1af7ea458dd3e5b966458b0b0903161b79b6454cb1b2e888018c44547a854a17"
+    },
+    {
+      "path": "lib/jido_ai.ex",
+      "bytes": 7764,
+      "sha256": "bda5ccb13f80caf68d370f0f65cad9adb0c6219b38a6a86eef20da0ef002073a"
+    },
+    {
+      "path": "lib/jido_session.ex",
+      "bytes": 7679,
+      "sha256": "0f04715760a60457fcdd8278eaab864961bf7e13a06b4db05e243e9d7d5c8100"
+    },
+    {
+      "path": "lib/jido_thread/entry.ex",
+      "bytes": 4859,
+      "sha256": "0a29c8ebe37e1f1ca1fcf2480b5cec300464e0e377c89e2cb8996c66c4dff71d"
+    },
+    {
+      "path": "lib/jido_thread.ex",
+      "bytes": 7838,
+      "sha256": "45ba5c1bb2ae1345a01b201b71521a3949c4d493a9d81ea1ff50934ad82a374c"
+    },
+    {
+      "path": "mix.exs",
+      "bytes": 8471,
+      "sha256": "9c8c76bef82b1343f31d1c24d388c36f125adc1aaa0d45e57f6403ba7d501131"
+    },
+    {
+      "path": "mix.lock",
+      "bytes": 16880,
+      "sha256": "db88074b5ed678dfb28e5e306d2974b85d1281346004d4f5c73cb05acb4c7181"
+    },
+    {
+      "path": "priv/skills/code-review/SKILL.md",
+      "bytes": 1396,
+      "sha256": "fea2107f98d526bce0fb661126267af05c0f96246c1a253d53e14e026e6af1ee"
+    },
+    {
+      "path": "priv/skills/unit-converter/SKILL.md",
+      "bytes": 1722,
+      "sha256": "11b02fd5b7cd55941f2b4e6b7404ead749577e8d0f62a70e58ca93ec8a750b29"
+    },
+    {
+      "path": "usage-rules.md",
+      "bytes": 2132,
+      "sha256": "ae87f1177585c52a15d6d6fe0e4d8e38d7b04c6c706fe5fede340e159bc7f35f"
+    }
+  ]
+}

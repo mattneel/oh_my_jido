@@ -21,11 +21,14 @@ defmodule JidoAgentHost.NativeAgentTest do
     assert {:ok, agent} =
              AgentServer.call(pid, signal("oh_my_jido.read", %{path: "counter.ex"}))
 
-    assert agent.state.content == "def increment(n), do: n - 1\n"
+    assert agent.state.oh_my_jido_tools.content == "def increment(n), do: n - 1\n"
     assert agent.state.project_label == "independent-host"
 
     assert {:ok, updated} =
-             AgentServer.call(pid, signal("oh_my_jido.edit", edits(agent.state.snapshot)))
+             AgentServer.call(
+               pid,
+               signal("oh_my_jido.edit", edits(agent.state.oh_my_jido_tools.snapshot))
+             )
 
     assert updated.state.project_label == "independent-host"
     assert File.read!(Path.join(fixture.root, "counter.ex")) == "def increment(n), do: n + 1\n"
@@ -53,9 +56,10 @@ defmodule JidoAgentHost.NativeAgentTest do
              Editor.await(request, timeout: 10_000)
 
     assert File.read!(Path.join(fixture.root, "counter.ex")) == "def increment(n), do: n + 1\n"
-    assert {:ok, state} = AgentServer.state(pid)
-    assert state.agent.agent_module == Editor
-    refute inspect(state.agent, limit: :infinity) =~ fixture.root
+    agent = AgentServer.agent(pid)
+    assert agent.module == Editor
+    assert agent.state.project_label == "independent-host"
+    refute inspect(agent, limit: :infinity) =~ fixture.root
     refute inspect(:sys.get_status(pid), limit: :infinity) =~ fixture.root
     assert_unchanged_host(fixture)
   end
@@ -72,16 +76,22 @@ defmodule JidoAgentHost.NativeAgentTest do
         answer("The host did not grant edit permission.")
       end
 
-    assert {:ok, "The host did not grant edit permission."} =
-             Editor.ask_sync(
+    assert {:ok, %{request: request, events: events}} =
+             Editor.ask_stream(
                pid,
                "Try a write without a host grant",
-               react_opts(script) ++ [timeout: 10_000]
+               react_opts(script) ++ [stream_event_timeout_ms: 10_000]
              )
 
+    completed = Enum.find(Enum.to_list(events), &(&1.kind == :tool_completed))
+    assert {:error, denial, []} = completed.data.result
+    assert inspect(denial) =~ "permission_denied"
+
+    assert {:ok, "The host did not grant edit permission."} =
+             Editor.await(request, timeout: 10_000)
+
     assert File.read!(Path.join(fixture.root, "counter.ex")) == original
-    assert {:ok, state} = AgentServer.state(pid)
-    assert inspect(state.agent, limit: :infinity) =~ "permission_denied"
+    refute inspect(AgentServer.agent(pid), limit: :infinity) =~ fixture.root
 
     forged_context = %{
       agent_id: "editor",
@@ -95,27 +105,23 @@ defmodule JidoAgentHost.NativeAgentTest do
         fail(:unexpected_model_call)
       end
 
-    assert {:ok, request} =
+    assert {:error, error} =
              Editor.ask(
                pid,
                "Use another binding",
                react_opts(rejected_script) ++ [tool_context: forged_context]
              )
 
-    assert {:error,
-            {:failed, :error, {:request_transformer, {:rejected, :coding_tool_policy, message}}}} =
-             Editor.await(request, timeout: 1_000)
-
-    assert message =~ "untrusted_authority"
+    assert inspect(error) =~ "untrusted_authority"
     assert File.read!(Path.join(fixture.root, "counter.ex")) == original
     assert_unchanged_host(fixture)
   end
 
-  test "mount does not resolve missing host bindings or start a runtime", fixture do
-    plain = Files.new(id: "unbound")
+  test "construction does not resolve missing host bindings or start a runtime", fixture do
+    assert {:ok, plain} = Files.new(id: "unbound")
     assert plain.state.oh_my_jido_tools == %{}
-    assert {^plain, [directive]} = OhMyJido.Plugin.cmd(plain, "read", %{path: "counter.ex"})
-    assert inspect(directive) =~ "context_not_bound"
+    assert {:error, error} = OhMyJido.Plugin.cmd(plain, "read", %{path: "counter.ex"})
+    assert inspect(error) =~ "context_not_bound"
     assert_unchanged_host(fixture)
   end
 

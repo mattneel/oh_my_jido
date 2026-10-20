@@ -31,7 +31,7 @@ defmodule PlainMixHost.Supervisor do
       {OhMyJido,
        Keyword.merge(runtime_options,
          name: runtime,
-         storage: {Jido.Storage.File, path: storage}
+         storage: {Jido.Persistence.File, path: storage}
        )}
     ]
 

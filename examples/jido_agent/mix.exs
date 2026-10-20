@@ -16,14 +16,20 @@ defmodule JidoAgentHost.MixProject do
     root = Path.expand("../..", __DIR__)
 
     overrides =
-      Enum.map([:jido, :req_llm], fn app ->
+      Enum.map([:jido, :jido_ai, :jido_action, :req_llm], fn app ->
         {app, path: Path.join([root, "vendor", Atom.to_string(app)]), override: true}
       end)
 
     [
       {:oh_my_jido, path: root},
-      {:jido_ai, "== 2.4.0"},
-      {:jido_action, "== 2.4.0"}
+      {:jido_signal,
+       git: "https://github.com/agentjido/jido_signal.git",
+       ref: "fd8d00555d6a64b4109619f4c26f1b75e8a91d41",
+       override: true},
+      {:zoi,
+       git: "https://github.com/mikehostetler/zoi.git",
+       ref: "2fff2a23e23e7ac0b26f62f49bbc1b12f7818ac9",
+       override: true}
     ] ++ overrides
   end
 end

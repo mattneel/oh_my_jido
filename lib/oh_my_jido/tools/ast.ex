@@ -5,7 +5,6 @@ defmodule OhMyJido.Tools.AST do
     name: "ast",
     description:
       "Search one explicit workspace file by structural pattern, or replace matches against its SHA256 snapshot. Elixir uses ExAST; other languages require an approved AST adapter. Replacement requires expected_count and optionally exact returned ranges. Ranges use one-based lines/columns and exclusive ends.",
-    category: "intelligence",
     schema:
       Zoi.object(
         %{
@@ -55,11 +54,21 @@ defmodule OhMyJido.Tools.AST do
         unrecognized_keys: :error
       )
 
+  @doc "Returns the Action category."
+  def category, do: "intelligence"
+
   @spec capability() :: :ast
   def capability, do: :ast
 
   @impl true
   def run(params, execution_context) do
-    OhMyJido.Intelligence.AST.execute(execution_context, params)
+    case OhMyJido.Intelligence.AST.execute(execution_context, params) do
+      {:error, %{message: message} = details}
+      when is_binary(message) and not is_struct(details) ->
+        {:error, Jido.Action.Error.execution_error(message, details)}
+
+      result ->
+        result
+    end
   end
 end

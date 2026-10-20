@@ -293,10 +293,12 @@ defmodule OhMyJido.Eval.Bridge do
   end
 
   defp execute_tool(context, name, parameters, deadline) do
-    # Jido.Exec timeout=0 runs inline in this supervised task. Its timed
-    # path spawns an unlinked child that would outlive a cancelled caller.
-    if now() < deadline,
-      do: Tool.execute(context, name, parameters, timeout: 0),
+    # Native V3 Exec monitors this supervised bridge task and cancels its
+    # workers when the caller exits. Zero means no dispatch, not inline work.
+    remaining = deadline - now()
+
+    if remaining > 0,
+      do: Tool.execute(context, name, parameters, timeout: remaining),
       else: {:error, :callback_timeout}
   end
 

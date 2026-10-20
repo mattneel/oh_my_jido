@@ -1,0 +1,285 @@
+defmodule Jido.Plugin.Bus.Client.Runtime do
+  @moduledoc false
+
+  use GenServer
+
+  alias Jido.AgentServer, as: Server
+  alias Jido.Plugin.Init
+  alias Jido.Signal.Bus
+  alias Jido.Signal.Bus.RecordedSignal
+
+  @default_path "**"
+  @default_retry_delay 1_000
+  @default_timeout 5_000
+
+  def start_link(%Init{} = init), do: GenServer.start_link(__MODULE__, init)
+
+  @impl true
+  def init(%Init{} = init) do
+    Process.flag(:trap_exit, true)
+
+    with {:ok, config} <- validate_options(init) do
+      {:ok,
+       %{
+         agent_server: init.agent_server,
+         bus: nil,
+         bus_ref: nil,
+         config: config,
+         pending: nil,
+         reconnect_token: nil,
+         retry_timer: nil,
+         subscription_id: nil
+       }, {:continue, :subscribe}}
+    end
+  end
+
+  @impl true
+  def handle_continue(:subscribe, state) do
+    case connect(state) do
+      {:ok, state} -> {:noreply, state}
+      {:error, reason} -> {:stop, {:bus_subscription_failed, reason}, state}
+    end
+  end
+
+  @impl true
+  def handle_call(:await_ready, _from, state) do
+    case Bus.whereis(state.config.bus, state.config.lookup_opts) do
+      {:ok, bus} when bus == state.bus and is_binary(state.subscription_id) ->
+        {:reply, :ok, state}
+
+      {:ok, _replacement} ->
+        if state.bus_ref, do: Process.demonitor(state.bus_ref, [:flush])
+
+        state =
+          state
+          |> cancel_record_retry()
+          |> Map.merge(%{bus: nil, bus_ref: nil, subscription_id: nil, reconnect_token: nil})
+
+        case connect(state) do
+          {:ok, connected} -> {:reply, :ok, connected}
+          {:error, _reason} -> {:reply, {:error, :not_ready}, schedule_reconnect(state)}
+        end
+
+      {:error, _reason} ->
+        {:reply, {:error, :not_ready}, state}
+    end
+  end
+
+  def handle_call(:ready_snapshot, _from, state) do
+    ready? =
+      is_pid(state.bus) and Process.alive?(state.bus) and
+        is_binary(state.subscription_id) and
+        Bus.whereis(state.config.bus, state.config.lookup_opts) == {:ok, state.bus}
+
+    {:reply, if(ready?, do: :ok, else: {:error, :not_ready}), state}
+  end
+
+  @impl true
+  def handle_info({:signal, signal}, state) do
+    Server.cast(state.agent_server, signal)
+    {:noreply, state}
+  end
+
+  def handle_info(
+        {:DOWN, ref, :process, bus, _reason},
+        %{bus: bus, bus_ref: ref} = state
+      ) do
+    state =
+      state
+      |> cancel_record_retry()
+      |> Map.merge(%{bus: nil, bus_ref: nil, subscription_id: nil})
+      |> schedule_reconnect()
+
+    {:noreply, state}
+  end
+
+  def handle_info(
+        {:signal, durable_id, %RecordedSignal{} = record},
+        %{subscription_id: durable_id, pending: nil} = state
+      ) do
+    deliver_record(record, state)
+  end
+
+  def handle_info({:retry_record, token}, %{pending: %{token: token}} = state) do
+    state = %{state | retry_timer: nil}
+
+    case state.pending.stage do
+      :deliver -> deliver_record(state.pending.record, %{state | pending: nil})
+      :ack -> acknowledge(state.pending.record, %{state | pending: nil})
+    end
+  end
+
+  def handle_info(
+        {:delivery_result, token, result},
+        %{pending: %{stage: :deliver, token: token, record: record, worker_ref: ref}} = state
+      ) do
+    Process.demonitor(ref, [:flush])
+    state = %{state | pending: nil}
+
+    case result do
+      {:ok, _agent} -> acknowledge(record, state)
+      {:error, _reason} -> retry(record, :deliver, state)
+    end
+  end
+
+  def handle_info(
+        {:DOWN, ref, :process, _pid, _reason},
+        %{pending: %{stage: :deliver, worker_ref: ref, record: record}} = state
+      ) do
+    {:noreply, next} = retry(record, :deliver, %{state | pending: nil})
+    {:noreply, next}
+  end
+
+  def handle_info({:reconnect, token}, %{reconnect_token: token} = state) do
+    state = %{state | reconnect_token: nil}
+
+    case connect(state) do
+      {:ok, state} -> {:noreply, state}
+      {:error, _reason} -> {:noreply, schedule_reconnect(state)}
+    end
+  end
+
+  def handle_info(_message, state), do: {:noreply, state}
+
+  @impl true
+  def terminate(_reason, %{bus: bus, subscription_id: id} = state)
+      when is_pid(bus) and is_binary(id) do
+    _ = cancel_record_retry(state)
+    _ = Bus.unsubscribe(bus, id)
+    :ok
+  end
+
+  def terminate(_reason, state) do
+    _ = cancel_record_retry(state)
+    :ok
+  end
+
+  defp deliver_record(%RecordedSignal{} = record, state) do
+    owner = self()
+    token = make_ref()
+
+    {:ok, worker} =
+      Task.start_link(fn ->
+        result =
+          try do
+            call_agent(state.agent_server, record.signal, state.config.timeout)
+          rescue
+            error -> {:error, {:delivery_failed, error}}
+          catch
+            kind, reason -> {:error, {:delivery_failed, {kind, reason}}}
+          end
+
+        send(owner, {:delivery_result, token, result})
+      end)
+
+    pending = %{
+      record: record,
+      stage: :deliver,
+      token: token,
+      worker: worker,
+      worker_ref: Process.monitor(worker)
+    }
+
+    {:noreply, %{state | pending: pending}}
+  end
+
+  defp acknowledge(%RecordedSignal{} = record, state) do
+    case Bus.ack(state.bus, state.subscription_id, record.cursor) do
+      :ok -> {:noreply, %{state | pending: nil}}
+      {:error, _reason} -> retry(record, :ack, state)
+    end
+  end
+
+  defp retry(record, stage, state) do
+    token = make_ref()
+    timer = Process.send_after(self(), {:retry_record, token}, state.config.retry_delay_ms)
+    pending = %{record: record, stage: stage, token: token}
+    {:noreply, %{state | pending: pending, retry_timer: timer}}
+  end
+
+  defp cancel_record_retry(state) do
+    if state.retry_timer, do: Process.cancel_timer(state.retry_timer)
+
+    case state.pending do
+      %{worker: worker, worker_ref: ref} ->
+        Process.demonitor(ref, [:flush])
+        Process.exit(worker, :kill)
+
+      _ ->
+        :ok
+    end
+
+    %{state | pending: nil, retry_timer: nil}
+  end
+
+  defp schedule_reconnect(state) do
+    token = make_ref()
+    Process.send_after(self(), {:reconnect, token}, state.config.retry_delay_ms)
+    %{state | reconnect_token: token}
+  end
+
+  defp connect(state) do
+    with {:ok, bus} <- Bus.whereis(state.config.bus, state.config.lookup_opts),
+         {:ok, subscription_id} <- subscribe(bus, state.config) do
+      {:ok, %{state | bus: bus, bus_ref: Process.monitor(bus), subscription_id: subscription_id}}
+    end
+  end
+
+  defp call_agent(agent_server, signal, timeout) do
+    Server.call(agent_server, signal, timeout)
+  catch
+    :exit, reason -> {:error, {:agent_server_unavailable, reason}}
+  end
+
+  defp subscribe(bus, %{path: path, durable: nil}), do: Bus.subscribe(bus, path)
+
+  defp subscribe(bus, config) do
+    opts = [durable: config.durable]
+
+    opts =
+      if is_nil(config.start_from),
+        do: opts,
+        else: Keyword.put(opts, :start_from, config.start_from)
+
+    Bus.subscribe(bus, config.path, opts)
+  end
+
+  defp validate_options(%Init{} = init) do
+    opts = init.options
+    scope = Keyword.get(opts, :jido, init.jido)
+
+    config = %{
+      bus: Keyword.get(opts, :bus),
+      durable: Keyword.get(opts, :durable),
+      lookup_opts: if(is_nil(scope), do: [], else: [jido: scope]),
+      path: Keyword.get(opts, :path, @default_path),
+      retry_delay_ms: Keyword.get(opts, :retry_delay_ms, @default_retry_delay),
+      start_from: Keyword.get(opts, :start_from),
+      timeout: Keyword.get(opts, :timeout, @default_timeout)
+    }
+
+    cond do
+      is_nil(config.bus) ->
+        {:error, {:missing_bus_option, :bus}}
+
+      not is_binary(config.path) or config.path == "" ->
+        {:error, {:invalid_bus_path, config.path}}
+
+      not is_nil(config.durable) and
+          (not is_binary(config.durable) or config.durable == "") ->
+        {:error, {:invalid_durable_id, config.durable}}
+
+      not is_nil(config.start_from) and is_nil(config.durable) ->
+        {:error, {:requires_option, :start_from, :durable}}
+
+      not is_integer(config.retry_delay_ms) or config.retry_delay_ms <= 0 ->
+        {:error, {:invalid_retry_delay, config.retry_delay_ms}}
+
+      not is_integer(config.timeout) or config.timeout <= 0 ->
+        {:error, {:invalid_timeout, config.timeout}}
+
+      true ->
+        {:ok, config}
+    end
+  end
+end
