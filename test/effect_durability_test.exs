@@ -7,6 +7,25 @@ defmodule OhMyJido.EffectDurabilityTest do
   @moduletag timeout: 30_000
   @moduletag capture_log: true
 
+  defmodule TimeoutWrite do
+    use Jido.Action,
+      name: "timeout_write",
+      description: "Writes once, then waits for the enclosing native Action deadline",
+      schema: []
+
+    def capability, do: :edit
+
+    @impl true
+    def run(_params, execution_context) do
+      {:ok, context} = OhMyJido.Context.fetch(execution_context)
+
+      with :ok <- OhMyJido.Tool.authorize(context, :edit, %{operation: :write}) do
+        File.write!(Path.join(context.metadata.root, "timeout-written.txt"), "once\n", [:append])
+        Process.sleep(:infinity)
+      end
+    end
+  end
+
   defmodule FaultingStorage do
     @behaviour Jido.Storage
 
@@ -60,6 +79,54 @@ defmodule OhMyJido.EffectDurabilityTest do
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
     %{root: root}
+  end
+
+  test "a native Action timeout after a real write stays uncertain across restore", %{root: root} do
+    start_supervised!(
+      {Runtime,
+       name: __MODULE__.Host,
+       storage: {Jido.Storage.File, path: Path.join(root, ".store")},
+       allow_test_scripts: true,
+       tool_timeout_ms: 1_000,
+       tools: [TimeoutWrite]}
+    )
+
+    assert {:ok, session} =
+             OhMyJido.start_session(__MODULE__.Host,
+               workspace: root,
+               permissions: [:edit],
+               metadata: %{root: root}
+             )
+
+    script =
+      expect_react do
+        user("Write once and retain the actual timeout without retrying.")
+        call("timeout_write", %{}, id: "native-timeout-write")
+        answer("The tool receipt, not this answer, determines the write outcome.")
+      end
+
+    assert {:ok, run} =
+             OhMyJido.prompt(
+               session,
+               "Write once and retain the actual timeout without retrying.",
+               react_opts(script)
+             )
+
+    assert {:ok, %{status: :completed}} = OhMyJido.await(session, run)
+    assert File.read!(Path.join(root, "timeout-written.txt")) == "once\n"
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert effects["native-timeout-write"].status == :uncertain
+
+    restore(session)
+    assert {:ok, %{effects: restored}} = OhMyJido.inspect_session(session)
+    assert restored["native-timeout-write"].status == :uncertain
+
+    assert {:error, :effect_already_recorded} =
+             OhMyJido.execute_tool(session, "timeout_write", %{},
+               effect_id: "native-timeout-write"
+             )
+
+    assert File.read!(Path.join(root, "timeout-written.txt")) == "once\n"
   end
 
   for {phase, reason} <- [

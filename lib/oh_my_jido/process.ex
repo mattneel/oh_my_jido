@@ -21,6 +21,8 @@ defmodule OhMyJido.Process do
   `cleanup: :confirmed` means no live member of the owned process group remains;
   zombies are not running processes. Interrupted effects remain `:uncertain`,
   even with confirmed cleanup: killing a process cannot undo its earlier writes.
+  Session ownership is released only by an actual confirmed cleanup receipt;
+  an error or owner exit alone leaves that resource's cleanup uncertain.
   This is lifecycle confinement, not an OS sandbox. Deliberate daemonization or
   process-group escape requires a host sandbox/cgroup policy.
   """
@@ -404,14 +406,17 @@ defmodule OhMyJido.Process do
 
   defp unregister_resource(_context, nil, _outcome), do: :ok
 
-  defp unregister_resource(context, key, {:ok, %{cleanup: :confirmed}}),
-    do: unregister_resource(context, key)
+  defp unregister_resource(context, key, outcome) do
+    receipt =
+      case outcome do
+        {status, %{} = result} when status in [:ok, :error] ->
+          {status, Map.take(result, [:cleanup, :effect, :status, :reason, :cancellation])}
 
-  defp unregister_resource(context, key, {:error, _reason}), do: unregister_resource(context, key)
-  defp unregister_resource(_context, _key, _uncertain), do: :ok
+        result ->
+          result
+      end
 
-  defp unregister_resource(context, key) do
-    OhMyJido.Session.unregister_resource(context.coordinator, key)
+    OhMyJido.Session.unregister_resource(context.coordinator, key, receipt)
   catch
     :exit, _reason -> :ok
   end

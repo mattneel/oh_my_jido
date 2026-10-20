@@ -138,11 +138,19 @@ defmodule OhMyJido do
   @spec checkpoint(SessionRef.t()) :: :ok | {:error, term()}
   def checkpoint(session), do: Session.call(session, :checkpoint)
 
-  @doc "Stops session resources while keeping durable state for explicit restore."
+  @doc """
+  Seals admission and stops a session only after native effects and resources settle.
+
+  `:ok` confirms cleanup before the exact session child is terminated; it does
+  not roll back earlier writes. Settlement waits up to five seconds. An error
+  with `reason: :cleanup_uncertain` leaves the session supervised and sealed
+  while outstanding receipts can still arrive. A process exit alone is not a
+  cleanup receipt.
+  """
   @spec stop_session(SessionRef.t()) :: :ok | {:error, term()}
   def stop_session(session) do
-    with :ok <- Session.call(session, :prepare_stop),
-         pid when is_pid(pid) <- GenServer.whereis(Runtime.via(session)) do
+    with pid when is_pid(pid) <- GenServer.whereis(Runtime.via(session)),
+         :ok <- Session.call(pid, :prepare_stop) do
       DynamicSupervisor.terminate_child(Runtime.sessions(session.runtime), pid)
     else
       nil -> {:error, :session_unavailable}

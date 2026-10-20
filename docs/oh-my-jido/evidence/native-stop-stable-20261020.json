@@ -1,0 +1,85 @@
+{
+  "schema": "oh_my_jido.native_stop.acceptance",
+  "schema_version": 1,
+  "scope": "Stable Jido 2.4 library shutdown and effect durability only; not CMS, V3 or deployment acceptance.",
+  "source": {
+    "library_sha256": "bc5c02ca476f46ac45f52f7cbcbecab71faba6cfaf46e664fe1749d5d87dd8db",
+    "benchmark_sha256": "fd2315bf483bca51fb295d38b5247ab7193a9769e7e3d04bbf5c60bea5f38448",
+    "mix_project_sha256": "dbc63c3c4b15766b039c28135c49b42dfcfa4ea18e76c9188a7d42086774663f",
+    "mix_lock_sha256": "f398864718ced0fcb8ff777487f287419945f5501c841e03250f39c29a770488"
+  },
+  "quality": {
+    "command": "OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "exit_code": 0,
+    "tests_passed": 527,
+    "credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skipped": 0,
+    "clone_budget": "0/0",
+    "reach_architecture": "OK",
+    "command_wall_seconds": 161.77,
+    "terminal_artifact": "artifact://922"
+  },
+  "direct_program": {
+    "invocation": "MIX_ENV=test mix run --no-compile --no-deps-check -e PROGRAM",
+    "program": "\ndefmodule NativeStopProgramHost do\n  @behaviour OhMyJido.Host\n  def authorize(_context, :exec, _effect, _opts), do: :ok\n  def authorize(context, capability, effect, opts), do: OhMyJido.Host.Local.authorize(context, capability, effect, opts)\n  defdelegate credentials(context, account, opts), to: OhMyJido.Host.Local\n  defdelegate invoke(context, capability, request, opts), to: OhMyJido.Host.Local\n  def question(_context, _question, _opts), do: :pending\nend\nroot = System.fetch_env!(\"OMJ_STOP_PROGRAM_ROOT\")\n{:ok, runtime} = OhMyJido.Runtime.start_link(name: NativeStopProgram, tools: [OhMyJido.Tools.Shell], max_processes: 1)\n{:ok, session} = OhMyJido.start_session(NativeStopProgram, workspace: root, permissions: [:exec], host: {NativeStopProgramHost, []})\ntry do\n  command = \"printf 'once\\\\n' > writes; printf '%s\\\\n' \\\"$$\\\" > leader; sleep 30 & printf '%s\\\\n' \\\"$!\\\" > child; wait\"\n  task = Task.async(fn -> OhMyJido.execute_tool(session, \"shell\", %{executable: System.find_executable(\"sh\"), args: [\"-c\", command], timeout_ms: 20_000}) end)\n  ready = fn -> Enum.all?([\"leader\", \"child\"], fn name -> case File.read(Path.join(root, name)) do {:ok, bytes} -> String.trim(bytes) != \"\"; _ -> false end end) end\n  Enum.reduce_while(1..500, nil, fn _, _ -> if ready.(), do: {:halt, :ready}, else: (Process.sleep(10); {:cont, nil}) end)\n  true = ready.()\n  pids = Enum.map([\"leader\", \"child\"], fn name -> root |> Path.join(name) |> File.read!() |> String.trim() |> String.to_integer() end)\n  :ok = OhMyJido.stop_session(session)\n  _tool_result = Task.await(task, 10_000)\n  stopped = Enum.all?(pids, fn pid -> case OhMyJido.Process.capture_identity(pid) do {:ok, %{state: state}} -> state in [\"Z\", \"X\"]; {:error, reason} -> reason in [:enoent, :esrch] end end)\n  true = stopped\n  true = is_nil(GenServer.whereis(OhMyJido.Runtime.via(session)))\n  true = File.read!(Path.join(root, \"writes\")) == \"once\\n\"\n  IO.puts(JSON.encode!(%{stop_confirmed: true, actual_shell_entered: true, leader_and_child_stopped: stopped, session_terminated: true, single_write_retained: true}))\nafter\n  Supervisor.stop(runtime)\nend\n",
+    "temporary_workspace_environment": "OMJ_STOP_PROGRAM_ROOT points to a freshly created disposable directory.",
+    "exit_code": 0,
+    "observed": {
+      "stop_confirmed": true,
+      "actual_shell_entered": true,
+      "leader_and_child_stopped": true,
+      "session_terminated": true,
+      "single_write_retained": true
+    },
+    "stderr_empty": true,
+    "temporary_workspace_removed": true,
+    "model_request_required": false
+  },
+  "timeout_regression": {
+    "file": "test/effect_durability_test.exs",
+    "behavior": "A real native Action appends once before its actual enclosing deadline. The journal must remain uncertain across checkpoint/restore, and reused effect identity must reject before a second append.",
+    "before": {
+      "result": "failed",
+      "observed_ledger_status": "completed",
+      "required_ledger_status": "uncertain",
+      "terminal_artifact": "artifact://913"
+    },
+    "after": {
+      "targeted_tests_passed": 7,
+      "command": "mix test test/effect_durability_test.exs --seed 0",
+      "command_wall_seconds": 21.43,
+      "included_in_full_gate": true
+    }
+  },
+  "density": {
+    "report": "bench/results/density-docs-stable-20261020.json",
+    "result": "passed",
+    "populations": [
+      1,
+      10,
+      100,
+      500
+    ],
+    "active_capacity": 8,
+    "elapsed_work_ms": 80192.337,
+    "strict_draft_2020_12_format_errors": 0,
+    "cleanup": {
+      "supervisor_stopped": true,
+      "runtime_stopped": true,
+      "driver_supervisor_stopped": true,
+      "disposable_root_removed": true,
+      "host_cwd_unchanged": true,
+      "host_environment_unchanged": true,
+      "os_live_descendants_before": 1,
+      "os_live_descendants_after": 1,
+      "os_descendants_returned_to_baseline": true
+    }
+  },
+  "limits": [
+    "Successful stop confirms registered native effects/resources and session services, not rollback or an OS sandbox.",
+    "Actor/controller death and bare unregister do not confirm resource cleanup. Unknown cleanup leaves supervised admission sealed.",
+    "Density model latency is scripted; no provider throughput or performance improvement is claimed.",
+    "CMS, genuine native V3, public production release and Fly effects have separate pending gates."
+  ]
+}

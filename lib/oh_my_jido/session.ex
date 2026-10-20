@@ -19,6 +19,8 @@ defmodule OhMyJido.Session do
   }
 
   @terminal_events [:request_completed, :request_failed, :request_cancelled]
+  @stop_timeout_ms 5_000
+  @cleanup_task_timeout_ms 8_000
   @durable_keys [
     :version,
     :ref,
@@ -79,8 +81,8 @@ defmodule OhMyJido.Session do
     do: call(coordinator, {:register_resource, run_id, kind, handle})
 
   @doc false
-  def unregister_resource(coordinator, key) do
-    GenServer.cast(coordinator, {:unregister_resource, key})
+  def unregister_resource(coordinator, key, result) do
+    GenServer.cast(coordinator, {:unregister_resource, key, result})
     :ok
   end
 
@@ -288,7 +290,15 @@ defmodule OhMyJido.Session do
     {:reply, {:ok, snapshot}, state}
   end
 
+  def handle_call(:context, _from, %{status: status} = state)
+      when status in [:stopping, :cleanup_uncertain, :stopped],
+      do: {:reply, {:error, :session_stopped}, state}
+
   def handle_call(:context, _from, state), do: {:reply, {:ok, state.context}, state}
+
+  def handle_call({:steer, _run_id, _text}, _from, %{stop: stop} = state)
+      when not is_nil(stop),
+      do: {:reply, {:error, :session_stopped}, state}
 
   def handle_call({:steer, run_id, text}, _from, %{active: %{id: run_id}} = state) do
     constraints = Enum.uniq(state.context_policy.retained.constraints ++ [text])
@@ -305,6 +315,10 @@ defmodule OhMyJido.Session do
   def handle_call({:steer, _run_id, _text}, _from, state),
     do: {:reply, {:error, :run_not_active}, state}
 
+  def handle_call({:cancel, _run_id, _reason}, _from, %{stop: stop} = state)
+      when not is_nil(stop),
+      do: {:reply, {:error, :session_stopped}, state}
+
   def handle_call({:cancel, run_id, reason}, _from, %{active: %{id: run_id}} = state) do
     :ok = CodingAgent.cancel(state.agent_pid, request_id: run_id, reason: reason)
     Process.send_after(self(), {:force_cancel, run_id}, state.config[:tool_timeout_ms] + 1_000)
@@ -315,12 +329,15 @@ defmodule OhMyJido.Session do
       |> deny_questions(:cancelled)
       |> emit(:cancellation_requested, %{reason: reason}, run_id)
 
-    cancel_resources(state, run_id)
-    {:reply, :ok, state}
+    {:reply, :ok, cancel_resources(state, run_id)}
   end
 
   def handle_call({:cancel, _run_id, _reason}, _from, state),
     do: {:reply, {:error, :run_not_active}, state}
+
+  def handle_call(:resume, _from, %{status: status} = state)
+      when status in [:stopping, :cleanup_uncertain, :stopped],
+      do: {:reply, {:error, :session_stopped}, state}
 
   def handle_call(:resume, _from, %{status: :suspended} = state) do
     {:reply, :ok, emit(%{state | status: :idle}, :session_resumed, %{replay: false})}
@@ -341,22 +358,62 @@ defmodule OhMyJido.Session do
 
   def handle_call(:checkpoint, _from, state), do: {:reply, {:error, :run_active}, state}
 
-  def handle_call(:prepare_stop, _from, state) do
-    if state.active,
-      do:
-        CodingAgent.cancel(state.agent_pid, request_id: state.active.id, reason: :session_stopped)
+  def handle_call(:prepare_stop, _from, %{stop: %{result: :ok}} = state),
+    do: {:reply, :ok, state}
 
-    cancel_resources(state, :all)
+  def handle_call(:prepare_stop, _from, %{stop: %{result: {:error, _reason}}} = state) do
+    state = state |> start_native_stop(false) |> stop_children()
+    {:reply, {:error, stop_uncertainty(state)}, state}
+  end
+
+  def handle_call(:prepare_stop, from, %{stop: stop} = state) when not is_nil(stop) do
+    {:noreply, put_in(state.stop.waiters, [from | stop.waiters])}
+  end
+
+  def handle_call(:prepare_stop, _from, %{status: :cleanup_uncertain} = state) do
+    {:reply,
+     {:error,
+      %{
+        reason: :cleanup_uncertain,
+        cleanup: :uncertain,
+        pending_effects: pending_effects(state),
+        pending_resources: [:unreconciled],
+        native: :pending
+      }}, state}
+  end
+
+  def handle_call(:prepare_stop, from, state) do
+    id = make_ref()
+    timer = Process.send_after(self(), {:stop_deadline, id}, @stop_timeout_ms)
+
+    stop = %{
+      id: id,
+      timer: timer,
+      deadline: System.monotonic_time(:millisecond) + @stop_timeout_ms,
+      waiters: [from],
+      result: nil,
+      native: if(state.active, do: :pending, else: :confirmed),
+      native_run: active_id(state),
+      children: MapSet.new(Map.keys(state.children)),
+      services: :waiting
+    }
+
+    active =
+      if state.active do
+        if state.active.timer, do: Process.cancel_timer(state.active.timer)
+        Map.put(state.active, :cancel_reason, :session_stopped)
+      end
 
     state =
-      if state.active, do: finish_run(state, :interrupted, nil, :session_stopped), else: state
+      %{state | stop: stop, status: :stopping, active: active}
+      |> deny_questions(:session_stopped)
+      |> persist!()
+      |> cancel_resources(:all)
+      |> start_native_stop(true)
+      |> stop_children()
+      |> settle_stop()
 
-    eval =
-      Map.get_lazy(state.context.metadata, :eval, fn -> Runtime.eval(state.ref.runtime) end)
-
-    if is_pid(eval), do: OhMyJido.Eval.close_session(eval, state.ref.id)
-
-    {:reply, :ok, %{state | status: :stopped} |> deny_questions(:session_stopped) |> persist!()}
+    {:noreply, state}
   end
 
   def handle_call({:register_secrets, secrets}, _from, state) when is_list(secrets) do
@@ -426,6 +483,10 @@ defmodule OhMyJido.Session do
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
+
+  def handle_call({operation, _value}, _from, %{stop: stop} = state)
+      when operation in [:register_tool, :unregister_tool, :question] and not is_nil(stop),
+      do: {:reply, {:error, :session_stopped}, state}
 
   def handle_call({:register_tool, action}, _from, %{active: nil} = state) do
     case Jido.AI.register_tool(state.agent_pid, action) do
@@ -518,7 +579,8 @@ defmodule OhMyJido.Session do
 
   def handle_call({:effect_finished, run_id, id, result}, _from, state) do
     case Map.get(state.effects, id) do
-      %{run: ^run_id, status: :running} = record ->
+      %{run: ^run_id, status: status} = record
+      when status in [:running, :uncertain] and not is_map_key(record, :completed_at) ->
         record =
           Map.merge(record, %{
             status: effect_status(result),
@@ -527,7 +589,7 @@ defmodule OhMyJido.Session do
           })
 
         state = %{state | effects: Map.put(state.effects, id, record)} |> persist!()
-        {:reply, :ok, state}
+        {:reply, :ok, settle_stop(state)}
 
       _record ->
         {:reply, {:error, :effect_not_active}, state}
@@ -574,6 +636,10 @@ defmodule OhMyJido.Session do
         {:reply, {:error, :child_identity_mismatch}, state}
     end
   end
+
+  def handle_call({:adopt, _agent, _tag, _ref, _lease}, _from, %{stop: stop} = state)
+      when not is_nil(stop),
+      do: {:reply, {:error, :session_stopped}, state}
 
   def handle_call({:adopt, agent, tag, ref, lease}, _from, state) do
     if Map.has_key?(state.child_leases, tag) do
@@ -641,18 +707,78 @@ defmodule OhMyJido.Session do
   def handle_info({:jido_ai_request_event, event}, state) do
     if state.active && event.request_id == state.active.id do
       state = project_runtime_event(state, event)
-      state = if event.kind in @terminal_events, do: collect_terminal(state, event), else: state
-      {:noreply, state}
+
+      state =
+        cond do
+          not is_nil(state.stop) and event.kind in @terminal_events ->
+            start_native_stop(state, false)
+
+          event.kind in @terminal_events ->
+            collect_terminal(state, event)
+
+          true ->
+            state
+        end
+
+      {:noreply, settle_stop(state)}
     else
       {:noreply, state}
     end
   end
 
+  def handle_info({:run_deadline, _id}, %{stop: stop} = state) when not is_nil(stop),
+    do: {:noreply, state}
+
+  def handle_info({:force_cancel, _id}, %{stop: stop} = state) when not is_nil(stop),
+    do: {:noreply, state}
+
+  def handle_info({:settle_cancel, _id, _event, _result, _deadline}, %{stop: stop} = state)
+      when not is_nil(stop),
+      do: {:noreply, state}
+
+  def handle_info({:stop_deadline, id}, %{stop: %{id: id, result: nil}} = state) do
+    result = {:error, stop_uncertainty(state)}
+    state = %{state | status: :cleanup_uncertain}
+    state = emit(state, :session_cleanup_uncertain, elem(result, 1))
+    {:noreply, reply_stop(state, result)}
+  end
+
+  def handle_info({:poll_stop_native, id}, %{stop: %{id: id, result: nil}} = state),
+    do: {:noreply, start_native_stop(state, false)}
+
+  def handle_info({ref, result}, %{cleanup_tasks: tasks} = state)
+      when is_map_key(tasks, ref) do
+    {cleanup, tasks} = Map.pop(tasks, ref)
+    Process.cancel_timer(cleanup.timer)
+    Process.demonitor(ref, [:flush])
+    state = %{state | cleanup_tasks: tasks}
+    {:noreply, state |> complete_cleanup(cleanup.key, result) |> settle_stop()}
+  end
+
+  def handle_info({:cleanup_task_deadline, ref}, %{cleanup_tasks: tasks} = state)
+      when is_map_key(tasks, ref) do
+    {cleanup, tasks} = Map.pop(tasks, ref)
+    Process.exit(cleanup.task.pid, :kill)
+    Process.demonitor(ref, [:flush])
+    state = %{state | cleanup_tasks: tasks}
+    {:noreply, state |> complete_cleanup(cleanup.key, {:error, :timeout}) |> settle_stop()}
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{cleanup_tasks: tasks} = state)
+      when is_map_key(tasks, ref) do
+    {cleanup, tasks} = Map.pop(tasks, ref)
+    Process.cancel_timer(cleanup.timer)
+    state = %{state | cleanup_tasks: tasks}
+
+    {:noreply,
+     state |> complete_cleanup(cleanup.key, {:error, :cleanup_worker_down}) |> settle_stop()}
+  end
+
   def handle_info({:run_deadline, id}, %{active: %{id: id}} = state) do
     CodingAgent.cancel(state.agent_pid, request_id: id, reason: :deadline)
     Process.send_after(self(), {:force_cancel, id}, 1_000)
-    cancel_resources(state, id)
-    {:noreply, %{state | active: Map.put(state.active, :cancel_reason, :deadline)}}
+    state = %{state | active: Map.put(state.active, :cancel_reason, :deadline)}
+    {:noreply, cancel_resources(state, id)}
   end
 
   def handle_info({:force_cancel, id}, %{active: %{id: id}} = state) do
@@ -703,16 +829,20 @@ defmodule OhMyJido.Session do
     do: {:noreply, question_result(state, id, result)}
 
   def handle_info({:DOWN, monitor, :process, _pid, reason}, %{agent_monitor: monitor} = state) do
-    if state.active, do: cancel_resources(state, state.active.id)
+    state = if state.active, do: cancel_resources(state, state.active.id), else: state
     state = if state.active, do: finish_interrupted(state, reason), else: state
 
     state =
       %{state | agent_pid: nil, agent_monitor: nil}
       |> emit(:worker_failed, %{reason: safe_reason(reason), replay: false})
 
-    case start_agent(state) do
-      {:ok, state} -> {:noreply, emit(state, :worker_recovered, %{replay: false})}
-      {:error, reason} -> {:stop, reason, state}
+    if state.stop do
+      {:noreply, settle_stop(state)}
+    else
+      case start_agent(state) do
+        {:ok, state} -> {:noreply, emit(state, :worker_recovered, %{replay: false})}
+        {:error, reason} -> {:stop, reason, state}
+      end
     end
   end
 
@@ -733,16 +863,16 @@ defmodule OhMyJido.Session do
         end
       end)
 
-    {finished, retained} =
-      Enum.split_with(state.resources, fn {_key, resource} -> resource.monitor == monitor end)
+    resources =
+      Map.new(state.resources, fn
+        {key, %{monitor: ^monitor} = resource} ->
+          {key, %{resource | monitor: nil} |> Map.put(:cleanup, :uncertain)}
 
-    state =
-      Enum.reduce(finished, state, fn {_key, resource}, acc ->
-        flush_resource_streams(acc, resource)
+        resource ->
+          resource
       end)
 
-    {:noreply,
-     %{state | subscribers: subscribers, waiters: waiters, resources: Map.new(retained)}}
+    {:noreply, %{state | subscribers: subscribers, waiters: waiters, resources: resources}}
   end
 
   def handle_info({:eval_output, session_id, execution_id, stream, text}, state)
@@ -781,32 +911,27 @@ defmodule OhMyJido.Session do
     end
   end
 
-  def handle_info({:resource_cleanup, resource, result}, state) do
-    payload = %{
-      kind: resource.kind,
-      outcome: Redact.sanitize(result, state.secrets),
-      confirmed: cleanup_confirmed?(result)
-    }
-
-    {:noreply, emit(state, :resource_cleanup, payload, resource.run)}
-  end
-
   def handle_info(_message, state), do: {:noreply, state}
+
   @impl true
-  def handle_cast({:unregister_resource, key}, state) do
-    case Map.pop(state.resources, key) do
-      {nil, _resources} ->
+  def handle_cast({:unregister_resource, key, result}, state) do
+    case Map.get(state.resources, key) do
+      nil ->
         {:noreply, state}
 
-      {resource, resources} ->
-        Process.demonitor(resource.monitor, [:flush])
-        state = flush_resource_streams(state, resource)
-        {:noreply, %{state | resources: resources}}
+      resource ->
+        {:noreply, state |> resource_cleanup(resource, result) |> settle_stop()}
     end
   end
 
+  def handle_cast(_message, state), do: {:noreply, state}
+
   @impl true
   def terminate(_reason, state) do
+    Enum.each(state.cleanup_tasks, fn {_ref, cleanup} ->
+      Process.exit(cleanup.task.pid, :kill)
+    end)
+
     Enum.each(state.resources, fn {_key, resource} -> cancel_resource(resource) end)
 
     if state.agent_pid && Process.alive?(state.agent_pid),
@@ -815,22 +940,27 @@ defmodule OhMyJido.Session do
     if state.active, do: Runtime.release(state.active.lease)
     Enum.each(state.child_leases, fn {_tag, lease} -> Runtime.release(lease) end)
 
-    Enum.each(state.children, fn {_tag, child} ->
-      case GenServer.whereis(Runtime.via(child.session)) do
-        pid when is_pid(pid) ->
-          DynamicSupervisor.terminate_child(Runtime.sessions(child.session.runtime), pid)
+    unless state.stop && state.stop.result == :ok do
+      Enum.each(state.children, &terminate_child_session/1)
 
-        nil ->
-          :ok
-      end
-    end)
+      if eval = Map.get(state.context.metadata, :eval),
+        do: OhMyJido.Eval.close_session(eval, state.ref.id)
 
-    if eval = Map.get(state.context.metadata, :eval),
-      do: OhMyJido.Eval.close_session(eval, state.ref.id)
+      OhMyJido.Extensions.close_session(state.context)
+      OhMyJido.Tools.Skill.clear(state.context)
+    end
 
-    OhMyJido.Extensions.close_session(state.context)
-    OhMyJido.Tools.Skill.clear(state.context)
     :ok
+  end
+
+  defp terminate_child_session({_tag, child}) do
+    case GenServer.whereis(Runtime.via(child.session)) do
+      pid when is_pid(pid) ->
+        DynamicSupervisor.terminate_child(Runtime.sessions(child.session.runtime), pid)
+
+      nil ->
+        :ok
+    end
   end
 
   @impl true
@@ -998,7 +1128,9 @@ defmodule OhMyJido.Session do
          waiters: %{},
          questions: %{},
          child_leases: %{},
-         resources: %{}
+         resources: %{},
+         cleanup_tasks: %{},
+         stop: nil
        })}
     end
   end
@@ -1055,6 +1187,10 @@ defmodule OhMyJido.Session do
     end
   end
 
+  defp prompt_allowed(%{status: status}, _query)
+       when status in [:stopping, :cleanup_uncertain, :stopped],
+       do: {:error, :session_stopped}
+
   defp prompt_allowed(%{active: active}, _query) when not is_nil(active), do: {:error, :busy}
   defp prompt_allowed(%{status: :suspended}, _query), do: {:error, :suspended}
 
@@ -1063,8 +1199,9 @@ defmodule OhMyJido.Session do
 
   defp prompt_allowed(_state, _query), do: {:error, :invalid_prompt}
 
-  defp effect_allowed(%{status: status}, _run) when status in [:suspended, :stopped],
-    do: {:error, :session_stopped}
+  defp effect_allowed(%{status: status}, _run)
+       when status in [:suspended, :stopping, :cleanup_uncertain, :stopped],
+       do: {:error, :session_stopped}
 
   defp effect_allowed(_state, nil), do: :ok
   defp effect_allowed(%{active: %{id: id, cancel_reason: nil}}, id), do: :ok
@@ -1161,7 +1298,12 @@ defmodule OhMyJido.Session do
 
     record = %{record | tools: tools}
 
-    session_status = if status == :suspended, do: :suspended, else: :idle
+    session_status =
+      cond do
+        not is_nil(state.stop) -> state.status
+        status == :suspended -> :suspended
+        true -> :idle
+      end
 
     state = %{
       state
@@ -1198,7 +1340,13 @@ defmodule OhMyJido.Session do
         pair -> pair
       end)
 
-    status = if state.status == :suspended, do: :suspended, else: :idle
+    status =
+      case state.status do
+        :suspended -> :suspended
+        status when status in [:stopping, :cleanup_uncertain] -> :cleanup_uncertain
+        _status -> :idle
+      end
+
     %{state | runs: runs, effects: effects, status: status}
   end
 
@@ -1362,20 +1510,246 @@ defmodule OhMyJido.Session do
   defp resource_pid(_kind, _handle), do: {:error, :invalid_resource}
 
   defp cancel_resources(state, run) do
-    coordinator = self()
-
-    Enum.each(state.resources, fn {_key, resource} ->
+    Enum.reduce(state.resources, state, fn {key, resource}, acc ->
       if run == :all or resource.run == run do
-        cancel_resource_async(state.ref.runtime, coordinator, resource)
+        start_resource_cleanup(acc, key, resource)
+      else
+        acc
       end
     end)
   end
 
-  defp cancel_resource_async(runtime, coordinator, resource) do
-    Task.Supervisor.start_child(Jido.task_supervisor_name(Runtime.engine(runtime)), fn ->
-      result = cancel_resource(resource)
-      send(coordinator, {:resource_cleanup, resource, result})
+  defp start_resource_cleanup(state, key, resource) do
+    state = put_in(state.resources[key], Map.put(resource, :cleanup, :pending))
+
+    start_cleanup_task(state, {:resource, key, resource.kind}, fn ->
+      {resource, cancel_resource(resource)}
     end)
+  end
+
+  defp start_cleanup_task(state, key, fun) do
+    if cleanup_task?(state, key) do
+      state
+    else
+      task =
+        Task.Supervisor.async_nolink(
+          Jido.task_supervisor_name(Runtime.engine(state.ref.runtime)),
+          fn -> run_cleanup_task(fun) end
+        )
+
+      timer =
+        Process.send_after(self(), {:cleanup_task_deadline, task.ref}, @cleanup_task_timeout_ms)
+
+      cleanup = %{key: key, task: task, timer: timer}
+      %{state | cleanup_tasks: Map.put(state.cleanup_tasks, task.ref, cleanup)}
+    end
+  rescue
+    _error -> state
+  catch
+    :exit, _reason -> state
+  end
+
+  defp run_cleanup_task(fun) do
+    Process.flag(:sensitive, true)
+    fun.()
+  catch
+    _kind, _reason -> {:error, :cleanup_worker_failed}
+  end
+
+  defp cleanup_task?(state, key),
+    do: Enum.any?(state.cleanup_tasks, fn {_ref, cleanup} -> cleanup.key == key end)
+
+  defp start_native_stop(%{stop: %{native: :pending}, agent_pid: pid} = state, cancel?)
+       when is_pid(pid) do
+    run_id = state.stop.native_run
+
+    start_cleanup_task(state, :native, fn ->
+      if cancel?, do: CodingAgent.cancel(pid, request_id: run_id, reason: :session_stopped)
+
+      case Jido.AgentServer.status(pid) do
+        {:ok, %{snapshot: %{done?: true}, raw_state: %{last_request_id: ^run_id}}} ->
+          :ok
+
+        _status ->
+          {:error, :native_not_idle}
+      end
+    end)
+  end
+
+  defp start_native_stop(state, _cancel?), do: state
+
+  defp stop_children(state) do
+    Enum.reduce(state.children, state, fn {tag, child}, acc ->
+      if MapSet.member?(state.stop.children, tag),
+        do:
+          start_cleanup_task(acc, {:child, tag}, fn -> OhMyJido.stop_session(child.session) end),
+        else: acc
+    end)
+  end
+
+  defp complete_cleanup(state, {:resource, key, _kind}, {%{id: key} = resource, result}),
+    do: resource_cleanup(state, resource, result)
+
+  defp complete_cleanup(state, {:resource, key, _kind}, result) do
+    case Map.get(state.resources, key) do
+      nil -> state
+      resource -> resource_cleanup(state, resource, result)
+    end
+  end
+
+  defp complete_cleanup(state, :native, :ok), do: put_in(state.stop.native, :confirmed)
+
+  defp complete_cleanup(state, :native, _unconfirmed) do
+    if is_nil(state.stop.result) and
+         System.monotonic_time(:millisecond) < state.stop.deadline do
+      Process.send_after(self(), {:poll_stop_native, state.stop.id}, 20)
+    end
+
+    state
+  end
+
+  defp complete_cleanup(state, {:child, tag}, :ok) do
+    Runtime.release(Map.get(state.child_leases, tag))
+
+    children =
+      case Map.fetch(state.children, tag) do
+        {:ok, child} -> Map.put(state.children, tag, %{child | status: :stopped})
+        :error -> state.children
+      end
+
+    state = %{
+      state
+      | child_leases: Map.delete(state.child_leases, tag),
+        children: children
+    }
+
+    put_in(state.stop.children, MapSet.delete(state.stop.children, tag))
+  end
+
+  defp complete_cleanup(state, :services, :ok), do: put_in(state.stop.services, :confirmed)
+  defp complete_cleanup(state, _key, _unconfirmed), do: state
+
+  defp resource_cleanup(state, resource, result) do
+    confirmed = cleanup_confirmed?(resource, result)
+
+    state =
+      cond do
+        confirmed ->
+          remove_resource(state, resource.id)
+
+        Map.has_key?(state.resources, resource.id) ->
+          update_in(state.resources[resource.id], &Map.put(&1, :cleanup, :uncertain))
+
+        true ->
+          state
+      end
+
+    emit(
+      state,
+      :resource_cleanup,
+      %{
+        kind: resource.kind,
+        outcome: Redact.sanitize(result, state.secrets),
+        confirmed: confirmed
+      },
+      resource.run
+    )
+  end
+
+  defp remove_resource(state, key) do
+    case Map.pop(state.resources, key) do
+      {nil, _resources} ->
+        state
+
+      {resource, resources} ->
+        if resource.monitor, do: Process.demonitor(resource.monitor, [:flush])
+        %{flush_resource_streams(state, resource) | resources: resources}
+    end
+  end
+
+  defp pending_effects(state) do
+    state.effects
+    |> Enum.filter(fn {_id, effect} ->
+      effect.status in [:running, :uncertain] and not Map.has_key?(effect, :completed_at)
+    end)
+    |> Enum.map(fn {id, _effect} -> id end)
+    |> Enum.sort()
+  end
+
+  defp pending_resources(state) do
+    resources = Map.new(state.resources, fn {key, resource} -> {key, resource.kind} end)
+
+    state.cleanup_tasks
+    |> Enum.reduce(resources, fn
+      {_ref, %{key: {:resource, key, kind}}}, acc -> Map.put(acc, key, kind)
+      _cleanup, acc -> acc
+    end)
+    |> Map.values()
+    |> Enum.sort()
+  end
+
+  defp stop_uncertainty(state) do
+    services = if state.stop.services == :pending, do: [:session_resources], else: []
+    children = Enum.map(state.stop.children, fn _tag -> :subagent end)
+
+    %{
+      reason: :cleanup_uncertain,
+      cleanup: :uncertain,
+      pending_effects: pending_effects(state),
+      pending_resources: Enum.sort(pending_resources(state) ++ services ++ children),
+      native: state.stop.native
+    }
+  end
+
+  defp settle_stop(%{stop: nil} = state), do: state
+  defp settle_stop(%{stop: %{result: :ok}} = state), do: state
+
+  defp settle_stop(state) do
+    if pending_effects(state) == [] and pending_resources(state) == [] and
+         state.stop.native == :confirmed and MapSet.size(state.stop.children) == 0 do
+      settle_stop_services(state)
+    else
+      state
+    end
+  end
+
+  defp settle_stop_services(%{stop: %{services: :waiting}} = state) do
+    context = state.context
+    runtime = state.ref.runtime
+    session_id = state.ref.id
+    state = put_in(state.stop.services, :pending)
+
+    start_cleanup_task(state, :services, fn ->
+      eval = Map.get_lazy(context.metadata, :eval, fn -> Runtime.eval(runtime) end)
+
+      with :ok <- close_eval_session(eval, session_id),
+           :ok <- OhMyJido.Extensions.close_session(context) do
+        OhMyJido.Tools.Skill.clear(context)
+        :ok
+      end
+    end)
+  end
+
+  defp settle_stop_services(%{stop: %{services: :confirmed}} = state) do
+    Process.cancel_timer(state.stop.timer)
+
+    state =
+      if state.active,
+        do: finish_run(state, :cancelled, nil, :session_stopped),
+        else: state
+
+    state = %{state | status: :stopped} |> persist!()
+    reply_stop(state, :ok)
+  end
+
+  defp settle_stop_services(%{stop: %{services: :pending}} = state), do: state
+
+  defp close_eval_session(nil, _session_id), do: :ok
+  defp close_eval_session(eval, session_id), do: OhMyJido.Eval.close_session(eval, session_id)
+
+  defp reply_stop(state, result) do
+    Enum.each(state.stop.waiters, &GenServer.reply(&1, result))
+    %{state | stop: %{state.stop | waiters: [], result: result}}
   end
 
   defp cancel_resource(%{kind: :process, handle: handle}), do: OhMyJido.Process.cancel(handle)
@@ -1389,8 +1763,18 @@ defmodule OhMyJido.Session do
         handle.execution_id
       )
 
-  defp cleanup_confirmed?({:ok, %{cleanup: :confirmed}}), do: true
-  defp cleanup_confirmed?(_result), do: false
+  defp cleanup_confirmed?(
+         %{kind: :eval, handle: %{execution_id: id}},
+         {status, %{cleanup: :confirmed, execution_id: id}}
+       )
+       when status in [:ok, :error],
+       do: true
+
+  defp cleanup_confirmed?(%{kind: :process}, {status, %{cleanup: :confirmed}})
+       when status in [:ok, :error],
+       do: true
+
+  defp cleanup_confirmed?(_resource, _result), do: false
 
   defp request_options_allowed(state, opts) do
     cond do
@@ -1520,6 +1904,10 @@ defmodule OhMyJido.Session do
   defp effect_status({:error, %Jido.Action.Error.TimeoutError{}}), do: :uncertain
 
   defp effect_status({:error, %Jido.Action.Error.TimeoutError{}, _effects}), do: :uncertain
+
+  defp effect_status({:error, %{type: :timeout}}), do: :uncertain
+
+  defp effect_status({:error, %{type: :timeout}, _effects}), do: :uncertain
 
   defp effect_status({:error, %Jido.Action.Error.ExecutionFailureError{details: details}}),
     do: effect_status({:error, details})

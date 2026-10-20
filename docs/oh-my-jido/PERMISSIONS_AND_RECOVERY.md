@@ -95,6 +95,24 @@ Recovery workflow:
 
 Explicit checkpoints reject active model runs. The host should also finish its direct tool calls before requesting a safe checkpoint. Durable restore uses configured `Jido.Storage`, recorded root/grants/identity and current trusted runtime service bindings. Active runs are restored as interrupted, running effects as uncertain, and no old question/process/PID is revived.
 
+## Confirmed session shutdown
+
+`OhMyJido.stop_session/1` seals new work before cancelling native execution.
+Successful shutdown requires settled effects, matched resource-cleanup receipts,
+delegated-child settlement and session-service cleanup before terminating the exact
+session child. It waits up to five seconds; `:ok` does not undo earlier writes.
+
+`{:error, %{reason: :cleanup_uncertain}}` leaves the session supervised and sealed.
+Actor/controller death or an accepted cancellation is not a cleanup receipt. Late
+confirmed receipts may resolve uncertainty; inspect owned resources through trusted
+host operations and retry shutdown, never replay the effect to find out what happened.
+Do not release a source-writer fence on an uncertain result.
+
+Confirmation covers registered resources and native effect lifecycles. It is not an
+OS sandbox or proof about arbitrary escaped processes. Ordinary completed Eval work
+can emit a confirmed `:resource_cleanup` event; consumers must handle events by kind,
+not assume an idle session has emitted nothing.
+
 ## ContextPolicy version 2
 
 The current checkpoint version is **2**. The outer session checkpoint remains its separate version-1 envelope; do not confuse that envelope with the nested ContextPolicy version.

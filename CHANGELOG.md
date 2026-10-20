@@ -2,7 +2,7 @@
 
 ## Unreleased — 0.1.0 source work
 
-Stable usability acceptance is recorded in the [current source evidence](docs/oh-my-jido/evidence/usability-20261019.json), with516 tests and all static gates passing. Earlier [library-scope acceptance](docs/oh-my-jido/evidence/library-acceptance-20261019.json) remains historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) distinguishes source hashes and scope. No published Hex/HexDocs release or production/OS-sandbox certification is claimed.
+Historical stable usability acceptance records516 tests and passing static gates in the [source evidence](docs/oh-my-jido/evidence/usability-20261019.json). Earlier [library-scope acceptance](docs/oh-my-jido/evidence/library-acceptance-20261019.json) also remains historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) distinguishes current source, new lifecycle/CMS work and unaccepted gates. No published Hex/HexDocs release or production/OS-sandbox certification is claimed.
 
 ### Embedding usability
 
@@ -14,7 +14,8 @@ Stable usability acceptance is recorded in the [current source evidence](docs/oh
 ### Native integrity and recovery
 
 - Preserve terminal native answers and completed tool exchanges across compaction, checkpoint and restore; reject over-budget retained context before acquiring a run lease.
-- Keep enclosing Action timeouts uncertain in the durable effect journal. Resolve replacement runtime Eval managers per operation, preserve explicitly host-owned managers and release controller-owned resources on hard loss without replay.
+- Keep enclosing Action timeouts, including native normalized timeout maps, uncertain in the durable effect journal. Resolve replacement runtime Eval managers per operation, preserve explicitly host-owned managers and retain unconfirmed controller-owned resources on hard loss without replay.
+- Strengthen existing `stop_session/1`: seal admission, await actual native/effect/resource and service-cleanup receipts, then terminate the exact session child. Unconfirmed cleanup leaves supervised admission sealed; process/controller death and bare unregister are not confirmation. Actual Shell shutdown and retained writes are exercised outside ExUnit; [current stable lifecycle evidence](docs/oh-my-jido/evidence/native-stop-stable-20261020.json) includes527 passing tests and fresh strict-schema density.
 - Require both OpenAI inference scopes and retain validated login-only host identity for refresh/revocation without overriding an explicit configured binding.
 - Preflight all versioned LSP edits before publication, preserve equal-position edit order and retain finite asynchronous launch outcomes for later awaits. Budget launch receipts before dispatch; use MCP-native cancellation while excluding initialization.
 - Bound review enrichment against every detected secret in the captured diff, rather than evicting earlier secrets after100 later matches.

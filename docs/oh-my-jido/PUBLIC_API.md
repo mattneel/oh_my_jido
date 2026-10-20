@@ -65,7 +65,7 @@ Discovery is literal AST matching, not environment-aware alias/macro expansion. 
 | `OhMyJido.list_sessions(runtime)` | Sorted list of currently supervised references, not an enumeration of all stored checkpoints |
 | `OhMyJido.inspect_session(session)` | `{:ok, snapshot}` or error; redacted **host-only** inspection, including an intentional transient `agent_pid` |
 | `OhMyJido.checkpoint(session)` | `:ok` only while no run is active; otherwise `{:error, :run_active}` |
-| `OhMyJido.stop_session(session)` | Stops owned session resources, preserves durable state; not archive deletion or effect rollback |
+| `OhMyJido.stop_session(session)` | Seals admission; `:ok` only after confirmed native/effect/resource settlement and exact-child termination. Five-second settlement deadline; cleanup uncertainty leaves the supervised session sealed. No rollback or archive deletion. |
 
 `start_session/2` with an ID already present in storage uses that checkpoint; it is not a reset/override of a stored session. Starting an already supervised identity returns `:session_exists`. A new workspace/policy needs a new identity or an explicitly managed host storage migration.
 

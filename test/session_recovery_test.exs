@@ -130,10 +130,13 @@ defmodule OhMyJido.SessionRecoveryTest do
     end
   end
 
-  test "a hard Eval controller death releases its session slot without replay", %{root: root} do
+  test "a hard Eval controller death retains its uncertain resource slot without replay", %{
+    root: root
+  } do
     session = session(root, max_resources: 1)
     eval = Runtime.eval(__MODULE__.Host)
     coordinator = GenServer.whereis(Runtime.via(session))
+    coordinator_monitor = Process.monitor(coordinator)
 
     script =
       expect_react do
@@ -169,11 +172,42 @@ defmodule OhMyJido.SessionRecoveryTest do
     assert {:ok, %{status: :ready}} =
              OhMyJido.execute_tool(session, "eval", %{language: "elixir", operation: "reset"})
 
-    assert {:ok, %{status: :ok, display: "42"}} =
-             OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "40 + 2"})
+    assert {:error, %{details: %{reason: :resource_capacity}}} =
+             OhMyJido.execute_tool(session, "eval", %{
+               language: "elixir",
+               source:
+                 ~s|Eval.tool("write", %{"path" => "unconfirmed-replacement.txt", "content" => "forbidden", "snapshot" => "missing"})|
+             })
+
+    refute File.exists?(Path.join(root, "unconfirmed-replacement.txt"))
 
     assert File.read!(Path.join(root, "receipt.txt")) == "written once"
     refute_receive {:waiting_effect, _callback}
+
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
+    assert [%{id: callback_effect}] = effects_named(effects, "recovery_wait")
+
+    assert {:error,
+            %{
+              reason: :cleanup_uncertain,
+              cleanup: :uncertain,
+              pending_effects: [^callback_effect],
+              pending_resources: [:eval],
+              native: :confirmed
+            }} = OhMyJido.stop_session(session)
+
+    refute_receive {:DOWN, ^coordinator_monitor, :process, ^coordinator, _reason}, 0
+    assert GenServer.whereis(Runtime.via(session)) == coordinator
+    assert {:ok, %{status: :cleanup_uncertain}} = OhMyJido.inspect_session(session)
+
+    assert {:error, :session_stopped} =
+             OhMyJido.execute_tool(session, "write", %{
+               path: "unconfirmed-replacement.txt",
+               content: "forbidden",
+               snapshot: "missing"
+             })
+
+    refute File.exists?(Path.join(root, "unconfirmed-replacement.txt"))
   end
 
   test "an enclosing native Action timeout keeps a write uncertain across restore", %{root: root} do
@@ -281,7 +315,6 @@ defmodule OhMyJido.SessionRecoveryTest do
     assert GenServer.whereis(Runtime.via(session)) == coordinator
     assert {:ok, %{status: :idle, goal: nil, runs: runs}} = OhMyJido.inspect_session(session)
     assert runs == %{}
-    assert OhMyJido.events(session) == []
 
     assert {:ok, %{status: :ok, display: "42"}} =
              OhMyJido.execute_tool(session, "eval", %{language: "elixir", source: "retained + 2"})

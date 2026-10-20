@@ -1,7 +1,7 @@
 defmodule OhMyJido.EvalNativeControlTest do
   use Jido.AI.TestCase, async: false
 
-  alias OhMyJido.{Eval, Runtime, Tool}
+  alias OhMyJido.{Eval, Runtime, Session, Tool}
 
   defmodule WaitingTool do
     use Jido.Action,
@@ -33,6 +33,7 @@ defmodule OhMyJido.EvalNativeControlTest do
        name: __MODULE__.Host,
        allow_test_scripts: true,
        tools: [OhMyJido.Tools.Eval, OhMyJido.Tools.Write, WaitingTool],
+       max_resources: 1,
        eval: [
          backends: %{elixir: [isolation: :trusted], javascript: [isolation: :trusted]},
          callback_timeout: 20_000
@@ -52,6 +53,53 @@ defmodule OhMyJido.EvalNativeControlTest do
       ] do
     @language language
     @source source
+
+    test "#{language}: matched successful cells release the sole native session resource slot", %{
+      session: session,
+      eval: eval
+    } do
+      assert {:ok, context} = Session.call(session, :context)
+
+      first_source =
+        if @language == :elixir, do: "value = 40", else: "var value = 40; value"
+
+      assert {:ok,
+              %{
+                status: :ok,
+                kernel_state: :ready,
+                effects: :completed,
+                execution_id: first_id
+              }} = Eval.execute(eval, context, @language, first_source)
+
+      assert {:ok, %{worker: worker, controller: controller}} =
+               Eval.info(eval, session.id, @language)
+
+      assert {:ok,
+              %{
+                status: :ok,
+                display: "42",
+                kernel_state: :ready,
+                effects: :completed,
+                execution_id: second_id
+              }} = Eval.execute(eval, context, @language, "value + 2")
+
+      refute first_id == second_id
+
+      assert {:ok, %{status: :ok, display: "43", kernel_state: :ready}} =
+               Eval.execute(eval, context, @language, "value + 3")
+
+      assert {:ok, %{worker: ^worker, controller: ^controller}} =
+               Eval.info(eval, session.id, @language)
+
+      coordinator = GenServer.whereis(Runtime.via(session))
+      coordinator_monitor = Process.monitor(coordinator)
+      worker_monitor = Process.monitor(worker)
+      controller_monitor = Process.monitor(controller)
+      assert :ok = OhMyJido.stop_session(session)
+      assert_receive {:DOWN, ^coordinator_monitor, :process, ^coordinator, :shutdown}, 10_000
+      assert_receive {:DOWN, ^controller_monitor, :process, ^controller, _reason}, 10_000
+      assert_receive {:DOWN, ^worker_monitor, :process, ^worker, _reason}, 10_000
+    end
 
     test "#{language}: native run cancellation reaches the actual isolated kernel and callback",
          %{session: session, eval: eval} do
