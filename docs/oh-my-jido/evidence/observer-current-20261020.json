@@ -1,0 +1,426 @@
+{
+  "local": {
+    "scope": "local actual owned OTP application",
+    "limits": {
+      "process_inventory": {
+        "truncated": true,
+        "requested": 2,
+        "returned": 2
+      },
+      "application_inventory": {
+        "truncated": true,
+        "requested": 2,
+        "returned": 2
+      },
+      "ets_inventory": {
+        "truncated": true,
+        "requested": 2,
+        "returned": 2
+      },
+      "supervision_full": {
+        "truncated": false,
+        "returned": 2
+      },
+      "supervision_depth_one": {
+        "truncated": true,
+        "returned": 1
+      },
+      "supervision_limit_one": {
+        "truncated": true,
+        "returned": 1
+      },
+      "invalid_requests_rejected": 7
+    },
+    "gone_process": {
+      "expected_reason": ":observer_process_gone",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "gone_table": {
+      "expected_reason": ":observer_table_gone",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "malformed_process": {
+      "expected_reason": ":invalid_observer_pid",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "public_boundary": "OhMyJido.Tool.execute(context, \"observer\", params) -> registered OhMyJido.Tools.Observer -> Jido.Exec.run -> host-bound fixed collector",
+    "actual_started_otp_application": true,
+    "unpredictable_target_application_version_matches": true,
+    "unpredictable_target_application_version_commitment": "c195ec110e30d9e0a399fc353640a2d670351274d4b26c7252d629fb7adc94f5",
+    "unpredictable_private_table_metadata_matches_owner_attestation": true,
+    "bounded_system_memory_and_process_metadata": true,
+    "process_fields": [
+      "current_function",
+      "heap_size",
+      "initial_call",
+      "memory",
+      "message_queue_len",
+      "pid",
+      "reductions",
+      "registered_name",
+      "stack_size",
+      "status",
+      "total_heap_size"
+    ],
+    "table_fields": [
+      "id",
+      "memory",
+      "memory_unit",
+      "name",
+      "owner",
+      "protection",
+      "read_concurrency",
+      "size",
+      "type",
+      "write_concurrency"
+    ],
+    "independent_observe_grant_denial": {
+      "expected_reason": "{:permission_denied, :observe}",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": false,
+      "exact_sdk_tuple_message_projection": true
+    },
+    "confined_root_denial": {
+      "expected_reason": ":observer_supervisor_not_granted",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "output_budget_denial": {
+      "expected_reason": "{:extension_result_limit, :observer, 32}",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": false,
+      "exact_sdk_tuple_message_projection": true
+    },
+    "unbound_target_denial": {
+      "expected_reason": "{:capability_unavailable, :observer}",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": false,
+      "exact_sdk_tuple_message_projection": true
+    },
+    "private_assertions": {
+      "state_unchanged": true,
+      "table_contents_unchanged": true,
+      "process_dictionary_unchanged": true,
+      "queued_messages_unchanged": true,
+      "application_environment_unchanged": true,
+      "private_sentinel_values_excluded": true,
+      "forbidden_private_keys_absent": true,
+      "queued_message_count_unchanged": true
+    },
+    "private_commitments": {
+      "state_commitment": "cf89d18a92fc906570d5a864937010937ae044664a49295bb935e3da7c3f663b",
+      "table_contents_commitment": "8f4dcb3a1562eabd65a4486d64f3af393c0803f99d99ae9ac7cbaeabe1919991",
+      "dictionary_commitment": "875021fd100f4bd7f694b1ffae4d19bcd8037c11c1b26bbdfd4d4e7b9937200d",
+      "queued_messages_commitment": "237e85d09da06eb7bd7010a9a5729a653caa6028e4173048570387cf7884bec5",
+      "application_environment_commitment": "33e889f3c3d3cbc568dd05323de840a098ce06950e6f7cfc1938f3656640490d"
+    },
+    "no_gui": true,
+    "no_observer_distribution_or_cookie_change": true,
+    "native_process_iterator_supported": true,
+    "observation_bytes": 6598,
+    "supplementary_public_action_callback_typed_tuple_errors": {
+      "independent_observe_grant": {
+        "expected_reason": "{:permission_denied, :observe}",
+        "actual_error_type": "tagged_tuple",
+        "exact_typed_reason_present": true,
+        "exact_sdk_tuple_message_projection": false
+      },
+      "output_budget": {
+        "expected_reason": "{:extension_result_limit, :observer, 32}",
+        "actual_error_type": "tagged_tuple",
+        "exact_typed_reason_present": true,
+        "exact_sdk_tuple_message_projection": false
+      },
+      "unbound_target": {
+        "expected_reason": "{:capability_unavailable, :observer}",
+        "actual_error_type": "tagged_tuple",
+        "exact_typed_reason_present": true,
+        "exact_sdk_tuple_message_projection": false
+      }
+    }
+  },
+  "runtime": {
+    "otp": "28",
+    "elixir": "1.20.2",
+    "erts": "16.4.0.2",
+    "mix_env": "test",
+    "provider_calls": false,
+    "user_or_provider_credentials_used": false,
+    "fresh_owned_distribution_cookie_used": true
+  },
+  "scope": "Current source-bound registered headless Observer: actual local OTP application and distinct owned distributed BEAM application; no model/proxy fake",
+  "result": "passed",
+  "cleanup": {
+    "local_fixture_application_stopped": true,
+    "target_peer_process_stopped": true,
+    "target_os_process_absent": true,
+    "client_distribution_stopped": true,
+    "isolated_epmd_had_no_registered_names": true,
+    "isolated_epmd_exit_status": 0,
+    "isolated_epmd_os_process_absent": true,
+    "isolated_loopback_port_closed": true,
+    "client_mix_process_exit_code": 0,
+    "owned_private_fixture_root_removed": true,
+    "private_cookie_files_removed_with_fixture_root": true,
+    "final_all_attempts_os_sweep": {
+      "listener_command": "ss -lntp '( sport = :42781 or sport = :42783 or sport = :42784 or sport = :42785 or sport = :42786 )'",
+      "observed_listener_rows": 0,
+      "process_command": "pgrep -f 'omj_observer_(target|client)_[[:xdigit:]]+'",
+      "observed_matching_pids": 0,
+      "pgrep_exit_code": 1,
+      "removal_command": "rm -r -- /tmp/omj-observer-current-20261020.wnBTKAbO && test ! -e /tmp/omj-observer-current-20261020.wnBTKAbO",
+      "removal_exit_code": 0
+    }
+  },
+  "schema_version": 1,
+  "source_binding": {
+    "collector_path": "/home/autark/src/oh_my_jido/_build/test/lib/oh_my_jido/ebin/Elixir.OhMyJido.Intelligence.Observer.beam",
+    "library_sha256": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+    "mix_project_sha256": "4248f0466feeaabd2fb743fc35fef4dfd0ac1ab3b144b4ff3506754edf921990",
+    "mix_lock_sha256": "f398864718ced0fcb8ff777487f287419945f5501c841e03250f39c29a770488",
+    "collector_source_sha256": "8bb7a2e3d6ad955c98c98947ace2f969986f7d1a407b7d293dfb684cdeeec35e",
+    "action_source_sha256": "f6133ecf5dfae3a705ccfd97bb650811621a78b7c258e67cdcfbc1aa33b8147a",
+    "loaded_collector_beam_sha256": "9396363a47a44fa433d89499174ec040d48f80e52192736782d0aff9cdc67eaf",
+    "loaded_action_beam_sha256": "2a4d9d804f7f8c6dcb0949f7a1612ce6ed7376575483b92516d7c4c5ff6af6e9",
+    "loaded_tool_beam_sha256": "c2f745e537ae5071a6875bd23c31c0b7c752bb139fff4de5a39856c41f14f933",
+    "loaded_exec_beam_sha256": "6e070e22bf854ee128c4e94090d0219a812ee6666e3216b0654aa0921b8381c9",
+    "project_source_recompiled_by_probe": false,
+    "library_fingerprint_algorithm": "SHA256 of sorted relative lib/**/*.ex paths, each encoded as path <> NUL <> lowercase_SHA256(file_bytes) <> NUL, concatenated",
+    "current_compiled_root_used_without_project_recompile": true
+  },
+  "recorded_at": "2026-10-20T06:02:01.343939Z",
+  "application_versions": {
+    "oh_my_jido": "0.1.0",
+    "zoi": "0.18.11",
+    "req_llm": "1.28.0",
+    "jido_action": "2.4.0",
+    "jido": "2.4.0",
+    "jido_ai": "2.4.0",
+    "jido_signal": "2.3.2"
+  },
+  "actual_native_sdk_execution": true,
+  "distinct_target_vm": true,
+  "current_compiled_collector_loaded_before_request": true,
+  "target_collector_beam_matches_controller": true,
+  "separate_node": {
+    "scope": "separate actual owned BEAM application",
+    "limits": {
+      "process_inventory": {
+        "truncated": true,
+        "requested": 2,
+        "returned": 2
+      },
+      "application_inventory": {
+        "truncated": true,
+        "requested": 2,
+        "returned": 2
+      },
+      "ets_inventory": {
+        "truncated": true,
+        "requested": 2,
+        "returned": 2
+      },
+      "supervision_full": {
+        "truncated": false,
+        "returned": 2
+      },
+      "supervision_depth_one": {
+        "truncated": true,
+        "returned": 1
+      },
+      "supervision_limit_one": {
+        "truncated": true,
+        "returned": 1
+      },
+      "invalid_requests_rejected": 7
+    },
+    "gone_process": {
+      "expected_reason": ":observer_process_gone",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "gone_table": {
+      "expected_reason": ":observer_table_gone",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "malformed_process": {
+      "expected_reason": ":invalid_observer_pid",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "public_boundary": "OhMyJido.Tool.execute(context, \"observer\", params) -> registered OhMyJido.Tools.Observer -> Jido.Exec.run -> host-bound fixed collector",
+    "actual_started_otp_application": true,
+    "unpredictable_target_application_version_matches": true,
+    "unpredictable_target_application_version_commitment": "edbec711cd1a94f00472dc4eabdf85a513f3bf03f211288123c7c77a2fa79eb1",
+    "unpredictable_private_table_metadata_matches_owner_attestation": true,
+    "bounded_system_memory_and_process_metadata": true,
+    "process_fields": [
+      "current_function",
+      "heap_size",
+      "initial_call",
+      "memory",
+      "message_queue_len",
+      "pid",
+      "reductions",
+      "registered_name",
+      "stack_size",
+      "status",
+      "total_heap_size"
+    ],
+    "table_fields": [
+      "id",
+      "memory",
+      "memory_unit",
+      "name",
+      "owner",
+      "protection",
+      "read_concurrency",
+      "size",
+      "type",
+      "write_concurrency"
+    ],
+    "independent_observe_grant_denial": {
+      "expected_reason": "{:permission_denied, :observe}",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": false,
+      "exact_sdk_tuple_message_projection": true
+    },
+    "confined_root_denial": {
+      "expected_reason": ":observer_supervisor_not_granted",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false
+    },
+    "output_budget_denial": {
+      "expected_reason": "{:extension_result_limit, :observer, 32}",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": false,
+      "exact_sdk_tuple_message_projection": true
+    },
+    "unbound_target_denial": {
+      "expected_reason": "{:capability_unavailable, :observer}",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": false,
+      "exact_sdk_tuple_message_projection": true
+    },
+    "private_assertions": {
+      "state_unchanged": true,
+      "table_contents_unchanged": true,
+      "process_dictionary_unchanged": true,
+      "queued_messages_unchanged": true,
+      "application_environment_unchanged": true,
+      "private_sentinel_values_excluded": true,
+      "forbidden_private_keys_absent": true,
+      "queued_message_count_unchanged": true
+    },
+    "private_commitments": {
+      "state_commitment": "07d6f4bf69031b13c5d563b9dd4cbcf1b6eeb1f71ff839ae7efebee11a1a09ef",
+      "table_contents_commitment": "d6e1fa1fee8099f5c456d58df7bab7130a57a75a22ce868cc148d30865cb2d4d",
+      "dictionary_commitment": "57ffe76705085f72798b7675915a79fad25732442a214af1ed9c38389c9f6824",
+      "queued_messages_commitment": "a8f4250c99dc1829b2bca0390c51a8910cc73c855d021e82572b1bb9c16da035",
+      "application_environment_commitment": "6ba0111f860c1f6f3d207dbc3a880049956f3e5669cb0d9ace06e1d141e279bc"
+    },
+    "no_gui": true,
+    "no_observer_distribution_or_cookie_change": true,
+    "native_process_iterator_supported": true,
+    "observation_bytes": 4385,
+    "supplementary_public_action_callback_typed_tuple_errors": {
+      "independent_observe_grant": {
+        "expected_reason": "{:permission_denied, :observe}",
+        "actual_error_type": "tagged_tuple",
+        "exact_typed_reason_present": true,
+        "exact_sdk_tuple_message_projection": false
+      },
+      "output_budget": {
+        "expected_reason": "{:extension_result_limit, :observer, 32}",
+        "actual_error_type": "tagged_tuple",
+        "exact_typed_reason_present": true,
+        "exact_sdk_tuple_message_projection": false
+      },
+      "unbound_target": {
+        "expected_reason": "{:capability_unavailable, :observer}",
+        "actual_error_type": "tagged_tuple",
+        "exact_typed_reason_present": true,
+        "exact_sdk_tuple_message_projection": false
+      }
+    }
+  },
+  "typed_timeouts": {
+    "erpc_deadline": {
+      "expected_reason": ":observer_timeout",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false,
+      "elapsed_ms": 102
+    },
+    "target_native_application_timeout": {
+      "expected_reason": ":observer_timeout",
+      "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+      "exact_typed_reason_present": true,
+      "exact_sdk_tuple_message_projection": false,
+      "elapsed_ms": 2002
+    },
+    "caller_survived": true
+  },
+  "target_exit_result": {
+    "expected_reason": ":observer_target_unavailable",
+    "actual_error_type": "Elixir.Jido.Action.Error.ExecutionFailureError",
+    "exact_typed_reason_present": true,
+    "exact_sdk_tuple_message_projection": false
+  },
+  "target_state_unchanged_after_timeouts": true,
+  "adapter_transport": "fixed :erpc.call(target, OhMyJido.Intelligence.Observer, :snapshot, [request, opts], timeout)",
+  "setup_boundary": "Trusted harness explicitly starts loopback-only epmd/distribution, sets a fresh owned cookie, preloads only the compiled fixture/current collector, and starts a genuine OTP Application before any Observer request; Observer does none of this.",
+  "limitations": [
+    "Snapshots are non-atomic and contain changing VM counters; unchanged assertions apply to private fixture state, queued messages, dictionary, environment and ETS contents, not scheduler/reduction/memory counters.",
+    "Process iteration requires the actually observed OTP28+ iterator; no whole-process-list fallback is used.",
+    "Trusted fixture attestation and lifecycle controls are not model-facing tools, RPC/evaluation authorization, hostile same-UID isolation or access to an external user application.",
+    "No project build, tests, formatter, linter, provider request, GUI or external network service was invoked by this proof.",
+    "The exact embedded runtime program names its no-user/no-provider credential observation credentials_used; it explicitly creates and uses only a fresh owned distribution cookie, as shown by setup_boundary and fresh_owned_distribution_cookie_used.",
+    "Stable SDK2.4 permission/output-budget/unbound-target tuple reasons are exact native SDK message projections, not original typed tuple details; direct Action callback tuple assertions are explicitly supplementary. Timeout and vanished-target atom tags remain exact typed reasons through the real SDK."
+  ],
+  "safe_reproducer": {
+    "cookie": "generated fresh within owned VM; never exported",
+    "fixture_source": "defmodule ObserverOwnedFixture.Sentinel do\n  def start_link(_opts) do\n    parent = self()\n    {:ok, pid} = Task.start_link(fn -> init(parent) end)\n    receive do {:owned_sentinel_ready, ^pid} -> {:ok, pid} after 5_000 -> {:error, :startup_timeout} end\n  end\n\n  defp init(parent) do\n    true = Process.register(self(), __MODULE__)\n    secrets = Map.new([:state, :dictionary, :queue, :table, :environment], &{&1, Base.encode64(:crypto.strong_rand_bytes(48))})\n    Process.put(:private_fixture_dictionary, secrets.dictionary)\n    Application.put_env(:observer_owned_fixture, :private_fixture_environment, secrets.environment)\n    <<random::unsigned-32>> = :crypto.strong_rand_bytes(4)\n    row_count = 17 + rem(random, 31)\n    table = :ets.new(:observer_owned_private, [:set, :private])\n    true = :ets.insert(table, Enum.map(1..row_count, &{&1, secrets.table}))\n    send(self(), {:private_fixture_payload, secrets.queue})\n    send(parent, {:owned_sentinel_ready, self()})\n    loop(%{secrets: secrets, table: table, row_count: row_count, counter: random})\n  end\n\n  defp loop(state) do\n    receive do\n      {:attest, from, ref} ->\n        {:messages, messages} = Process.info(self(), :messages)\n        {:dictionary, dictionary} = Process.info(self(), :dictionary)\n        {:message_queue_len, queued} = Process.info(self(), :message_queue_len)\n        facts = %{\n          pid: self() |> :erlang.pid_to_list() |> to_string(),\n          table: inspect(state.table),\n          table_size: :ets.info(state.table, :size),\n          private_table: :ets.info(state.table, :protection) == :private,\n          state_commitment: digest({state.secrets.state, state.counter}),\n          table_contents_commitment: digest(Enum.sort(:ets.tab2list(state.table))),\n          dictionary_commitment: digest(Enum.sort(dictionary)),\n          queued_messages_commitment: digest(messages),\n          application_environment_commitment: digest(Application.get_env(:observer_owned_fixture, :private_fixture_environment)),\n          queued_messages_count: queued\n        }\n        send(from, {ref, facts})\n        loop(state)\n\n      {:check_private_exclusion, bytes, from, ref} ->\n        excluded = Enum.all?(Map.values(state.secrets), fn secret -> :binary.match(bytes, secret) == :nomatch end)\n        send(from, {ref, excluded})\n        loop(state)\n    end\n  end\n\n  defp digest(term), do: :crypto.hash(:sha256, :erlang.term_to_binary(term)) |> Base.encode16(case: :lower)\nend\n\ndefmodule ObserverOwnedFixture.Inner do\n  use Supervisor\n  def start_link(opts), do: Supervisor.start_link(__MODULE__, opts, name: __MODULE__)\n  @impl true\n  def init(_opts) do\n    child = %{id: :private_sentinel, start: {ObserverOwnedFixture.Sentinel, :start_link, [[]]}}\n    Supervisor.init([child], strategy: :one_for_one)\n  end\nend\n\ndefmodule ObserverOwnedFixture.Application do\n  use Application\n  @impl true\n  def start(_type, _args) do\n    Supervisor.start_link([ObserverOwnedFixture.Inner], strategy: :one_for_one, name: ObserverOwnedFixture.Root)\n  end\nend\n\ndefmodule ObserverOwnedFixture.Control do\n  def boot do\n    {:ok, _} = Application.ensure_all_started(:elixir)\n    {:ok, _} = Application.ensure_all_started(:crypto)\n    version = \"1.0.0+\" <> Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)\n    spec = {:application, :observer_owned_fixture, [description: ~c\"Owned actual OTP Observer acceptance application\", vsn: String.to_charlist(version), modules: [ObserverOwnedFixture.Sentinel, ObserverOwnedFixture.Inner, ObserverOwnedFixture.Application, __MODULE__], registered: [ObserverOwnedFixture.Sentinel, ObserverOwnedFixture.Inner, ObserverOwnedFixture.Root], applications: [:kernel, :stdlib, :elixir, :crypto], mod: {ObserverOwnedFixture.Application, []}]}\n    :ok = :application.load(spec)\n    :ok = Application.start(:observer_owned_fixture)\n    Code.ensure_loaded!(OhMyJido.Intelligence.Observer)\n    %{node: Atom.to_string(node()), os_pid: System.pid(), version: version, collector_beam_sha256: beam_digest(OhMyJido.Intelligence.Observer), collector_path: OhMyJido.Intelligence.Observer |> :code.which() |> to_string(), iterator_supported: function_exported?(:erlang, :processes_iterator, 0), attestation: attest()}\n  end\n\n  def attest do\n    ref = make_ref()\n    send(ObserverOwnedFixture.Sentinel, {:attest, self(), ref})\n    receive do {^ref, facts} -> facts after 5_000 -> raise \"owned sentinel did not attest\" end\n  end\n\n  def private_exclusion?(bytes) do\n    ref = make_ref()\n    send(ObserverOwnedFixture.Sentinel, {:check_private_exclusion, bytes, self(), ref})\n    receive do {^ref, excluded} -> excluded after 5_000 -> raise \"owned sentinel did not check exclusion\" end\n  end\n\n  def distribution_attestation do\n    %{node: Atom.to_string(node()), cookie_commitment: :crypto.hash(:sha256, :erlang.term_to_binary(Node.get_cookie())) |> Base.encode16(case: :lower), nodes: Enum.sort(Node.list(:connected)), gui_running: Enum.any?(Application.started_applications(), fn {app, _, _} -> app in [:wx, :observer] end)}\n  end\n\n  def gone_selectors do\n    {pid, monitor} = spawn_monitor(fn -> :ok end)\n    receive do {:DOWN, ^monitor, :process, ^pid, :normal} -> :ok after 5_000 -> raise \"owned process did not exit\" end\n    table = :ets.new(:observer_owned_gone, [:private])\n    id = inspect(table)\n    true = :ets.delete(table)\n    %{pid: pid |> :erlang.pid_to_list() |> to_string(), table: id}\n  end\n\n  def beam_digest(module) do\n    {^module, bytes, _} = :code.get_object_code(module)\n    :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)\n  end\nend\n",
+    "runtime_program": "defmodule ObserverCurrentSmoke do\n  alias OhMyJido.{Context, Tool, Tools}\n  alias OhMyJido.Intelligence.Observer\n  alias ObserverOwnedFixture.Control\n\n  def digest(bytes), do: :crypto.hash(:sha256, bytes) |> Base.encode16(case: :lower)\n  def assert!(true, _label), do: :ok\n  def assert!(_, label), do: raise(\"observer assertion failed: \" <> label)\n  def success!({:ok, value}, _label) when is_map(value), do: value\n  def success!({:ok, value, []}, _label) when is_map(value), do: value\n  def success!(_result, label), do: raise(\"expected successful registered SDK Action: \" <> label)\n  def contains?(value, expected) when value == expected, do: true\n  def contains?(value, expected) when is_map(value), do: Enum.any?(Map.to_list(value), fn {k, v} -> contains?(k, expected) or contains?(v, expected) end)\n  def contains?(value, expected) when is_tuple(value), do: value |> Tuple.to_list() |> Enum.any?(&contains?(&1, expected))\n  def contains?(value, expected) when is_list(value), do: Enum.any?(value, &contains?(&1, expected))\n  def contains?(_, _), do: false\n  def error!({:error, reason}, expected) do\n    typed = contains?(reason, expected)\n    projected = is_tuple(expected) and is_map(reason) and Map.get(reason, :message) == inspect(expected)\n    assert!(typed or projected, \"exact native tagged failure or SDK-specific tuple-message projection #{inspect(expected)}\")\n    %{expected_reason: inspect(expected), actual_error_type: error_type(reason), exact_typed_reason_present: typed, exact_sdk_tuple_message_projection: projected}\n  end\n  def error!({:error, reason, []}, expected), do: error!({:error, reason}, expected)\n  def error!(_, expected), do: raise(\"expected Action failure: #{inspect(expected)}\")\n  def rejected?({:error, _}), do: true\n  def rejected?({:error, _, []}), do: true\n  def rejected?(_), do: false\n  def error_type(%{__struct__: module}), do: Atom.to_string(module)\n  def error_type(value) when is_atom(value), do: \"atom\"\n  def error_type(value) when is_tuple(value), do: \"tagged_tuple\"\n  def error_type(_), do: \"map_or_native_error\"\n  def execute(context, params), do: Tool.execute(context, \"observer\", params, timeout: 10_000)\n  def forbidden_key?(value) when is_map(value) do\n    forbidden = ~w(state dictionary messages environment contents data values credentials)\n    Enum.any?(value, fn {key, child} -> to_string(key) in forbidden or forbidden_key?(child) end)\n  end\n  def forbidden_key?(value) when is_list(value), do: Enum.any?(value, &forbidden_key?/1)\n  def forbidden_key?(_), do: false\n\n  def exercise(context, control, boot, scope) do\n    before = control.(:attest, [])\n    dist_before = control.(:distribution_attestation, [])\n    assert!(before.private_table and before.queued_messages_count == 1, \"real private ETS and queued sentinel exist\")\n    assert!(Tool.find(context, \"observer\") == {:ok, OhMyJido.Tools.Observer}, \"exact registered native Observer Action\")\n    assert!(OhMyJido.Tools.Observer in Tools.default(), \"Observer belongs to full native registry\")\n    assert!(context.tools == Tools.select!(:live_inspection), \"live inspection availability bundle\")\n\n    overview = success!(execute(context, %{operation: \"overview\"}), \"overview\")\n    assert!(overview.target == boot.node and overview.atomic == false, \"explicit actual target VM and non-atomic snapshot\")\n    memory = overview.system.memory_bytes\n    assert!(memory.total >= memory.processes_used and memory.processes_used > 0, \"actual structured target memory\")\n    assert!(overview.system.process_count > 0 and overview.system.uptime_ms >= 0, \"actual target system counters\")\n    applications = success!(execute(context, %{operation: \"applications\", limit: 200}), \"applications\")\n    observed_app = Enum.find(applications.entries, &(&1.name == \"observer_owned_fixture\"))\n    assert!(is_map(observed_app) and observed_app.version == boot.version, \"fresh unpredictable target application version\")\n    small_apps = success!(execute(context, %{operation: \"applications\", limit: 2}), \"bounded applications\")\n    assert!(small_apps.count <= 2 and small_apps.truncated == true, \"application bound and truncation\")\n    process = success!(execute(context, %{operation: \"process\", pid: before.pid}), \"sentinel process\")\n    assert!(process.process.pid == before.pid and process.process.message_queue_len == 1, \"real target process and retained queued message\")\n    assert!(process.process.memory > 0 and is_map(process.process.initial_call), \"structured real process metadata\")\n    processes = success!(execute(context, %{operation: \"processes\", limit: 2}), \"bounded process inventory\")\n    assert!(processes.count <= 2 and processes.truncated == true and boot.iterator_supported, \"bounded OTP native process iterator\")\n    table = success!(execute(context, %{operation: \"table\", table: before.table}), \"private table metadata\")\n    assert!(table.table.id == before.table and table.table.protection == \"private\" and table.table.size == before.table_size, \"fresh actual private target table metadata\")\n    tables = success!(execute(context, %{operation: \"ets\", limit: 2}), \"bounded ETS inventory\")\n    assert!(tables.count <= 2 and tables.truncated == true, \"ETS limit and truncation\")\n    full_tree = success!(execute(context, %{operation: \"supervision\", root: \"owned\", depth: 2, limit: 10}), \"approved supervision tree\")\n    assert!(full_tree.count == 2 and full_tree.truncated == false, \"actual application supervisor and private worker\")\n    depth_tree = success!(execute(context, %{operation: \"supervision\", root: \"owned\", depth: 1, limit: 10}), \"bounded tree depth\")\n    assert!(depth_tree.count == 1 and depth_tree.truncated == true, \"depth limit disclosed\")\n    small_tree = success!(execute(context, %{operation: \"supervision\", root: \"owned\", depth: 2, limit: 1}), \"bounded tree nodes\")\n    assert!(small_tree.count == 1 and small_tree.truncated == true, \"total tree node bound disclosed\")\n\n    denied = %{context | permissions: MapSet.new([:read, :eval, :debug, :mcp])}\n    denial = error!(execute(denied, %{operation: \"overview\"}), {:permission_denied, :observe})\n    root_denial = error!(execute(context, %{operation: \"supervision\", root: \"ungranted\"}), :observer_supervisor_not_granted)\n    output_denial = error!(execute(%{context | limits: %{extension_result_bytes: 32}}, %{operation: \"overview\"}), {:extension_result_limit, :observer, 32})\n    missing_target = error!(execute(%{context | adapters: %{}}, %{operation: \"overview\"}), {:capability_unavailable, :observer})\n    callback_tuple_errors = %{\n      independent_observe_grant: error!(OhMyJido.Tools.Observer.run(%{operation: \"overview\"}, %{oh_my_jido: denied}), {:permission_denied, :observe}),\n      output_budget: error!(OhMyJido.Tools.Observer.run(%{operation: \"overview\"}, %{oh_my_jido: %{context | limits: %{extension_result_bytes: 32}}}), {:extension_result_limit, :observer, 32}),\n      unbound_target: error!(OhMyJido.Tools.Observer.run(%{operation: \"overview\"}, %{oh_my_jido: %{context | adapters: %{}}}), {:capability_unavailable, :observer})\n    }\n    invalid = [\n      %{operation: \"processes\", limit: 201},\n      %{operation: \"processes\", offset: 100_001},\n      %{operation: \"supervision\", root: \"owned\", depth: 6},\n      %{operation: \"overview\", target: \"unauthorized@127.0.0.1\"},\n      %{operation: \"overview\", fields: [\"dictionary\"]},\n      %{operation: \"overview\", module: \"Code\", function: \"eval_string\"},\n      %{operation: \"rpc\"}\n    ]\n    assert!(Enum.all?(invalid, &(execute(context, &1) |> rejected?())), \"model target/executor/raw fields and out-of-scope bounds rejected\")\n    gone = control.(:gone_selectors, [])\n    gone_process = error!(execute(context, %{operation: \"process\", pid: gone.pid}), :observer_process_gone)\n    gone_table = error!(execute(context, %{operation: \"table\", table: gone.table}), :observer_table_gone)\n    malformed_process = error!(execute(context, %{operation: \"process\", pid: \"System.halt()\"}), :invalid_observer_pid)\n\n    observations = [overview, applications, small_apps, process, processes, table, tables, full_tree, depth_tree, small_tree]\n    encoded = Jason.encode!(observations)\n    assert!(not forbidden_key?(observations), \"metadata never contains private introspection keys\")\n    assert!(control.(:private_exclusion?, [encoded]), \"all five target-only private sentinel values excluded\")\n    after_state = control.(:attest, [])\n    dist_after = control.(:distribution_attestation, [])\n    assert!(before == after_state, \"private state/ETS/dictionary/queued messages/application environment unchanged\")\n    assert!(dist_before == dist_after and not dist_after.gui_running, \"Observer requests never change target distribution/cookie or start GUI\")\n    %{scope: scope, public_boundary: \"OhMyJido.Tool.execute(context, \\\"observer\\\", params) -> registered OhMyJido.Tools.Observer -> Jido.Exec.run -> host-bound fixed collector\", actual_started_otp_application: true, unpredictable_target_application_version_matches: true, unpredictable_target_application_version_commitment: digest(boot.version), unpredictable_private_table_metadata_matches_owner_attestation: true, bounded_system_memory_and_process_metadata: true, process_fields: Map.keys(process.process) |> Enum.sort(), table_fields: Map.keys(table.table) |> Enum.sort(), limits: %{process_inventory: %{requested: 2, returned: processes.count, truncated: processes.truncated}, application_inventory: %{requested: 2, returned: small_apps.count, truncated: small_apps.truncated}, ets_inventory: %{requested: 2, returned: tables.count, truncated: tables.truncated}, supervision_full: %{returned: full_tree.count, truncated: full_tree.truncated}, supervision_depth_one: %{returned: depth_tree.count, truncated: depth_tree.truncated}, supervision_limit_one: %{returned: small_tree.count, truncated: small_tree.truncated}, invalid_requests_rejected: length(invalid)}, independent_observe_grant_denial: denial, confined_root_denial: root_denial, output_budget_denial: output_denial, unbound_target_denial: missing_target, gone_process: gone_process, gone_table: gone_table, malformed_process: malformed_process, private_assertions: %{state_unchanged: before.state_commitment == after_state.state_commitment, table_contents_unchanged: before.table_contents_commitment == after_state.table_contents_commitment, process_dictionary_unchanged: before.dictionary_commitment == after_state.dictionary_commitment, queued_messages_unchanged: before.queued_messages_commitment == after_state.queued_messages_commitment, application_environment_unchanged: before.application_environment_commitment == after_state.application_environment_commitment, private_sentinel_values_excluded: true, forbidden_private_keys_absent: true, queued_message_count_unchanged: true}, private_commitments: Map.take(before, [:state_commitment, :table_contents_commitment, :dictionary_commitment, :queued_messages_commitment, :application_environment_commitment]), no_gui: true, no_observer_distribution_or_cookie_change: true, native_process_iterator_supported: boot.iterator_supported, observation_bytes: byte_size(encoded)}\n    |> Map.put(:supplementary_public_action_callback_typed_tuple_errors, callback_tuple_errors)\n  end\n\n  def wait_until(fun, attempts \\\\ 100)\n  def wait_until(fun, attempts) when attempts > 0 do\n    if fun.(), do: :ok, else: (Process.sleep(50); wait_until(fun, attempts - 1))\n  end\n  def wait_until(_, 0), do: raise(\"owned resource closure/readiness deadline\")\n\n  def run(root, expected_sha, output_path) do\n    library_sha = Path.wildcard(\"lib/**/*.ex\") |> Enum.sort() |> Enum.map(fn path -> [path, 0, digest(File.read!(path)), 0] end) |> IO.iodata_to_binary() |> digest()\n    assert!(library_sha == expected_sha, \"current full library source commitment\")\n    Code.prepend_path(Path.join(root, \"ebin\"))\n    Code.ensure_loaded!(Control)\n    Code.ensure_loaded!(Observer)\n    Code.ensure_loaded!(OhMyJido.Tools.Observer)\n    collector_path = Observer |> :code.which() |> to_string() |> Path.expand()\n    assert!(String.starts_with?(collector_path, Path.join(File.cwd!(), \"_build/test/\")), \"owned current root compiled collector\")\n    source_binding = %{library_sha256: library_sha, mix_project_sha256: digest(File.read!(\"mix.exs\")), mix_lock_sha256: digest(File.read!(\"mix.lock\")), collector_source_sha256: digest(File.read!(\"lib/oh_my_jido/intelligence/observer.ex\")), action_source_sha256: digest(File.read!(\"lib/oh_my_jido/tools/observer.ex\")), loaded_collector_beam_sha256: Control.beam_digest(Observer), loaded_action_beam_sha256: Control.beam_digest(OhMyJido.Tools.Observer), loaded_tool_beam_sha256: Control.beam_digest(Tool), loaded_exec_beam_sha256: Control.beam_digest(Jido.Exec), collector_path: collector_path, project_source_recompiled_by_probe: false}\n    versions = Map.new([:oh_my_jido, :jido, :jido_ai, :jido_action, :jido_signal, :req_llm, :zoi], &{&1, to_string(Application.spec(&1, :vsn))})\n    port_number = System.fetch_env!(\"ERL_EPMD_PORT\") |> String.to_integer()\n    {:ok, reservation} = :gen_tcp.listen(port_number, [:binary, active: false, reuseaddr: true, ip: {127, 0, 0, 1}])\n    :ok = :gen_tcp.close(reservation)\n    epmd = Port.open({:spawn_executable, System.find_executable(\"epmd\")}, [:binary, :exit_status, :stderr_to_stdout, args: [\"-port\", to_string(port_number), \"-address\", \"127.0.0.1\"]])\n    {:os_pid, epmd_pid} = Port.info(epmd, :os_pid)\n    Process.put(:owned_epmd, {epmd, epmd_pid, port_number})\n    wait_until(fn -> case :gen_tcp.connect({127, 0, 0, 1}, port_number, [:binary, active: false], 100) do {:ok, socket} -> :gen_tcp.close(socket); true; _ -> false end end)\n    suffix = Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)\n    controller_name = String.to_atom(\"omj_observer_client_\" <> suffix <> \"@127.0.0.1\")\n    {:ok, _} = :net_kernel.start([controller_name, :longnames])\n    true = Node.set_cookie(String.to_atom(Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)))\n    paths = Enum.flat_map(:code.get_path(), fn path -> [~c\"-pa\", path] end)\n    args = [~c\"+S\", ~c\"2:2\", ~c\"+A\", ~c\"1\", ~c\"-start_epmd\", ~c\"false\", ~c\"-setcookie\", Atom.to_charlist(Node.get_cookie()), ~c\"-kernel\", ~c\"inet_dist_use_interface\", ~c\"{127,0,0,1}\"] ++ paths\n    {:ok, peer, target} = :peer.start_link(%{name: String.to_atom(\"omj_observer_target_\" <> suffix), host: ~c\"127.0.0.1\", longnames: true, connection: :standard_io, args: args, wait_boot: 15_000, shutdown: 5_000})\n    Process.put(:owned_peer, peer)\n    true = Node.connect(target)\n    boot = :peer.call(peer, Control, :boot, [])\n    Process.put(:owned_target_os_pid, boot.os_pid)\n    assert!(boot.node != Atom.to_string(node()) and boot.os_pid != System.pid(), \"separate actual target BEAM process and node\")\n    assert!(boot.collector_beam_sha256 == source_binding.loaded_collector_beam_sha256 and boot.collector_path == collector_path, \"identical current compiled native collector preloaded on target\")\n    target_control = fn function, args -> :peer.call(peer, Control, function, args) end\n    adapter_opts = [target: target, timeout_ms: 5_000, supervisors: %{\"owned\" => ObserverOwnedFixture.Root}]\n    context = Context.new!(workspace: root, session_id: \"observer-current-\" <> suffix, bundles: [:live_inspection], permissions: [:observe], adapters: %{observer: {Observer, adapter_opts}})\n    remote = exercise(context, target_control, boot, \"separate actual owned BEAM application\")\n    local_boot = Control.boot()\n    local = exercise(%{context | adapters: %{observer: {Observer, Keyword.put(adapter_opts, :target, :local)}}}, fn function, args -> apply(Control, function, args) end, local_boot, \"local actual owned OTP application\")\n    local_root = Process.whereis(ObserverOwnedFixture.Root)\n    local_worker = Process.whereis(ObserverOwnedFixture.Sentinel)\n    :ok = Application.stop(:observer_owned_fixture)\n    :ok = Application.unload(:observer_owned_fixture)\n    assert!(not Process.alive?(local_root) and not Process.alive?(local_worker), \"owned local application closure\")\n    Process.put(:local_application_stopped, true)\n\n    before_timeouts = target_control.(:attest, [])\n    :ok = :peer.call(peer, :sys, :suspend, [:application_controller])\n    timeout_results = try do\n      short_context = %{context | adapters: %{observer: {Observer, Keyword.put(adapter_opts, :timeout_ms, 100)}}}\n      started = System.monotonic_time(:millisecond)\n      short = error!(execute(short_context, %{operation: \"applications\"}), :observer_timeout)\n      short_ms = System.monotonic_time(:millisecond) - started\n      started = System.monotonic_time(:millisecond)\n      native = error!(execute(context, %{operation: \"applications\"}), :observer_timeout)\n      native_ms = System.monotonic_time(:millisecond) - started\n      %{erpc_deadline: Map.put(short, :elapsed_ms, short_ms), target_native_application_timeout: Map.put(native, :elapsed_ms, native_ms), caller_survived: Process.alive?(self())}\n    after\n      :ok = :peer.call(peer, :sys, :resume, [:application_controller])\n    end\n    assert!(target_control.(:attest, []) == before_timeouts, \"target private state retained after typed native timeout\")\n    target_dist = target_control.(:distribution_attestation, [])\n    assert!(not target_dist.gui_running, \"no target Observer/wx GUI after timeout\")\n    :ok = :peer.stop(peer)\n    wait_until(fn -> not Process.alive?(peer) and not File.exists?(\"/proc/\" <> boot.os_pid) end)\n    Process.put(:owned_peer, nil)\n    Process.put(:target_peer_stopped, true)\n    unavailable = error!(execute(context, %{operation: \"overview\"}), :observer_target_unavailable)\n    assert!(Process.alive?(self()), \"caller survives disappeared target\")\n    report = %{schema_version: 1, recorded_at: DateTime.utc_now() |> DateTime.to_iso8601(), scope: \"Current source-bound registered headless Observer: actual local OTP application and distinct owned distributed BEAM application; no model/proxy fake\", result: \"passed\", source_binding: source_binding, application_versions: versions, runtime: %{elixir: System.version(), otp: to_string(:erlang.system_info(:otp_release)), erts: to_string(:erlang.system_info(:version)), mix_env: to_string(Mix.env()), credentials_used: false, provider_calls: false}, actual_native_sdk_execution: true, distinct_target_vm: true, current_compiled_collector_loaded_before_request: true, target_collector_beam_matches_controller: true, local: local, separate_node: remote, typed_timeouts: timeout_results, target_exit_result: unavailable, target_state_unchanged_after_timeouts: true, adapter_transport: \"fixed :erpc.call(target, OhMyJido.Intelligence.Observer, :snapshot, [request, opts], timeout)\", setup_boundary: \"Trusted harness explicitly starts loopback-only epmd/distribution, sets a fresh owned cookie, preloads only the compiled fixture/current collector, and starts a genuine OTP Application before any Observer request; Observer does none of this.\", limitations: [\"Snapshots are non-atomic and contain changing VM counters; unchanged assertions apply to private fixture state, queued messages, dictionary, environment and ETS contents, not scheduler/reduction/memory counters.\", \"Process iteration requires the actually observed OTP28+ iterator; no whole-process-list fallback is used.\", \"Trusted fixture attestation and lifecycle controls are not model-facing tools, RPC/evaluation authorization, hostile same-UID isolation or access to an external user application.\", \"No project build, tests, formatter, linter, provider request, GUI or external network service was invoked by this proof.\"]}\n    Process.put(:safe_report, report)\n    Process.put(:safe_output_path, output_path)\n    :ok\n  end\n\n  def cleanup do\n    peer = Process.get(:owned_peer)\n    if is_pid(peer) and Process.alive?(peer), do: :peer.stop(peer)\n    target_pid = Process.get(:owned_target_os_pid)\n    if is_binary(target_pid), do: wait_until(fn -> not File.exists?(\"/proc/\" <> target_pid) end)\n    if Process.whereis(ObserverOwnedFixture.Root), do: Application.stop(:observer_owned_fixture)\n    if Node.alive?(), do: :net_kernel.stop()\n    if epmd_info = Process.get(:owned_epmd) do\n      {epmd, epmd_pid, epmd_port} = epmd_info\n      {names, names_status} = System.cmd(System.find_executable(\"epmd\"), [\"-port\", to_string(epmd_port), \"-names\"], stderr_to_stdout: true)\n      assert!(names_status == 0 and not String.contains?(names, \"name \"), \"no owned or foreign names remain in isolated EPMD\")\n      {kill_output, kill_status} = System.cmd(System.find_executable(\"epmd\"), [\"-port\", to_string(epmd_port), \"-kill\"], stderr_to_stdout: true)\n      assert!(kill_status == 0 and String.contains?(String.downcase(kill_output), \"killed\"), \"isolated EPMD acknowledged closure\")\n      receive do {^epmd, {:exit_status, 0}} -> :ok after 5_000 -> raise \"owned EPMD not reaped\" end\n      wait_until(fn -> not File.exists?(\"/proc/\" <> to_string(epmd_pid)) end)\n      closed = case :gen_tcp.connect({127, 0, 0, 1}, epmd_port, [:binary, active: false], 100) do {:error, :econnrefused} -> true; {:ok, socket} -> :gen_tcp.close(socket); false; _ -> false end\n      assert!(closed, \"owned loopback EPMD port closed\")\n      Process.put(:cleanup_facts, %{local_fixture_application_stopped: Process.get(:local_application_stopped, false), target_peer_process_stopped: Process.get(:target_peer_stopped, false), target_os_process_absent: is_binary(target_pid) and not File.exists?(\"/proc/\" <> target_pid), client_distribution_stopped: not Node.alive?(), isolated_epmd_had_no_registered_names: true, isolated_epmd_exit_status: 0, isolated_epmd_os_process_absent: true, isolated_loopback_port_closed: closed})\n    end\n    :ok\n  end\nend\n\n[root, expected_sha, output_path] = System.argv() |> Enum.drop_while(&(&1 == \"--\"))\nfailure = try do\n  :ok = ObserverCurrentSmoke.run(root, expected_sha, output_path)\n  nil\nrescue\n  exception ->\n    frames = Enum.take(__STACKTRACE__, 5) |> Enum.map(fn {m, f, a, info} -> %{module: inspect(m), function: to_string(f), arity: if(is_integer(a), do: a, else: length(a)), line: Keyword.get(info, :line)} end)\n    %{error: inspect(exception.__struct__), message: if(match?(%RuntimeError{}, exception), do: exception.message, else: \"private arguments omitted\"), frames: frames}\ncatch\n  kind, reason -> %{error: to_string(kind), atom_reason: if(is_atom(reason), do: to_string(reason), else: \"private arguments omitted\")}\nafter\n  :ok = ObserverCurrentSmoke.cleanup()\nend\nif failure do\n  IO.puts(\"OMJ_HARNESS_FAILURE=\" <> Jason.encode!(failure))\n  System.halt(1)\nend\nreport = Process.get(:safe_report) |> Map.put(:cleanup, Process.get(:cleanup_facts)) |> Map.put(:safe_reproducer, %{fixture_source: File.read!(Path.join(root, \"observer_owned_fixture.ex\")), runtime_program: File.read!(__ENV__.file), fixture_compile_command: \"ERL_FLAGS='+S 2:2 +A 1' elixirc -o $FIXTURE/ebin $FIXTURE/observer_owned_fixture.ex (once, reused unchanged on both SDKs)\", runtime_command: \"HOME=$FIXTURE/private-home MIX_ENV=test ERL_EPMD_PORT=$OWNED_PORT ERL_EPMD_ADDRESS=127.0.0.1 ERL_FLAGS='+S 4:4 +A 2 -start_epmd false -kernel inet_dist_use_interface {127,0,0,1}' mix run --no-compile --no-deps-check $FIXTURE/observer_runtime_smoke.exs -- $FIXTURE $EXPECTED_LIBRARY_SHA $SAFE_OUTPUT_PATH\", cookie: \"generated fresh within owned VM; never exported\", fixture_directory_mode: \"0700\"})\nFile.write!(Process.get(:safe_output_path), Jason.encode!(report, pretty: true) <> \"\\n\")\nIO.puts(\"OMJ_SAFE_REPORT=\" <> Jason.encode!(report))\n",
+    "fixture_compile_command": "ERL_FLAGS='+S 2:2 +A 1' elixirc -o $FIXTURE/ebin $FIXTURE/observer_owned_fixture.ex",
+    "runtime_command": "HOME=$FIXTURE/private-home MIX_ENV=test ERL_EPMD_PORT=$OWNED_PORT ERL_EPMD_ADDRESS=127.0.0.1 ERL_FLAGS='+S 4:4 +A 2 -start_epmd false -kernel inet_dist_use_interface {127,0,0,1}' mix run --no-compile --no-deps-check $FIXTURE/observer_runtime_smoke.exs -- $FIXTURE $EXPECTED_LIBRARY_SHA $SAFE_OUTPUT_PATH",
+    "fixture_directory_mode": "0700",
+    "setup": "Create a fresh mktemp -d private0700 directory; write fixture_source to observer_owned_fixture.ex and runtime_program to observer_runtime_smoke.exs; mkdir -m0700 ebin and private-home; compile only the owned fixture; choose an unused loopback EPMD port; run the recorded command from the selected already-compiled MIX_ENV=test project with the stated expected library SHA.",
+    "after_success": "The program stops the actual local app, separate target VM, client distribution and its foreground EPMD, awaits process/port closure and returns. Retain the safe JSON, then remove only the owned private fixture directory and cookie files. This exact cleanup was observed for this execution."
+  },
+  "sdk_contract": "stable-sdk-2.4",
+  "execution": {
+    "cwd": "/home/autark/src/oh_my_jido",
+    "command": "env HOME=/tmp/omj-observer-current-20261020.wnBTKAbO/stable-home MIX_ENV=test ERL_EPMD_PORT=42786 ERL_EPMD_ADDRESS=127.0.0.1 ERL_FLAGS='+S 4:4 +A 2 -start_epmd false -kernel inet_dist_use_interface {127,0,0,1}' mix run --no-compile --no-deps-check /tmp/omj-observer-current-20261020.wnBTKAbO/observer_runtime_smoke.exs -- /tmp/omj-observer-current-20261020.wnBTKAbO 50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9 /tmp/omj-observer-current-20261020.wnBTKAbO/stable.safe.json",
+    "exit_code": 0,
+    "elapsed_seconds": 6.04,
+    "raw_output_artifact": "artifact://1655",
+    "project_build_or_quality_suite_invoked": false,
+    "fixture_directory_mode_observed": "0700"
+  },
+  "setup_history": {
+    "final_fixture_reused_on_both_sdks": true,
+    "project_source_builds": 0,
+    "fixture_compiler_invocations": 2,
+    "explanation": "Initial disposable fixture setup used Elixir Application.load/1 with a full OTP specification, produced a type warning and failed at boot before Observer execution. The fixture was corrected to :application.load/1 and compiled once after correction, then reused unchanged on both SDKs. Early argument parsing, case-sensitive EPMD acknowledgment and port-reservation setup attempts also yielded no acceptance credit. Final successful runtime output and complete owned-resource sweep are retained separately."
+  },
+  "sdk_error_representation": {
+    "source": "deps/jido_action/lib/jido_action/exec.ex:819-825",
+    "observation": "Stable Jido.Exec2.4 retains atom collector failures in ExecutionFailureError.details.reason, but tuple denials are projected to an exact inspected tuple message with no original typed tuple field. The report records exact_typed_reason_present=false for those SDK tuple projections. Supplementary public Action callback executions separately prove the original typed tuple; these are not substituted for the actual registered SDK executions.",
+    "typed_timeout_and_target_loss_preserved": true,
+    "sdk_wrappers_flattened_or_rewritten_by_probe": false,
+    "first_strict_helper_projection_attempt_pass_claimed": false
+  }
+}

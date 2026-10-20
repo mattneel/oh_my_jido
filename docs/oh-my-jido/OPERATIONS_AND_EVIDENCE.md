@@ -71,11 +71,40 @@ The installed Jido.AI scripted loop calls real Read, snapshot-guarded Write and 
 
 Reports distinguish offered/admitted/rejected/completed outcomes, accepted/rejected call latency, run latency, driver dispatch, actual leases/mailboxes/VM run queues and cleanup. Rejected runs are not automatically queued/retried. Small nearest-rank p50/p95/p99 sets do not establish stable tails. OS RSS (`VmRSS`), VM-allocated memory (`:erlang.memory`), process-lifetime `VmHWM` and descendant RSS sums are different measurements. Per-population empty-runtime baselines include Mix/driver/native code and allocator effects; do not divide a changing whole-VM delta by N and present it as proven per-agent memory.
 
-## Final-source library acceptance (2026-10-19)
+## Current stable core (2026-10-20)
+
+The [current core record](evidence/core-reconciliation-20261020.json) covers stable
+Jido2.4 explicit interrupted-execution reconciliation and fail-closed journals.
+The [earlier stop milestone](evidence/native-stop-stable-20261020.json) separately
+retains its actual Shell leader/child/Session closure proof. Those core records do
+not replace the separate [complete CMS loop](evidence/editorial-complete-20261020.json),
+[capped public release](evidence/docs-site-production-capped-20261020.json) or
+[cold restore](evidence/docs-site-cold-restore-20261020.json) observations. External
+Fly provisioning, secrets and deployment still require explicit approval.
+
+| Gate | Observed result |
+|---|---|
+| Full opt-in `mix ci` |529 tests; Credo0, Dialyzer0/0, ExDNA0/0 and Reach OK after repository startup alias4.6 correction (`artifact://1672`) |
+| Independent consumers | Plain Mix3/3, including a minimal no-inherited-config/no-credentials direct Read plus actual repair/control/restore; own-agent plugin4/4 |
+| Explicit reconciliation | Actual native Read/Edit after host reconciliation, no model call during import, prior outcome remains uncertain; current core regressions pass |
+| Malformed journal | Real corrupt checkpoint blocks overall stop even when native owner closure is confirmed; no operator eligibility for unknown records |
+| Required density |1/10/100/500, active8/six rounds;80,806.87ms work; all cleanup invariants and exact OS baseline1→1 pass |
+| Density schema | Draft2020-12 and date-time formats:0 errors |
+| [Actual source/language/debug tools](evidence/real-tools-current-20261020.json) | Real AST/Edit child compile/run; ElixirLS0.31.1 navigation/diagnostics and same-LSP function/spec9 + variable2 rename; GDB15.1 counter1→3 and confirmed owned cleanup. Optional module rename refuses unproved Mix.Project; no server renameProvider/fallback claim |
+| [Actual local/separate-node Observer](evidence/observer-current-20261020.json) | Registered SDK2 Action against genuine owned OTP apps; bounded/truncated metadata, unchanged private state, typed timeout/target loss, grants/root denial, unchanged Observer distribution/cookies; owned nodes/EPMD/fixtures removed. SDK2 tuple-denial message projection retained |
+| [Actual real Tidewave](evidence/tidewave-current-20261020.json) | Upstream0.9.1/Bandit1.13.1 in distinct client/proxy/app VMs; exact docs/source/log/approved state and RPC/ERPC,0 denied atom growth/no on_load, timeout effect exactlyonce/no retry;0 remaining owned processes/listeners |
+
+The [current density artifact](../../bench/results/density-docs-stable-reconciled-20261020.json)
+records library fingerprint
+`50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9`.
+These are scripted native model turns and real filesystem/process effects, not
+provider throughput, a scaling improvement or proof of an OS sandbox.
+
+## Historical final-source library acceptance (2026-10-19)
 
 The [safe final acceptance record](evidence/library-acceptance-20261019.json) reconciles all62 in-scope capability rows, the explicitly excluded external Elixos gates and the independent reviews' repaired findings. No publication or production/OS-sandbox certification is implied.
 
-| Gate | Actual final-source result | Retained evidence |
+| Gate | Actual historical19Oct source result | Retained evidence |
 |---|---|---|
 | Full opt-in`mix ci` |462 tests including12 actual Python cases; strict Credo0, Dialyzer0/0, ExDNA0/0, Reach OK |`artifact://546` |
 | Independent plain-Mix host | WAE compile and2 actual repair/control/restore scenarios pass | bg_115;`examples/plain_mix` |
@@ -145,28 +174,28 @@ These results were exercised by the integration owner, not by this documentation
 |---|---|---|
 | Cold root warnings-as-errors/Boundary compilation | Clean cold compiler boundary output recorded | Complete `mix ci`, deliberate forbidden-reference gate or all post-edit checks |
 | Separate Elixir + QuickBEAM kernels | 27 actual native backend scenarios passed in the recorded focused run | OS sandbox, aarch64/guest packaging or generic native memory safety |
-| Independent plain-Mix consumer | Final source WAE compile and2 actual repair/control/restore scenarios pass (bg_115), with independently resolved dependencies and no optional backends | Every provider's eligibility, OS sandbox or guest integration |
+| Independent plain-Mix consumer | Historical19Oct WAE compile and2 actual repair/control/restore scenarios (bg_115); current independent3-case result is in the current core record above | Every provider's eligibility, OS sandbox or guest integration |
 | Model transformer/subscription regressions | Recorded focused set **43 passed** | Live SIWC enrollment, eligibility or subscription request success |
-| Python + host continuation privacy | Earlier13-test combined run covered10 Python +3 host-privacy cases. Current licensed native Python suite passes all12 cases, including actual worker exit, sys-debug/queued-request and callback faults (`artifact://218`) | Target musl/aarch64 execution, arbitrary raw BEAM message privacy or isolation from trusted host introspection |
+| Python + host continuation privacy | Dated13-test combined run covered10 Python +3 host-privacy cases; later18Oct licensed native12-case privacy/callback smoke is retained as`artifact://218`. Current opt-in529-case gate repeats the real native scenarios | Target musl/aarch64 execution, arbitrary raw BEAM message privacy or isolation from trusted host introspection |
 | Context continuity | Native terminal-context/uncertain-effect/manager/lease recovery fixes pass54 focused session/runtime/Eval/context/process/model tests (`artifact://256`); version2 JSON restore and independent host question follow-up are exercised | A safe version1 migration, unbounded history or automatic effect replay |
 | Authorized OpenRouter base request | Real native Jido/ReAct → ReqLLM → `openai/gpt-6-luna`, low reasoning; 552 input/9 output tokens; native pricing reported total 0.000060 | SIWC/Claude subscription, general coding/task completion or future pricing |
 | Authorized semantic PNG request | Actual blue/yellow PNG image tool part through the selected native model was interpreted | Default header-only adapter pixel decoding, other formats or every image-capable model |
 | Authorized OpenRouter coding repair | Actual Luna Low native repair passed: three Read calls, failing-before native Shell exit 2, guarded one-operation Edit, passing-after native Shell exit 0 and independent final Mix test exit 0; completed native checkpoint/restored run and ordered tool/progress events observed | Subscription access, arbitrary repository repair coverage, complete CI/privacy/platform/guest gates or future pricing |
 | Official Claude subscription delegation | Actual unmodified2.1.282, native claude.ai login, separately approved Read+Edit-only coding repair with exact scoped native permission allowlist; unpredictable file challenge, independent test exit2→0, tests/config unchanged, existing login preserved and owned cleanup; [safe report](evidence/claude-coding-20261019.json) | Native Jido Claude subscription inference, token brokerage, Bash/MCP/network-tool authorization, OS sandbox or future eligibility/pricing |
 | Native OpenAI subscription | Actual validated SIWC grant, authenticated HTTP200 `models` catalog, unpredictable real Read and native Read/Edit/Shell code repair on `gpt-6-luna`; independent failing-before2/passing-after0, exact source change, tests/config untouched, final local logout/remote revocation; safe [report](evidence/openai-subscription-20261018.json) | Every account/model's eligibility, future availability, pricing or unexercised repository coverage |
-| Actual Elixir coding tools | Native AST/Edit280 and real same-LSP function/variable/module/spec workflow541 pass independent child tests.59 planner cases,4 actual native conflicts545 and final462-case quality gate546 pass; compiler-owned/spec findings reproduced before repair | Server-advertised rename support, unknown native profiles or unsupported/dynamic source identity |
-| Actual debugger | GDB and ElixirLS DAP breakpoint/stack/scopes/variables/step counter1→3 and owned cleanup (`artifact://259`) | Live-node attach/evaluate/RPC/IEx capability |
-| Headless live Observer | Registered local Action496 and separate-node actual OTP app500 pass; bounded5,000-process/typed-timeout probes,11 behavior cases and final full gate546 pass. Private-state exclusion, target preservation and owned teardown; [reviewed report](evidence/observer-reviewed-20261018.json) | GUI, arbitrary RPC/live evaluation, OS sandbox or unconfigured user-app access |
-| Actual live runtime tools | Native Tidewave0.9.1/Bandit1.13.1 approved docs/source/logs/live-state/RPC pass in distinct app VM427. Denied source lookups cause0 atom growth/no loading; native uncertainty/teardown and final full gate546 pass; [reviewed report](evidence/tidewave-runtime-reviewed-20261018.json) | OS sandbox, arbitrary user-app authorization or distributed-node RPC coverage from this smoke |
-| Unified three-language Eval | Same real Jido Action ran retained cells to42, read an unpredictable actual file, denied its narrowed grant, bounded128-byte output, reported errors/timeouts, explicitly reset state and confirmed cleanup/host cwd/env preservation for Elixir/QuickBEAM/Python (`artifact://281`) | OS sandbox, target ABI/guest execution or rollback of prior effects |
-| Core durability repairs | Six native storage-fault/opaque-ID regressions, actual JSON goal/check/effect-retention workflow and final462-case full gate546 pass without replay | Automatic storage recovery or rollback |
-| Actual host Research | Native checked Actions made exactly2 successful fixed Hex catalog HTTPS reads, identified QuickBEAM0.11.3 and respected256-byte untrusted output; denials caused no additional requests (`artifact://355`) | General web search or unknown-field schema-rejection proof |
+| Actual Elixir coding tools | Dated AST/Edit280 and real same-LSP function/variable/module/spec541,59 planner cases/conflicts545 and that wave's462-case gate546; not current-revision language-server proof | Server-advertised rename support, unknown native profiles or unsupported/dynamic source identity |
+| Actual debugger | Dated18Oct GDB/ElixirLS breakpoint/stack/scopes/variables/step counter1→3 and owned cleanup259; current protocol baseline is separate | Live-node attach/evaluate/RPC/IEx capability or a newly repeated installed-server revision |
+| Headless live Observer | Dated18Oct registered local Action496/separate-node app500 retained in[historical report](evidence/observer-reviewed-20261018.json); fresh current-source local/separate-node registered-SDK proof is linked in the current table above | GUI, arbitrary RPC/live evaluation, OS sandbox or unconfigured user-app access |
+| Actual live runtime tools | Dated18Oct real Tidewave0.9.1/Bandit1.13.1 distinct-app427 retained in[historical report](evidence/tidewave-runtime-reviewed-20261018.json); fresh current-source actual service/RPC evidence is linked above, never supplied by the protocol fixture | OS sandbox, arbitrary user-app authorization or distributed-node RPC coverage from that smoke |
+| Unified three-language Eval | Dated18Oct real Jido Action281 ran retained cells to42, unpredictable file Read/narrowed denial, bounded128-byte output, errors/timeouts/reset/cleanup and host cwd/env preservation across Elixir/QuickBEAM/Python. Current opt-in529-case backend gate is separate | OS sandbox, target ABI/guest execution or rollback of prior effects |
+| Core durability repairs | Dated six storage-fault/opaque-ID regressions, JSON goal/check/effect retention and that wave's462-case gate546. Current529-case reconciliation/fault result is in the current core record above | Automatic storage recovery or rollback |
+| Actual host Research | Dated18Oct checked Research Actions355 made exactly2 fixed Hex catalog HTTPS reads, identified QuickBEAM0.11.3 and respected256-byte untrusted output; denials made no extra request. Current authority tests are separate | General web search, fresh service availability or unknown-field schema-rejection proof |
 
 The continuation regression was real: a signed native checkpoint token appeared in typed native Thread event data despite clearing the separate checkpoint token field. Structured checkpoint sanitization and the focused after-fix run passed. This does not authorize logging native tokens or treating signed/encoded values as harmless. The licensed optional Snakepit boundary additionally protects supported native worker diagnostics and opaque SDK envelopes; arbitrary trusted-host raw messages/introspection are not hidden or isolated.
 
-The current passing authorized coding scenario changed only `unit_price + quantity` to `unit_price * quantity`; tests, configuration and shipping behavior were unchanged. Native canonical aggregate usage was **21,299 input / 427 output tokens**, with reported price **USD 0.002873**. The `input`/`output` usage aliases represent the last turn, not that aggregate. Evidence collection uses the actual API shapes: `events/2` returns a list, and journal `effects[id].result` can retain native `{:ok, payload, directives}` tuples. The completed native checkpoint restored a completed run; the supplied key was absent from public/restored views and removed from the child environment. Disposable roots were cleaned. This is the current passing real-tool/live-provider observation; it does not replay uncertain work or declare a goal gate complete.
+The dated stable18Oct authorized coding scenario changed only `unit_price + quantity` to `unit_price * quantity`; tests, configuration and shipping behavior were unchanged. Native canonical aggregate usage was **21,299 input / 427 output tokens**, with reported price **USD 0.002873**. The `input`/`output` aliases describe the last turn, not that aggregate. That observation used actual `events/2` and durable native Action result tuples, restored its completed checkpoint, excluded the supplied key from public/restored views and child environment, and cleaned disposable roots. It is a dated real-provider observation, not a current native V3 run or permission to replay uncertain work.
 
-The historical pre-feature367-case gate367 and independent consumer366 are retained separately from final-source462-case gate546, independent host bg_115 and new full density/schema above. Focused native proofs are not substituted for those integrated gates. Optional unavailable branches are not native execution proof. Linux aarch64/Elixos guest packaging/promotion remains explicitly external, not passed.
+Historical367-case gate367/consumer366 and19Oct462-case gate546/consumer bg_115 remain dated milestones, not current-source certification. Current529-case/native588-case gates, truly independent consumers and source-bound density are separate records. Optional unavailable branches never count as native execution. Linux aarch64/Elixos guest packaging/promotion remains explicitly external, not passed.
 
 ## Quality and independent-host commands
 

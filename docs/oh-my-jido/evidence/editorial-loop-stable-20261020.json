@@ -1,0 +1,106 @@
+{
+  "controls": {
+    "actual_confirmed_ui_cancel": true,
+    "actual_suspended_then_checkpoint_ready": true,
+    "actual_ui_steering_submitted": true,
+    "cancelled_gated_write_executed": false,
+    "cancelled_pending_questions": 0,
+    "cancelled_run_id": "096c645e-aa84-45d4-8fe8-eaf7acf9e9d7",
+    "cancelled_status": "cancelled",
+    "cancelled_writer_pending": false,
+    "durable_steering_event": "steering_queued",
+    "gated_write_replayed": false,
+    "pending_questions_after_resume": 0,
+    "pre_suspend_native_identity_sampled": false,
+    "steer_suspend_resume_run_id": "fa494da7-793a-460f-9b52-eb555d6a9165"
+  },
+  "denial": {
+    "explicit_browser_denial": true,
+    "forbidden_file_exists": false,
+    "journal_note": "completed records the terminal error, not successful execution.",
+    "native_result": "approval_denied",
+    "retry": false,
+    "run_id": "9ad345e0-2831-4f86-a41d-8363d6717f8b"
+  },
+  "driver": "Host-only installed Jido.AI.Test native scripted HTTP/SSE fixture; no alternate model loop or real provider request. Real Question/Read/Edit/Shell Actions and source files.",
+  "immutable_review": {
+    "approveDisabled": true,
+    "checks": "pending",
+    "diff": "diff --git a/examples/docs_site/priv/docs/index.md b/examples/docs_site/priv/docs/index.md\nindex 526d0152786204f2b254a5c87451790f4166a380..6f032ca78c99dad55ed9680dcf4d3cf9f6bf66a4 100644\n--- a/examples/docs_site/priv/docs/index.md\n+++ b/examples/docs_site/priv/docs/index.md\n@@ -1,6 +1,6 @@\n # Oh-My-Jido\n \n-A host-controlled coding agent for ordinary Elixir and Jido applications.\n+An operator-controlled coding agent for ordinary Elixir and Jido applications.\n \n Jido owns agent lifecycle, Jido.AI owns model turns, and ReqLLM owns provider transport. Your application owns workspaces, credentials, permissions and approval. No model request starts merely because the library is supervised.\n \n@@ -22,3 +22,5 @@ children = [{OhMyJido, name: MyApp.Coding}]\n ```\n \n Tool availability never grants permission. Credentials and execution remain explicit host decisions.\n+\n+<!-- Browser proof: approved native process executed once. -->",
+    "digest": "fb3ef27b6481f7392e579b9a4da6e7cdba4fc3292b80955a3d4b31515730b209",
+    "previewDisabled": true,
+    "publishDisabled": true,
+    "url": "/studio/runs/8a874e79-2054-44f1-8762-3203e968af4d/candidates/88f32216-a222-40cf-b012-1ec356d93073"
+  },
+  "limitations": [
+    "No passing candidate check, built preview, publication, code adoption or Fly deployment is claimed here.",
+    "The prepared candidate predates subsequent trusted fixture fixes and is not approved or published.",
+    "An earlier separate scripted run exceeded native Question15s; its journal remains uncertain and it is not this positive proof.",
+    "Model final prose is not verification; retained actual native receipts/files are the proof.",
+    "No credentials, cookies or bearer preview capabilities are exported."
+  ],
+  "positive_run": {
+    "all_four_native_journal_entries": "completed with observed success results",
+    "edit": {
+      "changed": true,
+      "intro": "An operator-controlled coding agent",
+      "replacements": 1
+    },
+    "proper_markdown_newlines": true,
+    "question_result": {
+      "answer": "Use operator-controlled wording."
+    },
+    "read": {
+      "bytes": 1005,
+      "path": "priv/docs/index.md",
+      "snapshot": "d20b2e1dc32079de8781d83343d0c25977292cabc516724c00800bd2ca34f0d9"
+    },
+    "run_id": "8a874e79-2054-44f1-8762-3203e968af4d",
+    "shell": {
+      "cleanup": "confirmed",
+      "effect": "completed",
+      "exit_status": 0,
+      "explicit_browser_approval": true,
+      "stderr": "",
+      "stdout": "approved once\n"
+    },
+    "source_append_count": 1,
+    "source_writer_pending": false,
+    "status": "completed"
+  },
+  "reconnect": {
+    "authenticated_cookie_survived_actual_host_restart": true,
+    "same_digest_after_page_reload": true,
+    "same_review_digest_after_actual_restart": "fb3ef27b6481f7392e579b9a4da6e7cdba4fc3292b80955a3d4b31515730b209"
+  },
+  "restart": {
+    "after": {
+      "append_count": 1,
+      "cancelled_write_replayed": false,
+      "candidate_digest_unchanged": true,
+      "denied_file_exists": false,
+      "effect_receipts_unchanged": true,
+      "native_run_id_unchanged": true,
+      "resumed_write_replayed": false,
+      "run_status": "completed",
+      "source_bytes_unchanged": true
+    },
+    "before": {
+      "cancelled_run_id": "096c645e-aa84-45d4-8fe8-eaf7acf9e9d7",
+      "candidate_digest": "fb3ef27b6481f7392e579b9a4da6e7cdba4fc3292b80955a3d4b31515730b209",
+      "candidate_id": "88f32216-a222-40cf-b012-1ec356d93073",
+      "control_run_id": "fa494da7-793a-460f-9b52-eb555d6a9165",
+      "denied_run_id": "9ad345e0-2831-4f86-a41d-8363d6717f8b",
+      "effects_sha256": "85241611AE515FF492952758C4CA535E846B3C0F7D448CCB0A6E988FD38EB8FE",
+      "native_run_id": "01a156f0-56bf-781e-954e-be732e5337a1",
+      "run_id": "8a874e79-2054-44f1-8762-3203e968af4d",
+      "source_sha256": "566E3C9A78F998C92B6EE88B02214A7D88C68C6B8E2824AEF5D9AF62371F94A7"
+    },
+    "shutdown_exit_code": 0,
+    "startup": "same compatible application/SDK, same absolute data paths and private operator/endpoint secrets"
+  },
+  "scope": "Stable native editorial loop, authentication, immutable review and actual host restart; excludes passing checks, built preview, publication/deployment and native V3 editor acceptance.",
+  "screenshots": [
+    "docs-site-stable-review-20261020.png"
+  ]
+}

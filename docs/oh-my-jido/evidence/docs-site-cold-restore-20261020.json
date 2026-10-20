@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "sdk_line": "stable Jido 2.4",
+  "scope": "actual full private-data cold archive and same-absolute-path restore after local publication/adoption; original stores were atomically quarantined before extraction",
+  "observed_at_utc": "2026-10-20T05:16:54.692647+00:00",
+  "candidate_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+  "archive": {
+    "sha256": "0037e69299aad92999c25713bb29a0e7d3d47d7ecca89da3d2955551284a9db0",
+    "bytes": 1099025120,
+    "mode": "0600",
+    "original_compare_exit_code": 0,
+    "complete_data_bytes": 3066832289,
+    "directory_mode": "0700",
+    "encrypted": false,
+    "external_database_or_publication_overrides": false,
+    "credentials": "kept separately in the existing owner-only ephemeral fixture files, not event exports or data archives",
+    "seed_checkout": "retained in place; immutable managed Git versions/base snapshots are included in the complete data archive",
+    "restored_compare_exit_code": 0,
+    "restored_data_root_mode": "0700",
+    "restored_owner_and_group": "autark/autark"
+  },
+  "procedure": [
+    "Assert zero pending writers and active editorial runs; stop owned previews.",
+    "Restore native checkpoints read-only, capture exact effect/run terms and candidate/source baseline, then strongly stop inspection owners.",
+    "Gracefully stop both editor applications with exit0.",
+    "Archive the entire private data directory with GNU tar/gzip and compare archive bytes/metadata against the stopped originals.",
+    "Atomically rename original data out of the restore path; extract the complete archive to the same original absolute data path with preserved permissions.",
+    "Compare restored bytes/metadata against the archive before boot.",
+    "Boot compatible application/SDK code; restore checkpoints without model turns, compare exact decoded terms and deterministic hashes, then strongly stop inspection owners.",
+    "Reconnect existing authenticated browser and confirm reviewed digest plus unauthenticated published HTTP content."
+  ],
+  "before": {
+    "canonical_term_sha256": "394a8c7dcbd44b6dcf02f6a288e84c23612f63d497cbca92d51a693e1990c07a",
+    "run_status_counts": {
+      "cancelled": 1,
+      "completed": 9,
+      "ready": 1
+    },
+    "source_writers_pending": 0,
+    "active_editor_runs": 0,
+    "journal_effect_counts": {
+      "9039ba75-1007-4274-8fbf-c95fdaefd9f6": 1,
+      "d0d3b1bc-c2a7-486a-8c07-7deed9bd1ec1": 4
+    }
+  },
+  "after": {
+    "exact_decoded_term_equality": true,
+    "canonical_term_sha256": "394a8c7dcbd44b6dcf02f6a288e84c23612f63d497cbca92d51a693e1990c07a",
+    "native_journals_equal": true,
+    "candidate_and_all_check_preview_approval_publication_adoption_receipts_equal": true,
+    "canonical_source_pointer_equal": true,
+    "adopted_bytes_equal": true,
+    "source_writers_pending": 0,
+    "active_editor_runs": 0,
+    "run_status_counts": {
+      "cancelled": 1,
+      "completed": 9,
+      "ready": 1
+    },
+    "journal_effect_counts": {
+      "9039ba75-1007-4274-8fbf-c95fdaefd9f6": 1,
+      "d0d3b1bc-c2a7-486a-8c07-7deed9bd1ec1": 4
+    }
+  },
+  "browser": {
+    "authenticated_review_reconnected": true,
+    "reviewed_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "preview_frame_absent": true,
+    "public_status": 200,
+    "public_operator_wording": true
+  },
+  "limits": [
+    "Disposable local test archives are owner-only but unencrypted; they are not a production encrypted backup or vault implementation.",
+    "No seed checkout or credential vault disaster recovery is claimed; those remain operator-managed procedures.",
+    "This record binds the exact immutable candidate shown above; later native default-role usability repair is a separate source wave.",
+    "No external Fly provisioning, storage, secret installation or deployment occurred."
+  ]
+}

@@ -1,0 +1,1386 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-20T05:58:29.863724Z",
+  "scope": "Actual current compiled library public AST/Edit/LSP/Debug actions against owned disposable fixtures and actual installed ElixirLS/GDB; no model/provider/protocol fake",
+  "qualification": "Optional actual-installed-tools qualification on this current compiled revision. AST/Edit, native ElixirLS navigation/diagnostics and explicit function/spec/variable rename, and actual GDB-DAP passed. Module rename on this source profile was explicitly refused; no full module-rename acceptance claim.",
+  "flavor": "stable",
+  "repository": "/home/autark/src/oh_my_jido",
+  "source_fingerprints": {
+    "library_sha256_after": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+    "library_sha256_before": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+    "mix_lock_sha256": "f398864718ced0fcb8ff777487f287419945f5501c841e03250f39c29a770488",
+    "mix_project_sha256": "4248f0466feeaabd2fb743fc35fef4dfd0ac1ab3b144b4ff3506754edf921990",
+    "after_lsp_receipt_recovery": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+    "algorithm": "SHA256 over sorted lib/**/*.ex relative path, NUL, lowercase SHA256(file bytes), NUL"
+  },
+  "sdk_versions": {
+    "ex_ast": "0.16.0",
+    "jido": "2.4.0",
+    "jido_action": "2.4.0",
+    "jido_ai": "2.4.0",
+    "jido_signal": "2.3.2",
+    "oh_my_jido": "0.1.0",
+    "req_llm": "1.28.0",
+    "sourceror": "1.12.4"
+  },
+  "runtime": {
+    "elixir": "1.20.2",
+    "elixir_executable": "/home/autark/.local/share/mise/installs/elixir/1.20.2-otp-28/bin/elixir",
+    "erts": "16.4.0.2",
+    "mix_env": "test",
+    "otp": "28"
+  },
+  "tool_versions": {
+    "gcc": {
+      "exit_code": 0,
+      "first_line": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0"
+    },
+    "gdb": {
+      "exit_code": 0,
+      "first_line": "GNU gdb (Ubuntu 15.1-1ubuntu1~24.04.1) 15.1"
+    },
+    "elixirls": {
+      "name": "ElixirLS",
+      "version": "0.31.1"
+    }
+  },
+  "commands": [
+    "MIX_ENV=test ERL_FLAGS='+S 4:4 +A 2' mix run --no-compile --no-deps-check /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs stable",
+    "MIX_ENV=test ERL_FLAGS='+S 4:4 +A 2' mix run --no-compile --no-deps-check /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs stable lsp-evidence"
+  ],
+  "temporary_harness": {
+    "sha256": "35260720fe401ff08f05ce68a610dbf213d43a47c93d181bc0efadb07fccb40c",
+    "private_root_mode": "0700",
+    "removed_after_retaining_receipts": true
+  },
+  "raw_artifacts": {
+    "initial": "artifact://1606",
+    "lsp_receipt_recovery_and_ast_grant": "artifact://1613"
+  },
+  "execution_boundary": {
+    "current_library_recompiled": false,
+    "project_tests_run": false,
+    "project_linters_or_formatters_run": false,
+    "fixture_only_compile_and_execute": true,
+    "native_server_or_debugger_protocol_fakes": false,
+    "provider_or_credentials_used": false,
+    "real_user_app_or_server_accessed": false
+  },
+  "ast_edit": {
+    "status": "passed",
+    "search": {
+      "count": 2,
+      "language": "elixir",
+      "matches": [
+        {
+          "captures": {
+            "value": "1"
+          },
+          "range": {
+            "end": {
+              "column": 30,
+              "line": 6
+            },
+            "start": {
+              "column": 12,
+              "line": 6
+            }
+          },
+          "source": "ToolsMath.inc( 1 )"
+        },
+        {
+          "captures": {
+            "value": "2"
+          },
+          "range": {
+            "end": {
+              "column": 29,
+              "line": 7
+            },
+            "start": {
+              "column": 13,
+              "line": 7
+            }
+          },
+          "source": "ToolsMath.inc(2)"
+        }
+      ],
+      "operation": "search",
+      "path": "lib/caller.ex",
+      "snapshot": "47886196d524ea604fbab3a9f678b446816f0147bd1e884ad4ae655404c7af4d",
+      "truncated": false
+    },
+    "replacement": {
+      "changed": true,
+      "count": 1,
+      "language": "elixir",
+      "operation": "replace",
+      "path": "lib/caller.ex",
+      "previous_snapshot": "47886196d524ea604fbab3a9f678b446816f0147bd1e884ad4ae655404c7af4d",
+      "replacements": [
+        {
+          "range": {
+            "end": {
+              "column": 30,
+              "line": 6
+            },
+            "start": {
+              "column": 12,
+              "line": 6
+            }
+          },
+          "replacement": "ToolsMath.inc(1, 10)",
+          "source": "ToolsMath.inc( 1 )"
+        }
+      ],
+      "snapshot": "5c2837b91bfb0536eb4fa37dea0453c644e7325416d2f5802ad4fdf59c48e119"
+    },
+    "exact_edit": {
+      "bytes_written": 289,
+      "changed": true,
+      "created": false,
+      "path": "lib/caller.ex",
+      "previous_snapshot": "5c2837b91bfb0536eb4fa37dea0453c644e7325416d2f5802ad4fdf59c48e119",
+      "replacements": 1,
+      "snapshot": "df50fcfcd1a781c0944a88e31aac4e7918b8eac16af07d7e55327e7bf10ef923"
+    },
+    "stale_ast": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"Structural AST operation rejected: :stale_snapshot\", details: %{reason: :stale_snapshot, actual_snapshot: \"5c2837b91bfb0536eb4fa37dea0453c644e7325416d2f5802ad4fdf59c48e119\", expected_snapshot: \"47886196d524ea604fbab3a9f678b446816f0147bd1e884ad4ae655404c7af4d\"}}}",
+    "stale_edit": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"Filesystem operation rejected: :stale_snapshot\", details: %{reason: :stale_snapshot, actual_snapshot: \"df50fcfcd1a781c0944a88e31aac4e7918b8eac16af07d7e55327e7bf10ef923\", expected_snapshot: \"5c2837b91bfb0536eb4fa37dea0453c644e7325416d2f5802ad4fdf59c48e119\"}}}",
+    "workspace_escape": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"Filesystem operation rejected: :outside_workspace\", details: %{reason: :outside_workspace}}}",
+    "crlf_unicode_comments_literal_unrelated_arity_and_mode_preserved": true,
+    "source_final_sha256": "df50fcfcd1a781c0944a88e31aac4e7918b8eac16af07d7e55327e7bf10ef923",
+    "actual_child_compile_and_execution": {
+      "args": [
+        "run",
+        "--no-deps-check",
+        "-e",
+        "result = ToolsCaller.run(); IO.inspect(result, label: \"actual_result\"); if result != {11, 3, 4, \"ToolsMath.inc(1)\"}, do: System.halt(41)"
+      ],
+      "cwd": "/tmp/omj-real-tools-20261020-HtrQoV/stable/ast",
+      "env": {
+        "ERL_FLAGS": "+S 2:2 +A 1",
+        "MIX_ENV": "dev"
+      },
+      "executable": "/home/autark/.local/share/mise/installs/elixir/1.20.2-otp-28/bin/mix",
+      "exit_code": 0,
+      "output": "Compiling 2 files (.ex)\nGenerated real_tools_fixture app\nactual_result: {11, 3, 4, \"ToolsMath.inc(1)\"}\n"
+    },
+    "fixture_removed": true,
+    "mode_preserved": "0640",
+    "actual_missing_edit_grant_probe": {
+      "status": "passed",
+      "result": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"Filesystem operation rejected: {:permission_denied, :edit}\", details: %{reason: {:permission_denied, :edit}}}}",
+      "source_unchanged": true,
+      "owned_fixture": "/tmp/omj-real-tools-20261020-HtrQoV/stable/ast-grant",
+      "fixture_removed": true
+    },
+    "initial_probe_limitation": {
+      "result": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"Structural AST operation rejected: :ast_range_not_matched\", details: %{reason: :ast_range_not_matched}}}",
+      "interpretation": "This initial range mismatch did not prove edit-grant denial. The separate valid-range probe above actually returned permission_denied:edit with source unchanged."
+    }
+  },
+  "elixirls": {
+    "status": "passed",
+    "executable": "/home/autark/.local/share/mise/installs/elixir/1.20.2-otp-28/bin/elixir",
+    "args": [
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/debug_adapter/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/dialyxir_vendored/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/elixir_ls_utils/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/elixir_sense/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/erl2ex_vendored/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/erlex_vendored/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/jason_v/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/language_server/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/mix_install/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/nimble_parsec/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/path_glob_vendored/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/schematic_v/ebin",
+      "-pa",
+      "/home/autark/.cache/mix/installs/ex-1.20.2-erl-16.4.0.2/j0Y-iTjQ3PounKzK7QFzFw/_build/prod/lib/typed_struct/ebin",
+      "-e",
+      "ElixirLS.LanguageServer.main()"
+    ],
+    "env": {
+      "ERL_FLAGS": "+S 2:2 +A 1",
+      "MIX_BUILD_PATH": null,
+      "MIX_DEPS_PATH": null,
+      "MIX_ENV": null
+    },
+    "server_identity": {
+      "id": "ZA13uSzF6vyX2rQHX3WGvXB4",
+      "os_pid": 614631,
+      "protocol": "lsp",
+      "session_id": "real-tools-stable-lsp",
+      "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/lsp",
+      "dropped_events": 0,
+      "server_info": {
+        "name": "ElixirLS",
+        "version": "0.31.1"
+      }
+    },
+    "genuine_publish_diagnostics": {
+      "jsonrpc": "2.0",
+      "method": "textDocument/publishDiagnostics",
+      "params": {
+        "diagnostics": [
+          {
+            "data": null,
+            "message": "variable \"unused\" is unused (if the variable is not meant to be used, prefix it with an underscore)",
+            "range": {
+              "end": {
+                "character": 10,
+                "line": 2
+              },
+              "start": {
+                "character": 4,
+                "line": 2
+              }
+            },
+            "relatedInformation": [],
+            "severity": 2,
+            "source": "Elixir",
+            "tags": [
+              1
+            ]
+          }
+        ],
+        "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/warning.ex"
+      }
+    },
+    "installed_server_rename_provider": "not_advertised",
+    "actual_child_compile_and_execution": {
+      "args": [
+        "run",
+        "--no-deps-check",
+        "-e",
+        "result = ToolsRename.Caller.run(); IO.inspect(result, label: \"actual_result\"); if result != {2, 4, 4, 3, \"ToolsRename.Math.bump(1)\"}, do: System.halt(42)"
+      ],
+      "env": {
+        "MIX_ENV": "dev",
+        "ERL_FLAGS": "+S 2:2 +A 1"
+      },
+      "output": "Compiling 3 files (.ex)\n    warning: variable \"unused\" is unused (if the variable is not meant to be used, prefix it with an underscore)\n    │\n  3 │     unused = value\n    │     ~~~~~~\n    │\n    └─ lib/warning.ex:3:5: ToolsRename.Warning.keep/1\n\n    warning: unused import ToolsRename.Math.advance/2\n    │\n  3 │   import ToolsRename.Math, only: [advance: 1, advance: 2]\n    │   ~\n    │\n    └─ lib/caller.ex:3:3\n\nGenerated real_tools_fixture app\nactual_result: {2, 4, 4, 3, \"ToolsRename.Math.bump(1)\"}\n",
+      "cwd": "/tmp/omj-real-tools-20261020-HtrQoV/stable/lsp",
+      "exit_code": 0,
+      "executable": "/home/autark/.local/share/mise/installs/elixir/1.20.2-otp-28/bin/mix"
+    },
+    "shutdown": {
+      "closed": true,
+      "shutdown": {
+        "status": "ok",
+        "result": null
+      },
+      "cleanup": "confirmed",
+      "identity": {
+        "id": "ZA13uSzF6vyX2rQHX3WGvXB4",
+        "os_pid": 614631,
+        "protocol": "lsp",
+        "session_id": "real-tools-stable-lsp",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/lsp",
+        "dropped_events": 118,
+        "server_info": {
+          "name": "ElixirLS",
+          "version": "0.31.1"
+        }
+      }
+    },
+    "adapter_pid_absent": true,
+    "fixture_removed": true,
+    "symbol_results": [
+      {
+        "kind": 2,
+        "location": {
+          "range": {
+            "end": {
+              "character": 3,
+              "line": 6
+            },
+            "start": {
+              "character": 0,
+              "line": 0
+            }
+          },
+          "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+        },
+        "name": "ToolsRename.Math"
+      },
+      {
+        "containerName": "ToolsRename.Math",
+        "kind": 12,
+        "location": {
+          "range": {
+            "end": {
+              "character": 28,
+              "line": 2
+            },
+            "start": {
+              "character": 2,
+              "line": 2
+            }
+          },
+          "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+        },
+        "name": "bump/2"
+      },
+      {
+        "containerName": "ToolsRename.Math",
+        "kind": 12,
+        "location": {
+          "range": {
+            "end": {
+              "character": 64,
+              "line": 3
+            },
+            "start": {
+              "character": 2,
+              "line": 3
+            }
+          },
+          "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+        },
+        "name": "bump/2"
+      },
+      {
+        "containerName": "ToolsRename.Math",
+        "kind": 12,
+        "location": {
+          "range": {
+            "end": {
+              "character": 41,
+              "line": 4
+            },
+            "start": {
+              "character": 2,
+              "line": 4
+            }
+          },
+          "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+        },
+        "name": "bump/2"
+      },
+      {
+        "containerName": "ToolsRename.Math",
+        "kind": 12,
+        "location": {
+          "range": {
+            "end": {
+              "character": 60,
+              "line": 5
+            },
+            "start": {
+              "character": 2,
+              "line": 5
+            }
+          },
+          "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+        },
+        "name": "bump/3"
+      }
+    ],
+    "definition_result": {
+      "range": {
+        "end": {
+          "character": 28,
+          "line": 2
+        },
+        "start": {
+          "character": 2,
+          "line": 2
+        }
+      },
+      "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+    },
+    "references_result": [
+      {
+        "range": {
+          "end": {
+            "character": 14,
+            "line": 7
+          },
+          "start": {
+            "character": 10,
+            "line": 7
+          }
+        },
+        "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/caller.ex"
+      },
+      {
+        "range": {
+          "end": {
+            "character": 19,
+            "line": 8
+          },
+          "start": {
+            "character": 15,
+            "line": 8
+          }
+        },
+        "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/caller.ex"
+      },
+      {
+        "range": {
+          "end": {
+            "character": 35,
+            "line": 9
+          },
+          "start": {
+            "character": 31,
+            "line": 9
+          }
+        },
+        "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/caller.ex"
+      },
+      {
+        "range": {
+          "end": {
+            "character": 28,
+            "line": 2
+          },
+          "start": {
+            "character": 2,
+            "line": 2
+          }
+        },
+        "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+      }
+    ],
+    "semantic_rename": {
+      "host_explicit_backend": "elixir",
+      "same_lsp_process": true,
+      "automatic_fallback": false,
+      "function_default_multiclause_import_capture_spec": {
+        "immutable_preview": true,
+        "resulting_snapshots_verified": true,
+        "missing_edit_grant": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"{:permission_denied, :edit}\", details: %{}}}",
+        "preview_files": [
+          {
+            "version": 1,
+            "path": "lib/caller.ex",
+            "snapshot": "59b90cf942987c0fa742b6e88cbc518abde40ed2e84f4de422a857f2037cd810",
+            "edits": [
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 38,
+                    "line": 2
+                  },
+                  "start": {
+                    "character": 34,
+                    "line": 2
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 47,
+                    "line": 2
+                  },
+                  "start": {
+                    "character": 43,
+                    "line": 2
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 14,
+                    "line": 7
+                  },
+                  "start": {
+                    "character": 10,
+                    "line": 7
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 19,
+                    "line": 8
+                  },
+                  "start": {
+                    "character": 15,
+                    "line": 8
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 35,
+                    "line": 9
+                  },
+                  "start": {
+                    "character": 31,
+                    "line": 9
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "version": 1,
+            "path": "lib/math.ex",
+            "snapshot": "faa3e7131c6d4eba7b82c79bcbef08cab8b70fa8b5954861ac9303fbadaa1f49",
+            "edits": [
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 12,
+                    "line": 1
+                  },
+                  "start": {
+                    "character": 8,
+                    "line": 1
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 2
+                  },
+                  "start": {
+                    "character": 6,
+                    "line": 2
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 3
+                  },
+                  "start": {
+                    "character": 6,
+                    "line": 3
+                  }
+                }
+              },
+              {
+                "newText": "advance",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 4
+                  },
+                  "start": {
+                    "character": 6,
+                    "line": 4
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "native_semantic_evidence": {
+          "backend": "elixir",
+          "provider": "language_server_definition_references",
+          "certainty": "bounded_source_verified",
+          "symbol": {
+            "module": "ToolsRename.Math",
+            "name": "bump",
+            "selected": {
+              "arity": 2,
+              "name": "bump",
+              "path": "lib/math.ex",
+              "range": {
+                "end": {
+                  "character": 10,
+                  "line": 3
+                },
+                "start": {
+                  "character": 6,
+                  "line": 3
+                }
+              },
+              "kind": "definition"
+            },
+            "kind": "function",
+            "definitions": [
+              {
+                "arity": 2,
+                "name": "bump",
+                "path": "lib/math.ex",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 2
+                  },
+                  "start": {
+                    "character": 6,
+                    "line": 2
+                  }
+                },
+                "kind": "definition"
+              },
+              {
+                "arity": 2,
+                "name": "bump",
+                "path": "lib/math.ex",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 3
+                  },
+                  "start": {
+                    "character": 6,
+                    "line": 3
+                  }
+                },
+                "kind": "definition"
+              },
+              {
+                "arity": 2,
+                "name": "bump",
+                "path": "lib/math.ex",
+                "range": {
+                  "end": {
+                    "character": 10,
+                    "line": 4
+                  },
+                  "start": {
+                    "character": 6,
+                    "line": 4
+                  }
+                },
+                "kind": "definition"
+              }
+            ],
+            "definition": {
+              "arity": 2,
+              "name": "bump",
+              "path": "lib/math.ex",
+              "range": {
+                "end": {
+                  "character": 10,
+                  "line": 2
+                },
+                "start": {
+                  "character": 6,
+                  "line": 2
+                }
+              },
+              "kind": "definition"
+            },
+            "new_name": "advance",
+            "arities": [
+              1,
+              2
+            ],
+            "native_definition": {
+              "range": {
+                "end": {
+                  "character": 28,
+                  "line": 2
+                },
+                "start": {
+                  "character": 2,
+                  "line": 2
+                }
+              },
+              "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex"
+            },
+            "caller_binding_profile": "elixirls_0_31_1_native_environment",
+            "native_caller_scopes": [
+              {
+                "command": "llmEnvironment",
+                "position": {
+                  "arity": 1,
+                  "name": "bump",
+                  "path": "lib/caller.ex",
+                  "range": {
+                    "end": {
+                      "character": 14,
+                      "line": 7
+                    },
+                    "start": {
+                      "character": 10,
+                      "line": 7
+                    }
+                  },
+                  "kind": "call"
+                },
+                "profile": "elixirls_0_31_1_native_environment",
+                "context": {
+                  "function": "run/0",
+                  "module": "ToolsRename.Caller"
+                },
+                "destination_absent": "advance",
+                "old_mfa": {
+                  "arity": 1,
+                  "module": "ToolsRename.Math",
+                  "name": "bump"
+                },
+                "native_scope": "parser_environment_imports_locals_and_variables",
+                "imported_mfas": 163,
+                "local_mfas": 4,
+                "visible_variables": 1
+              }
+            ]
+          },
+          "scope": {
+            "complete": true,
+            "hidden": true,
+            "ignore": true,
+            "kind": "workspace_sources",
+            "glob": "**/*.{ex,exs}",
+            "inventory": [
+              {
+                "path": "lib/caller.ex",
+                "snapshot": "59b90cf942987c0fa742b6e88cbc518abde40ed2e84f4de422a857f2037cd810"
+              },
+              {
+                "path": "lib/math.ex",
+                "snapshot": "faa3e7131c6d4eba7b82c79bcbef08cab8b70fa8b5954861ac9303fbadaa1f49"
+              },
+              {
+                "path": "lib/warning.ex",
+                "snapshot": "0c11fa309933887db53f7c7897390f4a43511aa98a57b77990143ec6f12626aa"
+              },
+              {
+                "path": "mix.exs",
+                "snapshot": "412c12925dbfad0c3bd160095ecbeae106062fae21ff9696594a4902d70d1690"
+              }
+            ],
+            "source_bytes": 994
+          },
+          "occurrences": 9,
+          "native_reference_locations": 4,
+          "native_requests": 24,
+          "native_definition_requests": 22,
+          "native_environment_or_type_requests": 1,
+          "native_inputs": {
+            "documents": {
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/caller.ex": {
+                "version": 1,
+                "snapshot": "59b90cf942987c0fa742b6e88cbc518abde40ed2e84f4de422a857f2037cd810"
+              },
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex": {
+                "version": 1,
+                "snapshot": "faa3e7131c6d4eba7b82c79bcbef08cab8b70fa8b5954861ac9303fbadaa1f49"
+              },
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/warning.ex": {
+                "version": 1,
+                "snapshot": "0c11fa309933887db53f7c7897390f4a43511aa98a57b77990143ec6f12626aa"
+              },
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/mix.exs": {
+                "version": 1,
+                "snapshot": "412c12925dbfad0c3bd160095ecbeae106062fae21ff9696594a4902d70d1690"
+              }
+            },
+            "source_fingerprints_verified": true,
+            "synchronized": [
+              {
+                "version": 1,
+                "path": "mix.exs",
+                "operation": "open",
+                "snapshot": "412c12925dbfad0c3bd160095ecbeae106062fae21ff9696594a4902d70d1690"
+              }
+            ]
+          },
+          "reference_coverage": "corroborated_with_exhaustive_source_candidates"
+        },
+        "guarded_apply": {
+          "applied": true,
+          "backend": "elixir",
+          "effect": "completed",
+          "files": [
+            {
+              "path": "lib/caller.ex",
+              "snapshot": "97e5149d1202ff4cb59dd0e268c89f105e02cf277e41661c11bd23337172884b"
+            },
+            {
+              "path": "lib/math.ex",
+              "snapshot": "15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc"
+            }
+          ],
+          "identity": {
+            "id": "ZA13uSzF6vyX2rQHX3WGvXB4",
+            "os_pid": 614631,
+            "protocol": "lsp",
+            "session_id": "real-tools-stable-lsp",
+            "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/lsp",
+            "dropped_events": 5,
+            "server_info": {
+              "name": "ElixirLS",
+              "version": "0.31.1"
+            }
+          }
+        }
+      },
+      "variable_binding": {
+        "immutable_preview": true,
+        "resulting_snapshots_verified": true,
+        "missing_edit_grant": "{:error, %Jido.Action.Error.ExecutionFailureError{message: \"{:permission_denied, :edit}\", details: %{}}}",
+        "preview_files": [
+          {
+            "version": 2,
+            "path": "lib/caller.ex",
+            "snapshot": "97e5149d1202ff4cb59dd0e268c89f105e02cf277e41661c11bd23337172884b",
+            "edits": [
+              {
+                "newText": "seed",
+                "range": {
+                  "end": {
+                    "character": 9,
+                    "line": 6
+                  },
+                  "start": {
+                    "character": 4,
+                    "line": 6
+                  }
+                }
+              },
+              {
+                "newText": "seed",
+                "range": {
+                  "end": {
+                    "character": 23,
+                    "line": 7
+                  },
+                  "start": {
+                    "character": 18,
+                    "line": 7
+                  }
+                }
+              }
+            ]
+          }
+        ],
+        "native_semantic_evidence": {
+          "backend": "elixir",
+          "provider": "language_server_definition_references",
+          "certainty": "bounded_source_verified",
+          "symbol": {
+            "name": "value",
+            "selected": {
+              "arity": 0,
+              "name": "value",
+              "path": "lib/caller.ex",
+              "range": {
+                "end": {
+                  "character": 9,
+                  "line": 6
+                },
+                "start": {
+                  "character": 4,
+                  "line": 6
+                }
+              },
+              "kind": "identifier"
+            },
+            "kind": "variable",
+            "definition": {
+              "arity": 0,
+              "name": "value",
+              "path": "lib/caller.ex",
+              "range": {
+                "end": {
+                  "character": 9,
+                  "line": 6
+                },
+                "start": {
+                  "character": 4,
+                  "line": 6
+                }
+              },
+              "kind": "identifier"
+            },
+            "new_name": "seed",
+            "native_definition": {
+              "range": {
+                "end": {
+                  "character": 9,
+                  "line": 6
+                },
+                "start": {
+                  "character": 4,
+                  "line": 6
+                }
+              },
+              "uri": "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/caller.ex"
+            },
+            "binding_identity": "native_definition"
+          },
+          "scope": {
+            "complete": true,
+            "hidden": true,
+            "ignore": true,
+            "kind": "workspace_sources",
+            "glob": "**/*.{ex,exs}",
+            "inventory": [
+              {
+                "path": "lib/caller.ex",
+                "snapshot": "97e5149d1202ff4cb59dd0e268c89f105e02cf277e41661c11bd23337172884b"
+              },
+              {
+                "path": "lib/math.ex",
+                "snapshot": "15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc"
+              },
+              {
+                "path": "lib/warning.ex",
+                "snapshot": "0c11fa309933887db53f7c7897390f4a43511aa98a57b77990143ec6f12626aa"
+              },
+              {
+                "path": "mix.exs",
+                "snapshot": "412c12925dbfad0c3bd160095ecbeae106062fae21ff9696594a4902d70d1690"
+              }
+            ],
+            "source_bytes": 1021
+          },
+          "occurrences": 2,
+          "native_reference_locations": 2,
+          "native_requests": 18,
+          "native_definition_requests": 17,
+          "native_environment_or_type_requests": 0,
+          "native_inputs": {
+            "documents": {
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/caller.ex": {
+                "version": 2,
+                "snapshot": "97e5149d1202ff4cb59dd0e268c89f105e02cf277e41661c11bd23337172884b"
+              },
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/math.ex": {
+                "version": 2,
+                "snapshot": "15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc"
+              },
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/lib/warning.ex": {
+                "version": 1,
+                "snapshot": "0c11fa309933887db53f7c7897390f4a43511aa98a57b77990143ec6f12626aa"
+              },
+              "file:///tmp/omj-real-tools-20261020-HtrQoV/stable/lsp/mix.exs": {
+                "version": 1,
+                "snapshot": "412c12925dbfad0c3bd160095ecbeae106062fae21ff9696594a4902d70d1690"
+              }
+            },
+            "source_fingerprints_verified": true,
+            "synchronized": []
+          },
+          "reference_coverage": "corroborated_with_exhaustive_source_candidates"
+        },
+        "guarded_apply": {
+          "applied": true,
+          "backend": "elixir",
+          "effect": "completed",
+          "files": [
+            {
+              "path": "lib/caller.ex",
+              "snapshot": "39c3b09433e33c6432b909361347a9b9512c8220a6b317b84b056df81d086bda"
+            }
+          ],
+          "identity": {
+            "id": "ZA13uSzF6vyX2rQHX3WGvXB4",
+            "os_pid": 614631,
+            "protocol": "lsp",
+            "session_id": "real-tools-stable-lsp",
+            "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/lsp",
+            "dropped_events": 72,
+            "server_info": {
+              "name": "ElixirLS",
+              "version": "0.31.1"
+            }
+          }
+        }
+      },
+      "unrelated_arity_comment_literal_and_explicit_alias_preserved": true,
+      "module_rename": {
+        "status": "rejected_unproved_source",
+        "observed_failure": "lsp %{\"apply\" => false, \"character\" => 24, \"line\" => 0, \"new_name\" => \"ToolsRename.Arithmetic\", \"operation\" => \"rename\", \"path\" => \"lib/math.ex\", \"snapshot\" => \"15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc\", \"snapshots\" => %{\"lib/caller.ex\" => \"39c3b09433e33c6432b909361347a9b9512c8220a6b317b84b056df81d086bda\", \"lib/math.ex\" => \"15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc\", \"lib/warning.ex\" => \"0c11fa309933887db53f7c7897390f4a43511aa98a57b77990143ec6f12626aa\"}} returned {:error, %Jido.Action.Error.ExecutionFailureError{message: \"{:elixir_rename_unresolved_candidate, %{name: \\\"Mix.Project\\\", path: \\\"mix.exs\\\", range: %{\\\"end\\\" => %{\\\"character\\\" => 17, \\\"line\\\" => 1}, \\\"start\\\" => %{\\\"character\\\" => 6, \\\"line\\\" => 1}}, kind: :module}}\", details: %{}}}",
+        "authored_sources_unchanged": true,
+        "unsupported_candidate": "Mix.Project in fixture mix.exs; retained in inventory, not ignored to force success",
+        "typed_reason": "elixir_rename_unresolved_candidate",
+        "candidate": {
+          "name": "Mix.Project",
+          "path": "mix.exs",
+          "kind": "module",
+          "range": {
+            "start": {
+              "line": 1,
+              "character": 6
+            },
+            "end": {
+              "line": 1,
+              "character": 17
+            }
+          }
+        },
+        "fixture_or_inventory_changed_to_suppress_refusal": false,
+        "module_rename_success_claimed": false
+      }
+    },
+    "initial_attempt": {
+      "status": "Stopped collecting LSP result at this same typed module refusal after function/variable operations. Native adapter finally-close was confirmed in initial raw artifact. Subsequent command retains bounded stage receipts and the identical refusal, then compiles/runs the actually renamed fixture once.",
+      "observed_failure": "** (RuntimeError) lsp %{\"apply\" => false, \"character\" => 24, \"line\" => 0, \"new_name\" => \"ToolsRename.Arithmetic\", \"operation\" => \"rename\", \"path\" => \"lib/math.ex\", \"snapshot\" => \"15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc\", \"snapshots\" => %{\"lib/caller.ex\" => \"39c3b09433e33c6432b909361347a9b9512c8220a6b317b84b056df81d086bda\", \"lib/math.ex\" => \"15dd393a3d98b3491da001e5d3f452df18de8d2a2054cc87c74600fbb092e3cc\", \"lib/warning.ex\" => \"0c11fa309933887db53f7c7897390f4a43511aa98a57b77990143ec6f12626aa\"}} returned {:error, %Jido.Action.Error.ExecutionFailureError{message: \"{:elixir_rename_unresolved_candidate, %{name: \\\"Mix.Project\\\", path: \\\"mix.exs\\\", range: %{\\\"end\\\" => %{\\\"character\\\" => 17, \\\"line\\\" => 1}, \\\"start\\\" => %{\\\"character\\\" => 6, \\\"line\\\" => 1}}, kind: :module}}\", details: %{}}}\n    /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs:74: RealTools20261020.action/3\n    /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs:181: RealTools20261020.rename/6\n    /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs:165: RealTools20261020.elixirls/1\n    /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs:57: RealTools20261020.slice/2\n    /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs:36: RealTools20261020.run/1\n    /tmp/omj-real-tools-20261020-HtrQoV/smoke.exs:258: (file)\n    (elixir 1.20.2) src/elixir_compiler.erl:102: :elixir_compiler.dispatch/4\n    (elixir 1.20.2) src/elixir_compiler.erl:76: :elixir_compiler.compile/4\n"
+    }
+  },
+  "gdb_dap": {
+    "status": "passed",
+    "executable": "/usr/bin/gdb",
+    "args": [
+      "--interpreter=dap"
+    ],
+    "fixture_compilation": {
+      "args": [
+        "-g",
+        "-O0",
+        "-o",
+        "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap/counter",
+        "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap/counter.c"
+      ],
+      "executable": "/usr/bin/gcc",
+      "exit_code": 0,
+      "output": ""
+    },
+    "initialize": {
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "result": {
+        "exceptionBreakpointFilters": [
+          {
+            "filter": "assert",
+            "label": "Ada assertions",
+            "supportsCondition": true
+          },
+          {
+            "filter": "exception",
+            "label": "Ada exceptions",
+            "supportsCondition": true
+          },
+          {
+            "filter": "throw",
+            "label": "C++ exceptions, when thrown",
+            "supportsCondition": true
+          },
+          {
+            "filter": "rethrow",
+            "label": "C++ exceptions, when re-thrown",
+            "supportsCondition": true
+          },
+          {
+            "filter": "catch",
+            "label": "C++ exceptions, when caught",
+            "supportsCondition": true
+          }
+        ],
+        "supportTerminateDebuggee": true,
+        "supportsBreakpointLocationsRequest": true,
+        "supportsCancelRequest": true,
+        "supportsConditionalBreakpoints": true,
+        "supportsConfigurationDoneRequest": true,
+        "supportsDelayedStackTraceLoading": true,
+        "supportsDisassembleRequest": true,
+        "supportsEvaluateForHovers": true,
+        "supportsExceptionFilterOptions": true,
+        "supportsFunctionBreakpoints": true,
+        "supportsHitConditionalBreakpoints": true,
+        "supportsInstructionBreakpoints": true,
+        "supportsLoadedSourcesRequest": true,
+        "supportsLogPoints": true,
+        "supportsModulesRequest": true,
+        "supportsReadMemoryRequest": true,
+        "supportsSetExpression": true,
+        "supportsSetVariable": true,
+        "supportsSingleThreadExecutionRequests": true,
+        "supportsSteppingGranularity": true,
+        "supportsTerminateRequest": true,
+        "supportsValueFormattingOptions": true,
+        "supportsWriteMemoryRequest": true
+      },
+      "trusted": false
+    },
+    "breakpoints": {
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "result": {
+        "breakpoints": [
+          {
+            "id": 1,
+            "reason": "pending",
+            "verified": false
+          }
+        ]
+      },
+      "trusted": false
+    },
+    "launch": {
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "request_id": 3,
+      "status": "pending"
+    },
+    "configuration_done": {
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "result": {},
+      "trusted": false
+    },
+    "await_launch": {
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "result": {}
+    },
+    "initial_stopped": {
+      "event": {
+        "body": {
+          "allThreadsStopped": true,
+          "hitBreakpointIds": [
+            1
+          ],
+          "reason": "breakpoint",
+          "threadId": 1
+        },
+        "event": "stopped",
+        "seq": 32,
+        "type": "event"
+      },
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "trusted": false
+    },
+    "step_over": {
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "result": {},
+      "trusted": false
+    },
+    "stepped_stopped": {
+      "event": {
+        "body": {
+          "allThreadsStopped": true,
+          "reason": "step",
+          "threadId": 1
+        },
+        "event": "stopped",
+        "seq": 37,
+        "type": "event"
+      },
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "trusted": false
+    },
+    "termination": {
+      "cleanup": "confirmed",
+      "cleanup_scope": "adapter_process_group",
+      "closed": true,
+      "debuggee_termination": "acknowledged",
+      "disconnect": {
+        "result": {},
+        "status": "ok"
+      },
+      "identity": {
+        "dropped_events": 0,
+        "id": "kA-seM1OlBflBNYAfP5M3Ste",
+        "os_pid": 613836,
+        "protocol": "dap",
+        "session_id": "real-tools-stable-dap",
+        "workspace": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap"
+      },
+      "terminate": {
+        "result": {},
+        "status": "ok"
+      }
+    },
+    "adapter_pid_absent": true,
+    "fixture_removed": true,
+    "fixture_source": "int main(void) {\n  int counter = 1;\n  counter += 2;\n  counter += 0;\n  return counter;\n}\n",
+    "before_step": {
+      "counter": "1",
+      "stack_frames": [
+        {
+          "column": 0,
+          "id": 0,
+          "instructionPointerReference": "0x555555555138",
+          "line": 3,
+          "moduleId": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap/counter",
+          "name": "main",
+          "source": {
+            "name": "counter.c",
+            "path": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap/counter.c"
+          }
+        }
+      ],
+      "scopes": [
+        {
+          "expensive": false,
+          "line": 3,
+          "name": "Locals",
+          "namedVariables": 1,
+          "presentationHint": "locals",
+          "variablesReference": 1
+        },
+        {
+          "expensive": false,
+          "line": 3,
+          "name": "Registers",
+          "namedVariables": 83,
+          "presentationHint": "registers",
+          "variablesReference": 2
+        }
+      ],
+      "variables": [
+        {
+          "name": "counter",
+          "type": "int",
+          "value": "1",
+          "variablesReference": 0
+        }
+      ]
+    },
+    "after_step": {
+      "counter": "3",
+      "stack_frames": [
+        {
+          "column": 0,
+          "id": 0,
+          "instructionPointerReference": "0x55555555513c",
+          "line": 5,
+          "moduleId": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap/counter",
+          "name": "main",
+          "source": {
+            "name": "counter.c",
+            "path": "/tmp/omj-real-tools-20261020-HtrQoV/stable/dap/counter.c"
+          }
+        }
+      ],
+      "scopes": [
+        {
+          "expensive": false,
+          "line": 5,
+          "name": "Locals",
+          "namedVariables": 1,
+          "presentationHint": "locals",
+          "variablesReference": 1
+        },
+        {
+          "expensive": false,
+          "line": 5,
+          "name": "Registers",
+          "namedVariables": 83,
+          "presentationHint": "registers",
+          "variablesReference": 2
+        }
+      ],
+      "variables": [
+        {
+          "name": "counter",
+          "type": "int",
+          "value": "3",
+          "variablesReference": 0
+        }
+      ]
+    },
+    "breakpoint_verification_scope": "Pre-launch setBreakpoints was pending/unverified. Actual stopped event then reports reason:breakpoint, hitBreakpointIds:[1], and real main/counter.c line3 with counter1. Next event reports reason:step; real stack line5 has counter3."
+  },
+  "cleanup": {
+    "initial": {
+      "cwd_unchanged": true,
+      "environment_unchanged": true,
+      "owned_root": "/tmp/omj-real-tools-20261020-HtrQoV/stable",
+      "root_removed": true
+    },
+    "receipt_recovery": {
+      "owned_root": "/tmp/omj-real-tools-20261020-HtrQoV/stable",
+      "root_removed": true,
+      "cwd_unchanged": true,
+      "environment_unchanged": true
+    },
+    "owned_launcher_pids": [
+      613588,
+      613836,
+      614631
+    ],
+    "all_six_probe_launcher_pids_independently_absent": true,
+    "native_lsp_shutdown_cleanup": "confirmed",
+    "native_dap_termination_cleanup": "confirmed",
+    "debuggee_termination_acknowledgement": "acknowledged",
+    "cleanup_scope": "Only owned adapter process groups, disposable fixture trees, and private harness/results root; no unrelated server, target, node or user-app process touched.",
+    "private_root_removal_command": "test ! -e /proc/613349 && test ! -e /proc/613588 && test ! -e /proc/613653 && test ! -e /proc/613836 && test ! -e /proc/614598 && test ! -e /proc/614631 && rm -rf /tmp/omj-real-tools-20261020-HtrQoV && test ! -e /tmp/omj-real-tools-20261020-HtrQoV && printf '%s\\n' 'All six owned launcher PIDs absent; private harness/results/fixture root removed.'",
+    "private_root_removal_output": "All six owned launcher PIDs absent; private harness/results/fixture root removed.\n",
+    "private_root_removed": true
+  },
+  "limitations": [
+    "No project tests, project compilation, lint, formatter or full build run; only disposable trusted fixture compilation/execution and native server's fixture compilation.",
+    "ElixirLS is an external trusted process that may compile fixture code in its own VM; this is not an OS sandbox.",
+    "Installed server renameProvider is recorded separately from the host-explicit same-LSP rename_backend:elixir; no automatic fallback or textual rename.",
+    "No assistant-host xd LSP, real user app, attach/evaluate/live-node RPC, external service, credentials or paid provider used.",
+    "This is a direct actual-tools smoke, not a repeat of the full historical 59-case semantic rename regression suite.",
+    "Installed ElixirLS0.31.1 does not advertise renameProvider. The explicit same-LSP Elixir semantic planner actually applied supported function/spec and variable changes; module rename on this ordinary Mix.Project source inventory was rejected as unproved and remains unaccepted in this repetition.",
+    "The native module-refusal case retained mix.exs and all source inventory; no source, tests, vendor, runtime config or canonical acceptance criterion was changed to make the optional smoke pass.",
+    "Actual fixture compilation emitted the intentional unused-variable diagnostic and an unused advance/2 import warning; exit0 and exact runtime tuple are preserved, not a warnings-as-errors claim.",
+    "GDB15.1 was the actual debugger used here; historical ElixirLS DAP259 is not relabelled as a current Elixir DAP run.",
+    "During owned LSP shutdown setsid printed child-did-not-exit-normally/No-such-file-or-directory on stderr. Native cleanup receipts were confirmed, launcher /proc entries were independently absent, and exact stderr is retained in raw artifacts.",
+    "Historical full rename541 and ElixirLS/GDB212/259 remain dated stable observations; this record separately states only the current revision outcomes above."
+  ]
+}

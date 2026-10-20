@@ -1,0 +1,23 @@
+<Layouts.app flash={@flash} operator={@operator}>
+  <div class="docs-shell">
+    <Layouts.docs_nav pages={@pages} current_slug={@page.slug} />
+    <div class="docs-content document-content">
+      <nav aria-label="Breadcrumb" class="breadcrumbs text-sm">
+        <ul>
+          <li><a href={~p"/"}>Documentation</a></li><li>{@page.title}</li>
+        </ul>
+      </nav>
+      <p class="eyebrow">GUIDE / {@page.slug}</p>
+      <article id="published-document" class="markdown-body" aria-label={@page.title}>
+        {raw(@page.html)}
+      </article>
+      <footer class="document-footer">
+        <span>Published from reviewed source.</span><a
+          :if={OhMyJidoDocsWeb.OperatorAuth.editor_enabled?()}
+          href={~p"/studio"}
+          class="text-link"
+        >Suggest a source change <span aria-hidden="true">→</span></a>
+      </footer>
+    </div>
+  </div>
+</Layouts.app>

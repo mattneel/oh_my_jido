@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "sdk_line": "stable Jido 2.4",
+  "observed_at_utc": "2026-10-20T05:24:50.891591+00:00",
+  "scope": "actual native SDK/tool/controller loop plus real immutable source checks, built-release preview, digest approval, local docs publication/adoption and new native Read; no paid provider or external deployment",
+  "model_transport": "explicit trusted-host Jido.AI.Test script through real native SDK; no separate agent loop and no paid provider request",
+  "library_quality_gate": {
+    "evidence": "core-reconciliation-20261020.json",
+    "tests": 529
+  },
+  "application_quality_gate": {
+    "command": "DOCS_CANDIDATE_PYTHON=/usr/bin/python3 ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "tests": 150,
+    "credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skips": 0,
+    "clone_budget": "0/0",
+    "architecture": "OK",
+    "raw_output": "artifact://1459"
+  },
+  "independent_consumer": {
+    "command": "ERL_FLAGS='+S 4:4 +A 2' mix test --warnings-as-errors",
+    "plain_mix_cases": 3,
+    "repository_config_import_removed": true,
+    "minimal_read_no_model_credentials": true,
+    "observed_job": "bg_165",
+    "own_agent_cases": 4,
+    "own_agent_evidence": "core-reconciliation-20261020.json"
+  },
+  "native_source_loop": {
+    "run_id": "d0d3b1bc-c2a7-486a-8c07-7deed9bd1ec1",
+    "source_writer_pending": false,
+    "native_run_id": "01a15795-9b8e-7938-a226-5fba5ac9cc0c",
+    "receipts": [
+      {
+        "name": "question",
+        "status": "completed",
+        "result": {
+          "answer": "Use operator-controlled wording."
+        }
+      },
+      {
+        "name": "read",
+        "status": "completed",
+        "result": {
+          "bytes": 1005
+        }
+      },
+      {
+        "name": "edit",
+        "status": "completed",
+        "result": {
+          "changed": true,
+          "replacements": 1
+        }
+      },
+      {
+        "name": "shell",
+        "status": "completed",
+        "result": {
+          "exit_status": 0,
+          "stdout": "approved once\n",
+          "stderr": "",
+          "cleanup": "confirmed",
+          "effect": "completed"
+        }
+      }
+    ],
+    "append_count": 1,
+    "operator_wording": true,
+    "source_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7"
+  },
+  "candidate": {
+    "id": "2b5542b4-3aba-4b87-b3e7-d05a22179856",
+    "digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "diff": "diff --git a/examples/docs_site/priv/docs/index.md b/examples/docs_site/priv/docs/index.mdindex 526d0152786204f2b254a5c87451790f4166a380..6f032ca78c99dad55ed9680dcf4d3cf9f6bf66a4 100644--- a/examples/docs_site/priv/docs/index.md+++ b/examples/docs_site/priv/docs/index.md@@ -1,6 +1,6 @@ # Oh-My-Jido -A host-controlled coding agent for ordinary Elixir and Jido applications.+An operator-controlled coding agent for ordinary Elixir and Jido applications.  Jido owns agent lifecycle, Jido.AI owns model turns, and ReqLLM owns provider transport. Your application owns workspaces, credentials, permissions and approval. No model request starts merely because the library is supervised. @@ -22,3 +22,5 @@ children = [{OhMyJido, name: MyApp.Coding}] ```  Tool availability never grants permission. Credentials and execution remain explicit host decisions.++<!-- Browser proof: approved native process executed once. -->",
+    "approval_disabled_before_checks": true,
+    "publication_disabled_before_checks": true
+  },
+  "actual_default_pipeline": {
+    "status": "passed",
+    "digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "attempt_id": "5654912f-c677-43e9-8195-eab6994fa78d",
+    "duration_ms": 329271,
+    "steps": [
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 580,
+        "owned_process_count": 4,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": "dependency_preflight",
+        "executable": "elixir",
+        "argument_count": 1,
+        "arguments_sha256": "3e7dbb05db5789edf3b07f50f6068a7723e3bff2f93cffa84d72aae3808c2950"
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 82385,
+        "owned_process_count": 27,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "deps.compile"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 4642,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "compile",
+          "--warnings-as-errors"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 108706,
+        "owned_process_count": 374,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "test",
+          "--exclude",
+          "candidate_integration"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 522,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": "dependency_preflight",
+        "executable": "elixir",
+        "argument_count": 1,
+        "arguments_sha256": "3e7dbb05db5789edf3b07f50f6068a7723e3bff2f93cffa84d72aae3808c2950"
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 67063,
+        "owned_process_count": 28,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "deps.compile"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 4103,
+        "owned_process_count": 4,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "compile",
+          "--warnings-as-errors"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 1545,
+        "owned_process_count": 7,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "assets.deploy"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 2706,
+        "owned_process_count": 8,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "release",
+          "--overwrite"
+        ]
+      }
+    ],
+    "max_retained_identity_count": 374,
+    "release_built": true,
+    "command_output_policy": "bounded full raw receipts were inspected privately; this export retains exact command outcome and physical closure metadata, not private paths or whole command source"
+  },
+  "preview": {
+    "browser": {
+      "operator_wording": true,
+      "scripts": 0,
+      "effective_origin": "null",
+      "font": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif",
+      "stylesheets": 1,
+      "all_styles_loaded": true
+    },
+    "sandbox_attribute": "",
+    "referrer_policy": "no-referrer",
+    "scriptless_edited_page_navigation_verified": true,
+    "screenshot": "docs-site-reviewed-preview-20261020.png",
+    "stop_status": "stopped",
+    "process": {
+      "status": "cancelled",
+      "exit_status": 137,
+      "command_started": true,
+      "duration_ms": 293994,
+      "owned_process_count": 3,
+      "owned_processes_complete": true,
+      "scope_error": null,
+      "cleanup": {
+        "status": "confirmed",
+        "authority": "linux_child_subreaper_waitpid",
+        "identity_verified": true,
+        "all_children_reaped": true,
+        "keeper_terminated": true,
+        "remaining_count": 0,
+        "scope_error": null
+      }
+    }
+  },
+  "real_conflict_refusal": {
+    "error": "The host rejected this action: workspace changed. Inspect the current run and candidate before retrying.",
+    "publish_disabled": true,
+    "adopt_disabled": true,
+    "reviewed_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee"
+  },
+  "exact_restoration": {
+    "approval_digest": null,
+    "check_status": "passed",
+    "check_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "candidate_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "restored_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7",
+    "workspace_verified_after_exact_restore": true
+  },
+  "actual_operator_approval": {
+    "confirmations": [
+      "Approve exactly the digest shown in this source review?"
+    ],
+    "controls": {
+      "publish_enabled": true,
+      "adopt_enabled": true,
+      "reviewed_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee"
+    }
+  },
+  "actual_local_publication": {
+    "confirmations": [
+      "Publish these checked, approved docs to the editor's published snapshot?"
+    ],
+    "public_page": {
+      "status": 200,
+      "host_wording": false,
+      "operator_wording": true,
+      "append_marker_count": 0
+    },
+    "acknowledgment": "The host published the checked, approved documentation snapshot."
+  },
+  "durable_publication_adoption": {
+    "id": "2b5542b4-3aba-4b87-b3e7-d05a22179856",
+    "digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "check_status": "passed",
+    "check_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "approval_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "status": "published",
+    "publication_digest": "f489f37276dfd241c0573a4dcd73f7a000e2ad8c208715a688ca815be4261598",
+    "publication_receipt": {
+      "adopted_source_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+      "candidate_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+      "previous_digest": "569804da9b92aea113a10976b94f6087a3e1a83ed94f69c3f580ae2823c4ccea",
+      "published_at": "2026-10-20T04:49:12.624682Z",
+      "published_digest": "f489f37276dfd241c0573a4dcd73f7a000e2ad8c208715a688ca815be4261598",
+      "started_at": "2026-10-20T04:49:07.444322Z",
+      "status": "published"
+    },
+    "adoption_status": "adopted",
+    "adopted_operator_wording": true,
+    "adopted_append_count": 1,
+    "adopted_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7",
+    "seed_source_unchanged": true,
+    "fresh_run_id": "9039ba75-1007-4274-8fbf-c95fdaefd9f6"
+  },
+  "adoption_receipt": {
+    "base_revision": "ad12b4fe9b55a5ae9df7b98c0310a2f938301084dc0075f6f59f831abed93e12",
+    "candidate_digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "digest": "3789dd71b336c17d5f6165a1397fcb10b07d3402fa79bf3e02219817fac49eee",
+    "status": "adopted"
+  },
+  "fresh_native_read": {
+    "status": "completed",
+    "run_id": "9039ba75-1007-4274-8fbf-c95fdaefd9f6",
+    "source_writer_pending": false,
+    "native_run_id": "01a157a5-a761-734d-b7e7-f90dd66f497e",
+    "append_count": 1,
+    "operator_wording": true,
+    "source_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7",
+    "snapshot_effects": [
+      {
+        "completed_at": 1792471836523,
+        "id": "tc_1",
+        "name": "read",
+        "run": "01a157a5-a761-734d-b7e7-f90dd66f497e",
+        "started_at": 1792471836518,
+        "status": "completed"
+      }
+    ],
+    "original_native_owner_stopped": true
+  },
+  "fresh_read_checkpoint_inspection": {
+    "run_id": "9039ba75-1007-4274-8fbf-c95fdaefd9f6",
+    "native_run_id": "01a157a5-a761-734d-b7e7-f90dd66f497e",
+    "active_run": null,
+    "restored_native_run_ids": [
+      "01a157a5-a761-734d-b7e7-f90dd66f497e"
+    ],
+    "restored_owner_strongly_stopped": true,
+    "inspection_started_no_model_turn": true
+  },
+  "fresh_read_actual_results": [
+    {
+      "name": "read",
+      "status": "completed",
+      "native_run_id": "01a157a5-a761-734d-b7e7-f90dd66f497e",
+      "started_at": 1792471836518,
+      "completed_at": 1792471836523,
+      "actual_success": true,
+      "returned_adopted_wording": true,
+      "returned_once_marker": true
+    }
+  ],
+  "control_and_restart_evidence": [
+    "editorial-loop-stable-20261020.json",
+    "core-reconciliation-20261020.json",
+    "docs-site-cold-restore-20261020.json"
+  ],
+  "production_evidence": "docs-site-production-capped-20261020.json",
+  "docker_path_boundary_evidence": "dockerignore-boundary-20261020.json",
+  "limits": [
+    "Source digest binds the exact captured immutable source; subsequent test-only consumer and evidence/ledger edits do not pretend to share that whole-tree digest.",
+    "Hidden HTML comments are deliberately sanitized from reader HTML; the approved append is verified in actual source bytes and native Read, not fabricated from a rendered marker.",
+    "External Fly effects, Git push/publication, Docker image execution and new paid-provider acceptance are not claimed."
+  ]
+}

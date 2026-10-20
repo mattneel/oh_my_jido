@@ -21,7 +21,7 @@ config :req_llm, debug: false
 
 config :jido_ai,
   model_aliases: %{
-    capable: "anthropic:claude-sonnet-4-20250514",
+    capable: "anthropic:claude-sonnet-4-6",
     fast: "anthropic:claude-haiku-4-5"
   }
 
@@ -125,7 +125,7 @@ For prompt composition, supply approved project instructions through the trusted
 | `advisor` | Consequences and trade-offs without taking control | `:thinking` | `:capable` |
 | `compaction` | Preserve constraints and effect evidence | `:fast` | `:fast` |
 
-The installed Jido defaults resolve `:capable`, `:planning` and `:thinking` to `anthropic:claude-sonnet-4-20250514`; `:fast` resolves to `anthropic:claude-haiku-4-5`. Selecting those models does **not** enroll an Anthropic subscription or authorize billing. ContextPolicy itself is extractive and performs no automatic compaction-model call.
+The installed stable Jido2.4 bare aliases `:capable`, `:planning` and `:thinking` still resolve to `anthropic:claude-sonnet-4-20250514`, which this catalog marks retired with no capabilities; `:fast` resolves to `anthropic:claude-haiku-4-5`. Direct tools need no model credentials, but before inference the host must explicitly select an active provider-qualified model or startup role/alias configuration, as illustrated above. Dependency aliases are not silently rewritten, invalid selections do not fall back and metadata recognition does not establish live provider availability. Model selection never enrolls a subscription or authorizes billing. ContextPolicy is extractive and makes no automatic compaction-model call.
 
 Model selection and account selection use the following layers independently:
 
@@ -144,7 +144,7 @@ project_config: %{
   approved: true,
   config: %{
     model_roles: %{
-      review: %{model: "anthropic:claude-sonnet-4-20250514", account: "approved-review-account"}
+      review: %{model: "anthropic:claude-sonnet-4-6", account: "approved-review-account"}
     }
   }
 }

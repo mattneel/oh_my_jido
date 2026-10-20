@@ -6,7 +6,7 @@ config :jido_action, default_timeout: 30_000, default_max_retries: 0, default_ba
 
 config :jido_ai,
   model_aliases: %{
-    capable: "anthropic:claude-sonnet-4-20250514",
+    capable: "anthropic:claude-sonnet-4-6",
     fast: "anthropic:claude-haiku-4-5"
   }
 

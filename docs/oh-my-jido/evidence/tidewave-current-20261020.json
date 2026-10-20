@@ -1,0 +1,380 @@
+{
+  "result": "passed",
+  "cleanup": {
+    "proxy_receipt": "confirmed",
+    "proxy_owner_down": true,
+    "proxy_os_pid_absent": true,
+    "revoked_cleanup_idempotent": true,
+    "client_completed": true,
+    "target_service_stopped": true,
+    "target_os_pid_absent": true,
+    "client_os_pid_absent": true,
+    "all_owned_target_listeners_closed": true,
+    "remaining_owned_listener_count": 0,
+    "remaining_checked_owned_process_count": 0,
+    "temporary_scaffold_removed": true,
+    "ready_file_and_temporary_client_removed": true,
+    "cleanup_verified_after_both_sdk_runs": true,
+    "discarded_attempts_also_stopped_and_reaped": true
+  },
+  "limits": [
+    "Only owned fixture state and source were used; no user application, database or credentials.",
+    "Live runtime source inspection and explicitly approved project_eval are not an OS sandbox.",
+    "RPC/ERPC address the real target's own node; this record is not distributed-node Observer evidence.",
+    "Git-dependent Tidewave tools were not requested; fixture deliberately has no Git repository.",
+    "No project tests, linters, formatters, builds or paid/provider calls were run; disposable external fixture compiled once."
+  ],
+  "schema_version": 1,
+  "fixture": {
+    "root": "/tmp/omj-real-tidewave-20261020-IWGCQ58i",
+    "source_sha256": "8c2a25e3008d349ab710ec88b236c700b1b69e3667de455d703baeb0549f20f5",
+    "dependency_lock_sha256": "892f49af21c52ab148fa253caff9d5ec994c022bd5c4b8a6c448da6f039f81f3",
+    "dependency_locked_versions": {
+      "tidewave": "0.9.1",
+      "bandit": "1.13.1",
+      "plug": "1.20.3",
+      "jason": "1.4.5"
+    },
+    "private_root_mode": "0700",
+    "real_tidewave_proxy_source_sha256": "f8046934cc7f64c7b0a373792e62e4506a5637b324a504e4e7c953ddd33df8a8",
+    "real_tidewave_plug_source_sha256": "f9fdf293e6f5c2445ab369d6dfc832b52f860fd1c1ca1e0eadb32948affa6649",
+    "no_protocol_fake_or_native_test_proxy": true
+  },
+  "track": "stable",
+  "recorded_at": "2026-10-20T06:00:36.906440Z",
+  "source_fingerprints": {
+    "library_sha256": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+    "mix_project_sha256": "4248f0466feeaabd2fb743fc35fef4dfd0ac1ab3b144b4ff3506754edf921990",
+    "mix_lock_sha256": "f398864718ced0fcb8ff777487f287419945f5501c841e03250f39c29a770488"
+  },
+  "application_versions": {
+    "oh_my_jido": "0.1.0",
+    "req_llm": "1.28.0",
+    "jido_action": "2.4.0",
+    "jido": "2.4.0",
+    "jido_ai": "2.4.0"
+  },
+  "loaded_beams": {
+    "Elixir.OhMyJido.Extensions.MCP": {
+      "path": "_build/test/lib/oh_my_jido/ebin/Elixir.OhMyJido.Extensions.MCP.beam",
+      "source": "/home/autark/src/oh_my_jido/lib/oh_my_jido/extensions/mcp.ex",
+      "sha256": "9a2bece3fd3e3ff6f6cc5c0968c665e98578b6ce9a99444e9537276a989c2de0"
+    },
+    "Elixir.OhMyJido.Extensions.Tidewave": {
+      "path": "_build/test/lib/oh_my_jido/ebin/Elixir.OhMyJido.Extensions.Tidewave.beam",
+      "source": "/home/autark/src/oh_my_jido/lib/oh_my_jido/extensions/tidewave.ex",
+      "sha256": "6fcdcd91c3ee69d815e98a999219658b2117c425bdfa414213179ada576ab5c8"
+    },
+    "Elixir.OhMyJido.Intelligence.Stdio": {
+      "path": "_build/test/lib/oh_my_jido/ebin/Elixir.OhMyJido.Intelligence.Stdio.beam",
+      "source": "/home/autark/src/oh_my_jido/lib/oh_my_jido/intelligence/stdio.ex",
+      "sha256": "2be4574986ab9ddcccbe2d09e135e05a14cb90d4c344819a8241ab65e9888258"
+    },
+    "Elixir.OhMyJido.Tools.MCP": {
+      "path": "_build/test/lib/oh_my_jido/ebin/Elixir.OhMyJido.Tools.MCP.beam",
+      "source": "/home/autark/src/oh_my_jido/lib/oh_my_jido/tools/mcp.ex",
+      "sha256": "9977ebd982e5c917203bad03e52858d4b4bdbf085a84e347cf1f952a4e2e1429"
+    }
+  },
+  "actual_runtime": {
+    "otp_release": "28",
+    "elixir": "1.20.2",
+    "target": "http://127.0.0.1:39383/tidewave/mcp",
+    "bandit": "1.13.1",
+    "tidewave": "0.9.1",
+    "native_server_info": {
+      "name": "Tidewave MCP Server",
+      "version": "0.9.1"
+    },
+    "library_os_pid": "618082",
+    "proxy_os_pid": 618171,
+    "target_os_pid": "617993",
+    "distinct_library_proxy_target_vms": true,
+    "real_upstream_proxy": true,
+    "real_upstream_plug": true,
+    "browser_tools_disabled": true,
+    "gui_started": false,
+    "target_mode": "owned external live application",
+    "os_sandbox": false
+  },
+  "observed": {
+    "target_overrides_rejected_before_policy_or_io": true,
+    "proof_challenge_sha256": "160e0ea75c811b83b10276f578f1a554330c936f46ec5f37a9d5aa39a28a1405",
+    "actual_timed_out_effect_not_retried": true,
+    "function_docs": true,
+    "denied_unique_source_references": 24,
+    "state_refused_without_grant_or_exact_approval": true,
+    "separate_mcp_grant_refusal": true,
+    "mcp_approval_required": true,
+    "actual_timeout_native_action_envelope": {
+      "cause": [
+        "protocol_timeout",
+        "tools/call"
+      ],
+      "reason": "mcp_tool_outcome_unknown",
+      "effect": "uncertain",
+      "wrapper_shape": "flat details stable SDK",
+      "retry_field": "absent in native stable error",
+      "explicit_action_max_retries": 0
+    },
+    "model_target_override_refusals": 40,
+    "host_target_port_hidden_from_discovery": true,
+    "separate_live_eval_grant_refusal": true,
+    "actual_native_rpc": true,
+    "post_denial_boundary_equals_baseline": true,
+    "target_atom_count_before_denials": 25065,
+    "actual_timed_out_effect_calls": 1,
+    "log_challenge_sha256": "521a5b5a3faee387dc44454c90d62bbbbe8c2c2504ca6b83b3bc4ff8a213965a",
+    "actual_native_erpc": true,
+    "nonce_challenge_response_matched": true,
+    "denied_reference_module_atoms_created": 0,
+    "live_approval_required": true,
+    "separate_mcp_and_live_approval_refusals": true,
+    "private_source_loaded_only_after_exact_approval": true,
+    "denied_private_source_never_loaded_module": true,
+    "module_docs": true,
+    "exact_approval_changed_arguments_refused": true,
+    "exact_approval_changed_code_refused": true,
+    "private_docs_refused_without_grant_or_exact_approval": true,
+    "log_challenge_matched": true,
+    "native_action_target_refusal_preserved": true,
+    "live_nonce_commitment_matched": true,
+    "isolated_eval_unchanged": true,
+    "source_location": "lib/tidewave_verification/live.ex:11",
+    "denied_target_atom_growth": 0,
+    "native_protocol_error_uncertain_envelope": {
+      "reason": "mcp_tool_outcome_unknown",
+      "effect": "uncertain",
+      "protocol_error_code": -32602
+    },
+    "rpc_challenge_sha256": "3faec57612794adce08e24e2a1c3d84def01666158aef9a72eec18222e6aaf4b",
+    "approval_effects_contain_only_bounded_digests_not_code_or_arguments": true,
+    "erpc_challenge_sha256": "ed99705bf812a5e08ff003e7dba05ab7c96f5104e04a03a4b0207141bcb9f9b7",
+    "explicit_tool_allowlist_enforced": true,
+    "rpc_node_scope": "owned target's own non-distributed node",
+    "target_atom_count_after_denials": 25065,
+    "no_raw_live_nonce_state_or_private_docs_retained": true,
+    "proof_calls": 1,
+    "live_source_marked_not_read_only": true,
+    "rpc_calls": 2,
+    "native_is_error_envelope_preserved": true,
+    "live_catalog_has_four_allowlisted_tools": true,
+    "live_nonce_sha256": "a0cc45cd91c82a1a3bdb8fb4f2805bd1afbf1d55cc581d867d436bd75cb7af14",
+    "no_model_or_provider_calls": true,
+    "inspection_catalog_only_logs": true
+  },
+  "exact_host_approval_manifests": [
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "project_eval",
+      "purpose": "read only owned boundary counters",
+      "arguments_sha256": "112b53c9bc4441814cf106a7d9a038be34d074ac8fbf8179e232cf1946b098c3",
+      "code_sha256": "2b33c87d1aa7f4ef284a7cdab0e3065f5c9188598768f6271eb6083c4f75cf85"
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "project_eval",
+      "purpose": "verify denied unique source references allocated no target module atoms",
+      "arguments_sha256": "9fb1242ced79a3de7becf740c16c7daada3e37b61258949b7dba561665320f15",
+      "code_sha256": "2550b32e49fb660f347ed73779e35288aa13ed66081c1d63b4505fcd33403adc"
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "get_docs",
+      "purpose": "read owned module docs",
+      "arguments_sha256": "cff43fef90bd566c2c98b930556beeae1076f321d4e4de8df4ac42c86d358d8c",
+      "code_sha256": null
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "get_docs",
+      "purpose": "read owned function docs",
+      "arguments_sha256": "5f6a4b11e93e2504f6fe6e5f714d3f8c8cfa45bbd3291a1b0794e46f10f42582",
+      "code_sha256": null
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "get_source_location",
+      "purpose": "read owned source location",
+      "arguments_sha256": "5f6a4b11e93e2504f6fe6e5f714d3f8c8cfa45bbd3291a1b0794e46f10f42582",
+      "code_sha256": null
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "get_docs",
+      "purpose": "explicit owned private source canary approval",
+      "arguments_sha256": "0d1218fea1610f02bb8fb112f4187f5c51cfddecb699347b5a3105cc811fd17c",
+      "code_sha256": null
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "get_docs",
+      "purpose": "observe real native tool error",
+      "arguments_sha256": "d67d9ed1db40b697f798366910a7b7b1e29c192ea08a3071da08282f11047c9d",
+      "code_sha256": null
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "get_docs",
+      "purpose": "observe real invalid-arguments protocol uncertainty",
+      "arguments_sha256": "8f60553a620c6a1e8b1e1739e2dd36cc0ea966c52b848810b28f8a6ecb2559f0",
+      "code_sha256": null
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "project_eval",
+      "purpose": "explicit live nonce challenge proof",
+      "arguments_sha256": "dfee92a01f32bd182087d57c5dbb0b1e7fed34ab5451783d803c1669bc4a8880",
+      "code_sha256": "df161ca6145da8f74fb8b0a7d8398b16060768038482fe0058784b1d29744965"
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "project_eval",
+      "purpose": "explicit native RPC and ERPC to owned target's own node",
+      "arguments_sha256": "d6ceceedd52886366f852b976c0731d8ab1fef50e852e60aa6fc6ca17e222b9a",
+      "code_sha256": "8f9d4d4a09b143051960aaeea1171075e565dc3ade09ae5d2e01b64f5035e765"
+    },
+    {
+      "sensitive": true,
+      "mode": "live",
+      "target": "http://127.0.0.1:39383/tidewave/mcp",
+      "tool": "project_eval",
+      "purpose": "owned effect then delayed response to observe real protocol timeout without retry",
+      "arguments_sha256": "2f819b4d9fbebcc5b282850897cf1cf6517a84eba1ae9e43a3dd5bc85c41de9a",
+      "code_sha256": "55b932dc32216003fbb4e83a0e9f6f747cb04e77f07916e7d83295d0aa9a4f9c"
+    }
+  ],
+  "scope": "Current-source stable Jido 2.4 actual upstream Tidewave runtime and authority proof",
+  "repository": "/home/autark/src/oh_my_jido",
+  "recorded_date": "2026-10-20",
+  "supersedes_current_revision_authority_of": "tidewave-runtime-reviewed-20261018.json",
+  "evidence": {
+    "raw_safe_client_artifact": "artifact://1634",
+    "client_exit_status": 0,
+    "client_wall_time_seconds": 7.19,
+    "probe_source_sha256": "734fceb103d5a5e2a4805b6a3795ad0cb4ab3186d03b3d43c4c17074c4a8863e",
+    "generated_private_probe_removed": true,
+    "source_fingerprint_algorithm": "sha256 of sorted concatenation of relative lib/**/*.ex path, NUL, lowercase file sha256, NUL",
+    "compiled_library_reused_without_recompilation": true,
+    "library_source_and_loaded_beam_paths_bound_at_runtime": true,
+    "real_package_source": "Copied existing cached official Hex Tidewave 0.9.1 / Bandit 1.13.1 dependency trees and their compiled dependencies from the previous owned verification fixture; no test/support/tidewave_proxy.ex use and no handrolled protocol."
+  },
+  "commands": {
+    "private_root_creation": {
+      "command": "mktemp -d /tmp/omj-real-tidewave-20261020-XXXXXXXX",
+      "observed_path": "/tmp/omj-real-tidewave-20261020-IWGCQ58i",
+      "observed_mode": "0700"
+    },
+    "reuse_dependencies": {
+      "command": "cp -a /home/autark/.cache/oh-my-jido-verification/tidewave-runtime/deps /home/autark/.cache/oh-my-jido-verification/tidewave-runtime/_build /home/autark/.cache/oh-my-jido-verification/tidewave-runtime/mix.lock /tmp/omj-real-tidewave-20261020-IWGCQ58i/",
+      "exit_status": 0
+    },
+    "external_fixture_only_compile": {
+      "cwd": "/tmp/omj-real-tidewave-20261020-IWGCQ58i",
+      "command": "env MIX_ENV=dev ERL_FLAGS='+S 2:2 +A 1' mix compile",
+      "observed_output": "Compiling 4 files (.ex)",
+      "exit_status": 0,
+      "compile_count": 1,
+      "shared_by_both_sdk_proofs": true
+    },
+    "external_target": {
+      "cwd": "/tmp/omj-real-tidewave-20261020-IWGCQ58i",
+      "command": "env MIX_ENV=dev ERL_FLAGS='+S 2:2 +A 1' mix run --no-compile --no-deps-check --no-halt",
+      "service": "OwnedTidewaveStableAccepted20261020",
+      "loopback_only": true,
+      "ephemeral_port": 39383
+    },
+    "owned_real_proxy": {
+      "cwd": "/tmp/omj-real-tidewave-20261020-IWGCQ58i",
+      "executable": "mix",
+      "args": [
+        "tidewave.proxy",
+        "--no-browser-tools"
+      ],
+      "environment": {
+        "MIX_ENV": "dev",
+        "ERL_FLAGS": "+S 2:2 +A 1"
+      },
+      "native_stdio_owner": true,
+      "protocol_timeout_ms": 2500
+    },
+    "current_library_client": {
+      "cwd": "/home/autark/src/oh_my_jido",
+      "command": "env MIX_ENV=test ERL_FLAGS='+S 4:4 +A 2' mix run --no-compile --no-deps-check /tmp/omj-real-tidewave-20261020-IWGCQ58i/current_client.exs /tmp/omj-real-tidewave-20261020-IWGCQ58i stable 50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+      "exit_status": 0
+    },
+    "target_stop": {
+      "tool": "write",
+      "path": "proc://OwnedTidewaveStableAccepted20261020/kill",
+      "observed_result": "service stopped and exited"
+    },
+    "scaffold_removal": {
+      "command": "rm -rf /tmp/omj-real-tidewave-20261020-IWGCQ58i",
+      "exit_status": 0
+    },
+    "cleanup_proofs": [
+      {
+        "command": "test ! -e /tmp/omj-real-tidewave-20261020-IWGCQ58i && printf 'owned_disposable_root_removed=true\\n'",
+        "output": "owned_disposable_root_removed=true",
+        "exit_status": 0
+      },
+      {
+        "command": "ps -p 607496,614083,615147,615220,615720,617519,617695,617993,618082,618171 -o pid= | wc -l",
+        "output": "0",
+        "exit_status": 0
+      },
+      {
+        "command": "ss -H -lntp '( sport = :41517 or sport = :43167 or sport = :35965 or sport = :39383 )' | wc -l",
+        "output": "0",
+        "exit_status": 0
+      }
+    ]
+  },
+  "independent_sdk_nonce_proofs": {
+    "fresh_target_boot_for_this_sdk": true,
+    "native_and_stable_nonce_commitments_differ": true,
+    "proof_count_reset_by_fresh_target_not_relabelled": true
+  },
+  "verification_policy": {
+    "project_tests": false,
+    "project_lint": false,
+    "project_formatter": false,
+    "project_build": false,
+    "external_disposable_fixture_compiles": 1,
+    "library_source_or_tests_changed": false,
+    "user_application_access": false,
+    "model_or_paid_provider_calls": false,
+    "credentials_used": false
+  },
+  "discarded_attempt": {
+    "raw_log_artifact": "artifact://1623",
+    "client_exit_status": 1,
+    "reason": "Probe initially applied the native V3 nested details.reason shape to stable Jido.Action. Stable correctly preserves a flat details map and has no retry field. Disposable probe accepts the exact stable envelope and explicitly passes max_retries: 0; no library change.",
+    "previous_target_os_pid": "617519",
+    "previous_proxy_os_pid": 617695,
+    "previous_target_port": 35965,
+    "target_reset_before_accepted_run": true,
+    "owned_resources_stopped_and_reaped": true,
+    "not_counted_as_passing_evidence": true
+  }
+}

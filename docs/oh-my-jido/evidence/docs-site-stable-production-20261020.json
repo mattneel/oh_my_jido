@@ -1,0 +1,232 @@
+{
+  "browser": {
+    "errors": [],
+    "mobile": {
+      "contentWidth": 390,
+      "documentWidth": 390,
+      "studioLinks": 0,
+      "viewport": 390
+    },
+    "screenshots": [
+      "docs-site-stable-public-20261020.png",
+      "docs-site-stable-public-mobile-20261020.png"
+    ],
+    "surface": {
+      "bodyFont": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif",
+      "csrfTags": 0,
+      "documentWidth": 1280,
+      "responses": [
+        {
+          "path": "/docs/index",
+          "status": 200
+        },
+        {
+          "path": "/docs/runtime",
+          "status": 200
+        },
+        {
+          "path": "/docs/does-not-exist",
+          "status": 404
+        },
+        {
+          "path": "/studio",
+          "status": 404
+        },
+        {
+          "path": "/login",
+          "status": 404,
+          "login_form_present": false
+        }
+      ],
+      "scripts": 0,
+      "studioLinks": 0,
+      "stylesheetBytes": 86720,
+      "stylesheetStatus": 200,
+      "viewport": 1280
+    }
+  },
+  "build": {
+    "assets_command": "MIX_ENV=prod mix assets.deploy",
+    "assets_exit_code": 0,
+    "compile_command": "MIX_ENV=prod ERL_FLAGS='+S 4:4 +A 2' mix compile --warnings-as-errors",
+    "compile_exit_code": 0,
+    "release_command": "MIX_ENV=prod mix release --overwrite",
+    "release_exit_code": 0,
+    "release_path": "examples/docs_site/_build/prod/rel/oh_my_jido_docs"
+  },
+  "limitations": [
+    "Local Linux x86_64 release, not an actual Fly machine.",
+    "One scheduler was enforced; no512MiB cgroup cap was imposed.",
+    "Console enabled for same-VM role inspection; normal deployment uses headless start.",
+    "Thirty-two loopback requests are a smoke, not a load/capacity or tail-latency guarantee.",
+    "Docker image was not built: local daemon probe previously timed out and no alternate engine was available.",
+    "No provider billing request, cloud provisioning, deploy or Git push."
+  ],
+  "resources": {
+    "accounting": "Linux procfs actual same PID/start identity; VmRSS/VmHWM are whole BEAM process observations, not heap-only estimates.",
+    "after": {
+      "clock_ticks_per_second": 100,
+      "cpu_ticks": 278,
+      "pid": 231480,
+      "rss_bytes": 325885952,
+      "rss_high_water_bytes": 393498624,
+      "start_ticks": 2838322
+    },
+    "before": {
+      "clock_ticks_per_second": 100,
+      "cpu_ticks": 261,
+      "pid": 231480,
+      "rss_bytes": 318582784,
+      "rss_high_water_bytes": 393498624,
+      "start_ticks": 2838322
+    },
+    "clock_ticks_per_second": 100,
+    "cpu_ticks_delta": 17,
+    "requests": [
+      {
+        "elapsed_ms": 8.200000002980232,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.599999997764826,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.100000001490116,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.799999997019768,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.699999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.099999997764826,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.600000001490116,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.399999998509884,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.200000002980232,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.299999997019768,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.200000002980232,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.100000001490116,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.399999998509884,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.900000002235174,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.399999998509884,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.100000001490116,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.399999998509884,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.699999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.400000002235174,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      }
+    ]
+  },
+  "runtime": {
+    "async_threads": 2,
+    "candidate_tasks_running": false,
+    "coding_running": false,
+    "console_enabled": true,
+    "credential_probe": "Deliberately supplied harmless environment markers were ignored in public role; no real credentials supplied.",
+    "distributed_node": false,
+    "distribution": "none",
+    "editor_enabled": false,
+    "editor_observer_running": false,
+    "model_key_loaded": false,
+    "operator_hash_loaded": false,
+    "repo_running": false,
+    "schedulers": 1
+  },
+  "scope": "Actual stable production public-only Phoenix release; does not accept editorial pipeline/native V3 app/external Fly deployment."
+}

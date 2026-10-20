@@ -12,7 +12,10 @@ defmodule OhMyJido.MixProject do
       compilers:
         if(Mix.env() == :prod, do: Mix.compilers(), else: [:boundary] ++ Mix.compilers()),
       boundary: [default: [check: [apps: [{:mix, :runtime}]]]],
-      dialyzer: [plt_add_apps: [:ex_unit, :mix, :quickbeam, :snakepit]],
+      dialyzer: [
+        plt_add_apps: [:ex_unit, :mix, :quickbeam, :snakepit],
+        plt_core_path: Path.join(["_build", Atom.to_string(Mix.env()), "dialyzer_core"])
+      ],
       aliases: aliases()
     ]
   end

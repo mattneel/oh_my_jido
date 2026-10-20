@@ -10,7 +10,7 @@ presentation. There is no required CLI, default coding instance or TypeScript/Bu
 tool host.
 
 The project declares app `:oh_my_jido`, version `0.1.0`, and Elixir `~> 1.20`.
-Stable usability is verified in the [current acceptance record](docs/oh-my-jido/evidence/usability-20261019.json). Earlier [library-scope evidence](docs/oh-my-jido/evidence/library-acceptance-20261019.json) remains historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) records exact source hashes and boundaries.
+Historical stable usability is retained in the [dated embedding record](docs/oh-my-jido/evidence/usability-20261019.json). [Current stable core evidence](docs/oh-my-jido/evidence/core-reconciliation-20261020.json) records529 tests, strong ownership/reconciliation, independent3+4 consumers and full1/10/100/500 density/schema. The [complete docs-studio loop](docs/oh-my-jido/evidence/editorial-complete-20261020.json) adds150 CMS tests, real checked release/opaque preview, source-drift refusal, digest approval, local publication/adoption and a fresh native Read. [Current operations/evidence](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md#current-stable-core-2026-10-20) also links actual separate-node Observer, real Tidewave and AST/ElixirLS/GDB proofs. [PROGRESS](docs/oh-my-jido/PROGRESS.md) distinguishes exact source waves, support limits and external approval boundaries.
 No published Hex release or production certification is claimed; [operational boundaries](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md) remain explicit.
 
 ## Choose the integration level
@@ -109,9 +109,12 @@ result = OhMyJido.await(session, run, timeout: 60_000)
 ```
 
 That account is an opaque reference already recognized by the host, never a key.
-The default role aliases select Anthropic models; an OpenAI OAuth broker requires
-an explicitly approved OpenAI model selection instead. No failed subscription
-request falls back to separately billed API usage.
+Stable Jido2.4's bare role aliases are not an inference availability guarantee;
+some upstream aliases name a retired catalog model. Before model work, explicitly
+select an active provider-qualified model or host startup role configuration
+([exact configuration and limits](docs/oh-my-jido/RUNTIME_CONFIGURATION.md#six-native-model-roles-and-account-selection)).
+An OpenAI OAuth broker requires an explicitly approved OpenAI model selection.
+Failed subscription requests never fall back to separately billed API usage.
 
 Keep your human/event interface responsive while another caller awaits. Delivery
 is `{:oh_my_jido, %OhMyJido.Event{}}`; an `:approval_requested` event supplies the
@@ -123,6 +126,12 @@ Steer/cancel/suspend through the public API. Cancellation is a request, not
 rollback. `await/3` and host-only inspection preserve actual terminal results and
 uncertain effects; restore does not replay them. An idle checkpoint can be restored
 through `resume_session/2` with the same runtime name and durable store.
+
+Outcome uncertainty and execution quiescence are separate. After independently
+reconciling an interrupted execution's actual resources, a trusted host can use
+`reconcile_interrupted/4` with that restored run's exact pending effect IDs.
+Its operator-only execution settlement preserves uncertain outcomes and never
+claims native SDK closure. See [explicit operator reconciliation](docs/oh-my-jido/PERMISSIONS_AND_RECOVERY.md#explicit-operator-reconciliation).
 
 The [embedding guide](docs/oh-my-jido/USER_GUIDE.md) includes a complete supervisor,
 Host callback implementation and questions/recovery guidance. The independent
@@ -184,6 +193,19 @@ These are interfaces/implementations with documented prerequisites, not a statem
 that every required row is verified. Core workspace/grant controls, child ERTS and
 native quotas **do not provide an OS sandbox**. Hosts own untrusted execution,
 network policy, secret separation, resources and deployment.
+
+## Source-first docs CMS
+
+The [Phoenix docs-site example](examples/docs_site/README.md) uses the library's
+native agent loop to edit Git-backed Markdown and application source, not database
+page bodies. Its private Studio exposes durable questions, process approval,
+source diffs, isolated checks/preview and digest-bound release decisions.
+
+The same app has a public-only renderer role intended for a small Fly machine;
+model credentials, editorial execution and durable studio storage stay in the
+trusted editor. Setup, native-tool prerequisites, recovery and deployment
+boundaries are in its README. [Local production/resource evidence](docs/oh-my-jido/evidence/docs-site-production-capped-20261020.json)
+and [cold restore proof](docs/oh-my-jido/evidence/docs-site-cold-restore-20261020.json) are separate from external Fly deployment, which always requires approval.
 
 ## Documentation
 

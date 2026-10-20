@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at": "2026-10-20",
-  "scope": "Current library core explicit execution reconciliation and native context continuity; CMS acceptance remains open",
+  "scope": "Current library core execution reconciliation and native context continuity; this core record does not itself certify the CMS or separate actual-runtime integrations",
   "result": "passed",
   "source_fingerprints": {
     "library_sha256": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
@@ -25,7 +25,11 @@
     "ex_dna_clones": 0,
     "ex_dna_budget": 0,
     "reach": "OK",
-    "raw_log_artifact": "artifact://1265"
+    "raw_log_artifact": "artifact://1672",
+    "job": "bg_195",
+    "wall_seconds": 194.32,
+    "exunit_seconds": 173.9,
+    "renewed_after_repository_startup_alias_update": true
   },
   "required_density": {
     "file": "../../../bench/results/density-docs-stable-reconciled-20261020.json",
@@ -102,9 +106,21 @@
     "source_review_finding": "Cleared on both trees; source-only follow-up, not substitute for runtime proof"
   },
   "limitations": [
-    "No all-current CMS acceptance: two durable reconciliation crash windows are being repaired",
+    "CMS acceptance is recorded separately in editorial-complete-20261020.json, docs-site-production-capped-20261020.json and docs-site-cold-restore-20261020.json; no crash-window repair remains pending",
     "No external Fly provisioning, secrets, deployment, Git push or Hex publication performed",
     "Scripted native model transport, not external-provider reasoning or throughput",
     "OS safety is scoped ownership and truthful uncertainty, not a hostile same-UID sandbox"
-  ]
+  ],
+  "repository_startup_configuration": {
+    "path": "../../../config/config.exs",
+    "sha256": "dfa13e6687560c3458afd26b1ef7a11738ef95e3fed61958a62914af6f5f4b9d",
+    "configured_capable": "anthropic:claude-sonnet-4-6",
+    "actual_local_catalog_resolution": {
+      "provider": "anthropic",
+      "id": "claude-sonnet-4-6",
+      "chat": true,
+      "tools_enabled": true
+    },
+    "scope": "Owned repository startup alias only; independent consumers do not inherit this file. Upstream SDK2 bare aliases are unchanged and require an explicit active model/host startup configuration before inference. This smoke resolves metadata only, not provider availability or an inference request."
+  }
 }
