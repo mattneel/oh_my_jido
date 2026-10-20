@@ -119,16 +119,16 @@ For prompt composition, supply approved project instructions through the trusted
 
 `OhMyJido.Models.roles/0` returns `[:coding, :planning, :exploration, :review, :advisor, :compaction]`. Roles change prompt guidance and model selection, not permission grants.
 
-| Role | Guidance | Bare-library fallback alias | Repository configuration |
+| Role | Guidance | Bare-library default model | Repository configured alias |
 |---|---|---|---|
-| `coding` | Targeted implementation and observed verification | `:capable` | `:capable` |
-| `planning` | Integration boundaries, dependencies and acceptance | `:planning` | `:capable` |
-| `exploration` | Read-only evidence gathering | `:fast` | `:fast` |
-| `review` | Severity-ordered concrete findings | `:capable` | `:capable` |
-| `advisor` | Consequences and trade-offs without taking control | `:thinking` | `:capable` |
-| `compaction` | Preserve constraints and effect evidence | `:fast` | `:fast` |
+| `coding` | Targeted implementation and observed verification | `anthropic:claude-sonnet-4-6` | `:capable` |
+| `planning` | Integration boundaries, dependencies and acceptance | `anthropic:claude-sonnet-4-6` | `:capable` |
+| `exploration` | Read-only evidence gathering | `anthropic:claude-haiku-4-5` | `:fast` |
+| `review` | Severity-ordered concrete findings | `anthropic:claude-sonnet-4-6` | `:capable` |
+| `advisor` | Consequences and trade-offs without taking control | `anthropic:claude-sonnet-4-6` | `:capable` |
+| `compaction` | Preserve constraints and effect evidence | `anthropic:claude-haiku-4-5` | `:fast` |
 
-This branch explicitly configures `:capable` as active `anthropic:claude-sonnet-4-6` and `:fast` as active `anthropic:claude-haiku-4-5`. The installed catalog marks older `claude-sonnet-4-20250514` retired with no capabilities; its alias name does not supply tool support. Hosts must configure an appropriate active catalog model when using bare SDK defaults. This is explicit host configuration, not runtime fallback or authorization to bill/enroll an account. ContextPolicy is extractive and never makes an automatic compaction-model request.
+Bare-library defaults are valid native ReqLLM model inputs: a consuming project need not import this repository's configuration or populate global Jido aliases to start a session and use authorized direct tools. This repository separately defines the optional `:capable`/`:fast` aliases shown above. Explicit model/alias selections and role overrides keep the precedence below; invalid selected inputs still fail instead of falling back. The installed catalog marks older `claude-sonnet-4-20250514` retired with no capabilities. These defaults do not grant credentials or authority to bill/enroll an account. ContextPolicy is extractive and never makes an automatic compaction-model request.
 
 Model selection and account selection use the following layers independently:
 
@@ -136,7 +136,7 @@ Model selection and account selection use the following layers independently:
 2. A retained `session_selection` (the existing session selection on follow-up prompts).
 3. An approved declarative `project_config`.
 4. Runtime `user_config`.
-5. Application/runtime defaults and bare-library fallback aliases.
+5. Application/runtime defaults and bare-library default model inputs.
 
 A `model_roles` value can be a ReqLLM model input or `%{model: input, account: reference}`. Direct `model` values apply to their matching selected role. Opaque accounts are nonempty strings, non-boolean/non-nil atoms, integers, or nonempty tuples of those values; maps, PIDs and credential records are rejected. `nil` can explicitly mean no account, but a production model turn then fails account admission.
 

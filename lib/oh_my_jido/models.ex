@@ -1,6 +1,6 @@
 defmodule OhMyJido.Models do
   @moduledoc """
-  Six coding-harness roles over the installed Jido model aliases.
+  Six coding-harness roles over native model inputs and optional Jido aliases.
 
   `select/2` resolves each selection from explicit session options, a retained
   `:session_selection`, an approved declarative `:project_config`, `:user_config`,
@@ -21,12 +21,12 @@ defmodule OhMyJido.Models do
 
   @roles [:coding, :planning, :exploration, :review, :advisor, :compaction]
   @default_roles %{
-    coding: :capable,
-    planning: :planning,
-    exploration: :fast,
-    review: :capable,
-    advisor: :thinking,
-    compaction: :fast
+    coding: "anthropic:claude-sonnet-4-6",
+    planning: "anthropic:claude-sonnet-4-6",
+    exploration: "anthropic:claude-haiku-4-5",
+    review: "anthropic:claude-sonnet-4-6",
+    advisor: "anthropic:claude-sonnet-4-6",
+    compaction: "anthropic:claude-haiku-4-5"
   }
 
   @lifecycle_keys ~w(refresh_token refresh id_token idtoken oauth_file auth_file oauth_path auth_path credentials_file client_secret token_secret client_id issuer subject expires_at expires expiry expires_in scopes generation account_ref access_mode host_id access token authorization auth password cookie cookies set-cookie)
