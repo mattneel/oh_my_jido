@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "sdk_line": "genuine native Jido V3 preview",
+  "scope": "actual full private-data cold archive and same-absolute-path restore after local publication/adoption; original stores were atomically quarantined before extraction",
+  "observed_at_utc": "2026-10-20T05:38:41.298211+00:00",
+  "candidate_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+  "archive": {
+    "sha256": "d7502c01d502988ddcf8841975a7a058340916b2826a09146c4a1129af2c5cfd",
+    "bytes": 286469565,
+    "mode": "0600",
+    "original_compare_exit_code": 0,
+    "complete_data_bytes": 878334840,
+    "directory_mode": "0700",
+    "encrypted": false,
+    "external_database_or_publication_overrides": false,
+    "credentials": "kept separately in the existing owner-only ephemeral fixture files, not event exports or data archives",
+    "seed_checkout": "retained in place; immutable managed Git versions/base snapshots are included in the complete data archive",
+    "restored_compare_exit_code": 0,
+    "restored_data_root_mode": "0700",
+    "restored_owner_and_group": "autark/autark"
+  },
+  "procedure": [
+    "Assert zero pending writers and active editorial runs; stop owned previews.",
+    "Restore native checkpoints read-only, capture exact effect/run terms and candidate/source baseline, then strongly stop inspection owners.",
+    "Gracefully stop both editor applications with exit0.",
+    "Archive the entire private data directory with GNU tar/gzip and compare archive bytes/metadata against the stopped originals.",
+    "Atomically rename original data out of the restore path; extract the complete archive to the same original absolute data path with preserved permissions.",
+    "Compare restored bytes/metadata against the archive before boot.",
+    "Boot compatible application/SDK code; restore checkpoints without model turns, compare exact decoded terms and deterministic hashes, then strongly stop inspection owners.",
+    "Reconnect existing authenticated browser and confirm reviewed digest plus unauthenticated published HTTP content."
+  ],
+  "before": {
+    "canonical_term_sha256": "ed64fe76493409850f934df8aea7cc5d1626c04ba8107ce723b4d606e9e7cacc",
+    "run_status_counts": {
+      "completed": 2
+    },
+    "source_writers_pending": 0,
+    "active_editor_runs": 0,
+    "journal_effect_counts": {
+      "871b49cd-e18a-4cf7-b0d7-069a38f1cf4d": 1,
+      "e19f605c-ef31-4a99-8c06-c130d62ff843": 4
+    }
+  },
+  "after": {
+    "exact_decoded_term_equality": true,
+    "canonical_term_sha256": "ed64fe76493409850f934df8aea7cc5d1626c04ba8107ce723b4d606e9e7cacc",
+    "native_journals_equal": true,
+    "candidate_and_all_check_preview_approval_publication_adoption_receipts_equal": true,
+    "canonical_source_pointer_equal": true,
+    "adopted_bytes_equal": true,
+    "source_writers_pending": 0,
+    "active_editor_runs": 0,
+    "run_status_counts": {
+      "completed": 2
+    },
+    "journal_effect_counts": {
+      "871b49cd-e18a-4cf7-b0d7-069a38f1cf4d": 1,
+      "e19f605c-ef31-4a99-8c06-c130d62ff843": 4
+    }
+  },
+  "browser": {
+    "authenticated_review_reconnected": true,
+    "reviewed_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "preview_frame_absent": true,
+    "public_status": 200,
+    "public_operator_wording": true
+  },
+  "limits": [
+    "Disposable local test archives are owner-only but unencrypted; they are not a production encrypted backup or vault implementation.",
+    "No seed checkout or credential vault disaster recovery is claimed; those remain operator-managed procedures.",
+    "This entire archive/restore and exact-term comparison was repeated after the native built-in default-role repair against the current reviewed candidate.",
+    "No external Fly provisioning, storage, secret installation or deployment occurred."
+  ],
+  "source_fingerprints": {
+    "library_sha256": "67fb8ed992954eef07171c25282300770a1f724964583e38b94bdaedf686a724",
+    "benchmark_sha256": "b02a743e679d9fd9e7379c1e6475ae76af25ac637cf43b883d044678845dfca8",
+    "mix_project_sha256": "b3b94cd8f3fe8dd46539adf525777a56a2894f7fff0230e1ef68e049957c9004",
+    "mix_lock_sha256": "f6a9d6479396d3eb8468c751056b4410b561fb484da3bca5425785e3b2486563"
+  },
+  "prior_source_wave": {
+    "candidate_digest": "2d5f5bfec9b12fd8b051da0971e636b557820a4d8751def1230aca836590e699",
+    "canonical_term_sha256": "f7e225f5c7fe1872f97a2d24d53ad456010aba2f3d9fb6c05d15d38dd90d1e51",
+    "scope": "earlier separately successful complete archive/restore before the native default-role repair; not current source"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-20",
+  "scope": "Positive genuine native editorial tool loop only; not final CMS acceptance",
+  "acceptance_complete": false,
+  "driver": "Explicit host-enabled Jido.AI.Test native scripted model transport; no paid provider inference",
+  "versions": {
+    "jido": "3.0.0-beta.1",
+    "jido_ai": "2.3.0 (unchanged native upstream metadata)",
+    "jido_action": "3.0.0-beta.12"
+  },
+  "observed": {
+    "status": "completed",
+    "run_id": "4505b250-e1bb-4f97-973b-5c0935a75171",
+    "native_run_id": "01a15729-346e-7cb6-ac20-f44110baf8c6",
+    "source_writer_pending": false,
+    "receipts": [
+      {
+        "name": "question",
+        "status": "completed",
+        "result": {
+          "answer": "Use operator-controlled wording."
+        }
+      },
+      {
+        "name": "read",
+        "status": "completed",
+        "result": {
+          "bytes": 1005
+        }
+      },
+      {
+        "name": "edit",
+        "status": "completed",
+        "result": {
+          "changed": true,
+          "replacements": 1
+        }
+      },
+      {
+        "name": "shell",
+        "status": "completed",
+        "result": {
+          "exit_status": 0,
+          "stdout": "approved once\n",
+          "stderr": "",
+          "cleanup": "confirmed",
+          "effect": "completed"
+        }
+      }
+    ],
+    "operator_wording": true,
+    "append_count": 1,
+    "proper_newlines": true
+  },
+  "browser": {
+    "actual_login": true,
+    "loopback_only": true,
+    "clarification_answered": true,
+    "exact_observed_process_spec_approved": true,
+    "process_target": "priv/docs/index.md",
+    "process_environment": {},
+    "screenshot": "docs-site-native-editor-20261020.png"
+  },
+  "receipt_source": "Actual durable native checkpoint via OhMyJido.Persistence.read_session/2, not final model prose",
+  "limitations": [
+    "Predates final malformed-journal and reconciliation-crash-window repair verification",
+    "No candidate checks, release preview, digest approval, adoption/publication or Fly deployment certified by this report",
+    "Controlled scripted model response exercises actual native runtime and Actions, not external model reasoning"
+  ]
+}

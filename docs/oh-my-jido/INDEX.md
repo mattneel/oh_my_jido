@@ -39,5 +39,24 @@ The human subsequently added structured, headless live OTP/application inspectio
 
 The human additionally approved ordinary-Elixir onboarding, native plugin attachment to their own Jido/Jido.AI agents, composable availability bundles, source-installation ergonomics and an independent own-agent example. Deliver these on the stable dependency contract first, then create a dedicated Jido V3 preview branch from the verified result. This request does not itself authorize a stable dependency upgrade or publication.
 
+The human then approved a substantive source-first Phoenix CMS example on both
+stable Jido and the actual native V3 preview, and identified that app as the future
+Oh-My-Jido docs site. The agent edits Git-backed Markdown and Phoenix source in an
+isolated workspace; durable questions, approvals and controls lead to an immutable
+review, actual child-process checks/preview, digest-bound approval and conflict-safe
+adoption/publication. There is no separate database page-body CMS or live loading of
+authored code into the editor VM. The approved deployment split is a trusted editor
+and a tiny public-only Fly renderer. Local production evidence and both-version
+quality gates are required; external provisioning, secrets and deployment still
+require explicit approval. See the [reference application](../../examples/docs_site/README.md)
+and current progress ledger; source implementation alone is not acceptance.
+
+On2026-10-20 the human explicitly approved one narrow Python exception: the private
+CMS editor's fixed standard-library Linux pidfd/child-subreaper/waitpid helper may
+prove owned process cleanup. It does not implement the agent loop, evaluate authored
+code in the editor VM, weaken cleanup receipts or select an automatic fallback.
+The public renderer has no Python prerequisite; broader Python use remains governed
+by the canonical goal.
+
 Never narrow the canonical goal to match the features that already work.
 If an external service blocks a requirement, retain its row as blocked with explicit evidence.

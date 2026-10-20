@@ -1,0 +1,236 @@
+{
+  "schema_version": 1,
+  "file": ".dockerignore",
+  "sha256": "7975c85a0f96b82419fbb290e19cf2c6498ef54e811b03084a98ac325e3517d6",
+  "matcher": "github.com/moby/patternmatcher v0.6.0 + ignorefile.ReadAll",
+  "cases": [
+    {
+      "path": "vendor/sdk/lib/runtime/.secrets/token",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/lib/oh_my_jido_docs/runtime/server.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/lib/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/include/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/lib/runtime/credentials.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "vendor/sdk/src/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/var/source/current.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/lib/oh_my_jido_docs/cache/index.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/priv/certificates/public.pem",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/priv/certificates/server.pfx",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "runtime/session.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "vendor/sdk/src/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/include/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/assets/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "priv/history.sqlite3",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/certificates/encrypted-private.PEM",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/lib/runtime/.env",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "cache/state.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "vendor/jido_ai/lib/jido_ai.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/test/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/tests/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/assets/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "priv/credentials.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/certificates/server.P12",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/runtime/session.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "lib/jido_ai/runtime/server.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/jido_ai/lib/jido_ai/runtime/event.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/lib/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/test/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/docs/runtime/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/priv/history.SQLITE-shm",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "vendor/sdk/runtime/session.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "docs/runtime/guide.md",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/docs/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/priv/certificates/private.key",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/certificates/key.pem",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/history.sqlite3-wal",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "vendor/sdk/.ssh/config",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "vendor/sdk/cache/state.json",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/docs/index.md",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "vendor/sdk/tests/cache/source.ex",
+      "excluded": false,
+      "expected_excluded": false
+    },
+    {
+      "path": "examples/docs_site/priv/id_ed25519",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/history.db-journal",
+      "excluded": true,
+      "expected_excluded": true
+    },
+    {
+      "path": "examples/docs_site/priv/.data/receipt.json",
+      "excluded": true,
+      "expected_excluded": true
+    }
+  ],
+  "failures": 0,
+  "scope": "official native Moby parser/matcher behavior against the actual ignore file; not Docker image build or arbitrary embedded-secret detection",
+  "command_scope": "private temporary Go module using github.com/moby/patternmatcher v0.6.0 and ignorefile.ReadAll; no global Go configuration changed",
+  "source_sha256": "7975c85a0f96b82419fbb290e19cf2c6498ef54e811b03084a98ac325e3517d6",
+  "limits": [
+    "Known path/filename boundary only; custom private stores must remain outside the complete build context or have explicit reviewed exclusions.",
+    "Actual Docker daemon probe was unavailable; no Docker build or Fly runtime success is claimed."
+  ]
+}

@@ -239,6 +239,12 @@ After the run is idle:
 
 Across host restarts, retain the runtime name and durable storage configuration. A session ID is durable; `agent_pid` in an inspection is an intentional **host-only** transient native diagnostic, not a restoration handle or serializable public UI/telemetry field. Configure account resolvers and adapters again in the runtime: per-session credential-bearing host/adapters and arbitrary metadata are deliberately transient. Restored interrupted runs/effects are not replayed.
 
+After independent operator cleanup, `reconcile_interrupted/4` can record execution
+quiescence for the exact pending effect set of an originally restored interrupted
+run. It preserves outcome uncertainty and performs no model request or replay;
+it is not native SDK shutdown proof or a way to unseal a live stopping session.
+See [explicit operator reconciliation](PERMISSIONS_AND_RECOVERY.md#explicit-operator-reconciliation).
+
 ContextPolicy **version 2** is a clean cutover. Old version-1 policy checkpoints cannot be safely upgraded by changing a version field; restore rejects them. Preserve historical evidence, reconcile uncertainty and start a new session with approved retained facts when an old policy is encountered. See [permissions and recovery](PERMISSIONS_AND_RECOVERY.md).
 
 ## Independent examples and operational scope

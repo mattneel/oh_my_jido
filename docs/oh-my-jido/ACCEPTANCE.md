@@ -3,7 +3,7 @@
 A test validates a public behavior, not a private implementation detail.
 Prefer stable behavior tests and scripted model fixtures over upstream byte-level differential tests.
 
-Current library-scope results are retained in the [final source acceptance record](evidence/library-acceptance-20261019.json) and [progress ledger](PROGRESS.md). The explicit human override in [INDEX](INDEX.md#scope-change) excludes external Elixos F06/F07/T10; it does not waive generic host, provider coding, quality or density gates below.
+Current core quality, independent consumers, interrupted-recovery and density/schema results are retained in the [source-bound core record](evidence/core-reconciliation-20261020.json) and [progress ledger](PROGRESS.md). The earlier [462-case library record](evidence/library-acceptance-20261019.json) is historical, not acceptance of later CMS/native-preview work. Human scope decisions in [INDEX](INDEX.md#scope-change) exclude external Elixos F06/F07/T10 and narrowly authorize the private-editor Linux keeper; they do not waive generic host, provider coding, quality, density or the added CMS runtime gates.
 
 ## Required test layers
 

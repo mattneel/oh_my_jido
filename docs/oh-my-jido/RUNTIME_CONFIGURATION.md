@@ -147,7 +147,7 @@ project_config: %{
   approved: true,
   config: %{
     model_roles: %{
-      review: %{model: "anthropic:claude-sonnet-4-20250514", account: "approved-review-account"}
+      review: %{model: "anthropic:claude-sonnet-4-6", account: "approved-review-account"}
     }
   }
 }

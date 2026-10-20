@@ -2,7 +2,7 @@
 
 ## Unreleased — 0.1.0 source work
 
-Stable usability acceptance is recorded in the [current source evidence](docs/oh-my-jido/evidence/usability-20261019.json), with516 tests and all static gates passing. Earlier [library-scope acceptance](docs/oh-my-jido/evidence/library-acceptance-20261019.json) remains historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) distinguishes source hashes and scope. No published Hex/HexDocs release or production/OS-sandbox certification is claimed.
+Historical stable usability acceptance records516 tests/static gates in the [dated stable source evidence](docs/oh-my-jido/evidence/usability-20261019.json), not native V3 acceptance. Earlier [stable library-scope acceptance](docs/oh-my-jido/evidence/library-acceptance-20261019.json) is also historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) records current588-core/150-CMS native gates, source-bound density and actual native-runtime proofs. No published Hex/HexDocs release or production/OS-sandbox certification is claimed.
 
 ### Embedding usability
 
@@ -10,11 +10,12 @@ Stable usability acceptance is recorded in the [current source evidence](docs/oh
 - Add validated `Context.new/1`/`new!/1` and composable `Tools.bundles/0`/`select/1`/`select!/1`; availability remains separate from empty-by-default grants.
 - Add a native own-agent Jido plugin with trusted per-identity context resolution and bundle-bound Actions rather than another coding agent or model loop.
 - Add a source bootstrap and native Igniter dependency plan with dry-run default, explicit apply confirmation, approved diagnostic/privacy snapshots and refusal of incompatible layouts; standalone setup does not evaluate consumer Mix/config/formatter code.
+- Resolve native preview bare-library roles through valid ReqLLM model inputs rather than relying on repository-only global Jido aliases. Independent consumers no longer import repository configuration; a real minimal-runtime Read regression covers first use without model credentials. Explicit invalid selections still fail without fallback.
 
 ### Native integrity and recovery
 
 - Preserve terminal native answers and completed tool exchanges across compaction, checkpoint and restore; reject over-budget retained context before acquiring a run lease.
-- Keep enclosing Action timeouts uncertain in the durable effect journal. Resolve replacement runtime Eval managers per operation, preserve explicitly host-owned managers and release controller-owned resources on hard loss without replay.
+- Keep enclosing Action timeouts uncertain in the durable effect journal. Resolve replacement runtime Eval managers per operation, preserve explicitly host-owned managers and retain unconfirmed controller-owned resources on hard loss without replay.
 - Require both OpenAI inference scopes and retain validated login-only host identity for refresh/revocation without overriding an explicit configured binding.
 - Preflight all versioned LSP edits before publication, preserve equal-position edit order and retain finite asynchronous launch outcomes for later awaits. Budget launch receipts before dispatch; use MCP-native cancellation while excluding initialization.
 - Bound review enrichment against every detected secret in the captured diff, rather than evicting earlier secrets after100 later matches.
@@ -29,6 +30,12 @@ Stable usability acceptance is recorded in the [current source evidence](docs/oh
 - Preserve opaque journal/run/child and native context-evidence dictionary IDs across sanitation, summary projection and restore while still stripping credentials inside records.
 - Reserve delegated tags until the original collector completes and match completion to its exact child session/run; stale completion cannot replace a newer result or release its lease. Retire the exact idle native actor during sealed stop so a restored parent binding cannot obstruct later tag reuse, without treating actor death as execution/effect/resource closure or discarding the uncertain Session.
 - Preserve original native OTP child module metadata while hiding private startup arguments, distinguishing Agent actors from Plugin lifecycle workers. Honor host-selected native streaming Finch ownership and retain caller HTTP settings in scripted gateways; density fixtures use an explicitly tool-capable catalog model and supervised per-population HTTP pools instead of accumulating endpoint pools in the application's shared Finch.
+- Bind the selected session model into the native coding profile before execution preparation. Independently compiled Mix/Phoenix hosts no longer require the library development project's `:capable` alias merely to reach their explicitly configured model; capability checks, account authority and request-time role selection remain unchanged.
+- Add trusted-host `reconcile_interrupted/4` for the exact restore-time interrupted run/effect set after independent operator cleanup. Persist operator execution-quiescence separately from uncertain outcomes and native SDK closure, reject stale/live/later work without mutation, and prevent late results from overwriting reconciliation. The source-first CMS preserves runtime-before-observer startup order, requires actual settlement before publishing ready, and strongly stops only its temporary restored owner during operator reconciliation.
+- Persist private exact-claim operator provenance before temporary CMS restoration and recover native run identity from the real checkpoint when an accepted prompt ID was not persisted. Observer loss after settlement import resumes the same operator path without upgrading the old native receipt; final claim clearing is atomic. Actual first-turn, preceding-turn and post-import crash probes retain uncertainty and complete a new native Read with normal settlement.
+- Settle active operator-owned CMS rows to interrupted and clear stale questions within the exact claim transaction. Treat SQLite JSON null as a cleared origin, while non-null or malformed markers remain fenced; successful reconciliation releases publication/admission capacity and supports a real new native turn.
+- Keep malformed or unknown restored effect records unresolved. They cannot gain closure from native actor shutdown or enter the explicit operator eligibility set; a real checkpoint missing status/result/completion now blocks stop instead of falsely acknowledging cleanup.
+- Clear ephemeral pending-request visibility tags before restoring both native conversation state and its actor. Real complete historical tool exchanges remain model-visible; incomplete batches still pass through native filtering without invented results or promoting the old request to success.
 - Add a headless, explicitly granted live OTP Observer with fixed local/native-erpc collection, approved supervision roots, bounded inventories and metadata-only process/ETS inspection. Actual local and separate-node application smokes pass; no wxWidgets, implicit distribution, cookie changes or arbitrary execution.
 - Add an optional trusted-port Tidewave0.9.1 binding over the existing native MCP owner: scoped actual-app docs/source/logs and separately granted, digest-approved last-resort live evaluation/RPC. Actual external-app proof passed; isolated Eval remains distinct/default, with no new transport/evaluator or core Tidewave dependency.
 - Reject malformed native MCP tool catalogs instead of inventing an empty successful discovery response.
@@ -40,6 +47,10 @@ Stable usability acceptance is recorded in the [current source evidence](docs/oh
 - Corroborate native module declaration-definition holes only through bounded exact canonical module-kind/source-URI/range index evidence, then the ordinary authored identity/reference checks.
 - Distinguish native-corroborated function-spec heads from runtime caller checks, reject malformed caller metadata structurally and refuse compiler-owned destination arities before planning publication.
 - Forward exactly host-granted/reviewed official Claude tools to its native permission allowlist without all-tools bypass. Actual separately approved Read/Edit-only subscription repair passes independent failing-before/passing-after tests and preserves the existing login.
+- Preserve the actual credential-free Git origin in sanitized offline candidate caches so Mix can validate both origin and revision; reject substituted origins rather than rewriting identity from the candidate lock.
+- Retain authored runtime/cache namespace directories under ordinary source containers without admitting operational root state, secret filenames or database files. Real isolated Git-consumer compilation and tracked-private-state regressions cover both SDK versions.
+- Retain the host-selected keeper Python in actual project-check children, including tests exercising nested process ownership; do not fall back to an unsupported ambient interpreter.
+- Separate complete bounded candidate process history from live ownership refresh. Retain1,024 identities in matching keeper/controller/durable-lease bounds, require version2 status and keep physical pidfd/ECHILD/keeper-exit authority unchanged; partial observations cannot replace the last good live inventory or produce a passing check.
 
 ### Public documentation
 
@@ -49,7 +60,7 @@ Stable usability acceptance is recorded in the [current source evidence](docs/oh
 - Cover durable effects/uncertainty/no replay, ContextPolicy v2 retained tool evidence and rejection of old version-1 policy checkpoints, subagents/worktrees/questions/plans/experiments/custom Actions/native skills.
 - Describe actual AST/LSP/DAP/MCP surfaces, browser/research host contracts, artifact/header versus approved native image inputs, and all three optional Eval backends with real prerequisites, limits and cancellation/reset semantics.
 - Record measured Linux x86_64 native density smoke and full 1/10/100/500 populations separately from aarch64/guest/live-provider/complete quality gates; update the benchmark README's outdated unexecuted wording without modifying evidence JSON.
-- Record the current passing authorized native Luna Low coding repair, exact failing-before/passing-after/independent-test observations, durable restore and aggregate usage/pricing separately from subscription and full-quality gates.
+- Retain the dated stable18Oct authorized native Luna Low coding repair, exact failing-before/passing-after/independent-test observations, durable restore and aggregate usage/pricing separately from native V3, subscription and full-quality gates.
 - Document Elixos service/candidate/generation ownership and link the independently maintained guest workflow; core library documentation does not claim guest promotion/fallback or modify canonical specifications/progress.
 - Correct `inspect_session/1` documentation: its native `agent_pid` is an intentional transient host-only diagnostic, not serializable public UI/telemetry state.
 

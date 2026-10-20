@@ -13,7 +13,9 @@ The project declares app `:oh_my_jido`, version `0.1.0`, and Elixir `~> 1.20`.
 This is the **native Jido V3 preview branch**. Stable2.4 [usability evidence](docs/oh-my-jido/evidence/usability-20261019.json) is historical, not proof of this port; [PROGRESS](docs/oh-my-jido/PROGRESS.md) records current gates. Core is the coherent3.0.0-beta.1 revision pinned by upstream AI; the latest Corebeta.2 and AI branch tips have incompatible contracts. AI's upstream version metadata remains2.3.0 despite its genuine native V3 coordinator/Flow implementation. Licensed `vendor/*/UPSTREAM.json` manifests identify exact original revisions and privacy patches. No package version is relabelled.
 No published Hex release or production certification is claimed; [operational boundaries](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md) remain explicit.
 
-Current native core evidence: **585 tests**, strict analysis, both independent consumers and the full1/10/100/500 density workload pass. [Retained commands, source fingerprints and limitations](docs/oh-my-jido/evidence/native-v3-core-20261020.json) distinguish real tools/owned HTTP from simulated model latency. The shared Phoenix CMS, actual public release and external deployment gates remain open.
+Current native acceptance: **588 core tests**, **150 CMS tests**, strict analysis, genuinely independent3-case plain-Mix/4-case own-agent consumers and source-bound full1/10/100/500 density/schema pass. [Core evidence](docs/oh-my-jido/evidence/core-reconciliation-20261020.json) includes the reproduced/fixed no-inherited-alias first-use gap. The [complete source-first CMS loop](docs/oh-my-jido/evidence/editorial-complete-20261020.json), [capped public release](docs/oh-my-jido/evidence/docs-site-production-capped-20261020.json) and [cold restore](docs/oh-my-jido/evidence/docs-site-cold-restore-20261020.json) are actual local observations, not external Fly deployment or paid-provider acceptance.
+
+Current source-bound [native Observer](docs/oh-my-jido/evidence/observer-native-v3-current-20261020.json) and [real Tidewave](docs/oh-my-jido/evidence/tidewave-native-v3-current-20261020.json) prove actual separate owned applications, explicit authority, privacy and cleanup. [Actual AST/Edit/ElixirLS/GDB](docs/oh-my-jido/evidence/real-tools-native-v3-current-20261020.json) additionally exercises real compile/run, supported semantic renames and stepping; the optional unproved-module rename refusal remains explicit, not a fallback or success claim.
 
 ## Choose the integration level
 
@@ -117,7 +119,7 @@ result = OhMyJido.await(session, run, timeout: 60_000)
 ```
 
 That account is an opaque reference already recognized by the host, never a key.
-The default role aliases select Anthropic models; an OpenAI OAuth broker requires
+The default role models are Anthropic models; an OpenAI OAuth broker requires
 an explicitly approved OpenAI model selection instead. No failed subscription
 request falls back to separately billed API usage.
 
@@ -131,6 +133,12 @@ Steer/cancel/suspend through the public API. Cancellation is a request, not
 rollback. `await/3` and host-only inspection preserve actual terminal results and
 uncertain effects; restore does not replay them. An idle checkpoint can be restored
 through `resume_session/2` with the same runtime name and durable store.
+
+Outcome uncertainty and execution quiescence are separate. After independently
+reconciling an interrupted execution's actual resources, a trusted host can use
+`reconcile_interrupted/4` with that restored run's exact pending effect IDs.
+Its operator-only execution settlement preserves uncertain outcomes and never
+claims native SDK closure. See [explicit operator reconciliation](docs/oh-my-jido/PERMISSIONS_AND_RECOVERY.md#explicit-operator-reconciliation).
 
 The [embedding guide](docs/oh-my-jido/USER_GUIDE.md) includes a complete supervisor,
 Host callback implementation and questions/recovery guidance. The independent
@@ -192,6 +200,20 @@ These are interfaces/implementations with documented prerequisites, not a statem
 that every required row is verified. Core workspace/grant controls, child ERTS and
 native quotas **do not provide an OS sandbox**. Hosts own untrusted execution,
 network policy, secret separation, resources and deployment.
+
+## Source-first docs CMS
+
+The [Phoenix docs-site example](examples/docs_site/README.md) runs the native agent
+against isolated Git-backed Markdown and application source, not database page
+bodies. Studio exposes durable questions, exact process approval, streaming native
+events, source diffs, real child-process checks and opaque scriptless preview.
+Checked digest approval gates conflict-safe publication/adoption; the next native
+session reads the adopted Git source. The editor never hot-loads authored modules.
+
+The public-only renderer is intended for a tiny Fly machine; model credentials,
+editorial execution and private durable history stay in the trusted editor. Local
+512MiB process-scope and complete cold-restore evidence do not authorize external
+provisioning, secret installation or deployment.
 
 ## Documentation
 

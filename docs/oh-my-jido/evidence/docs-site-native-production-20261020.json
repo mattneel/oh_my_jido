@@ -1,0 +1,232 @@
+{
+  "browser": {
+    "errors": [],
+    "mobile": {
+      "contentWidth": 390,
+      "documentWidth": 390,
+      "viewport": 390
+    },
+    "screenshots": [
+      "docs-site-native-public-20261020.png",
+      "docs-site-native-public-mobile-20261020.png"
+    ],
+    "surface": {
+      "csrfTags": 0,
+      "documentWidth": 1280,
+      "legacyStorageDocumentation": false,
+      "nativePersistenceDocumentation": true,
+      "responses": [
+        {
+          "path": "/docs/index",
+          "status": 200
+        },
+        {
+          "path": "/docs/runtime",
+          "status": 200
+        },
+        {
+          "path": "/docs/does-not-exist",
+          "status": 404
+        },
+        {
+          "path": "/studio",
+          "status": 404
+        },
+        {
+          "path": "/login",
+          "status": 404
+        }
+      ],
+      "scripts": 0,
+      "studioLinks": 0,
+      "stylesheetStatus": 200,
+      "viewport": 1280
+    }
+  },
+  "build": {
+    "assets_command": "MIX_ENV=prod mix assets.deploy",
+    "assets_exit_code": 0,
+    "compile_command": "MIX_ENV=prod ERL_FLAGS='+S 4:4 +A 2' mix compile --warnings-as-errors",
+    "compile_exit_code": 0,
+    "release_command": "MIX_ENV=prod mix release --overwrite",
+    "release_exit_code": 0,
+    "release_path": "examples/docs_site/_build/prod/rel/oh_my_jido_docs"
+  },
+  "limitations": [
+    "Local Linux x86_64 release, not an actual Fly machine.",
+    "One scheduler enforced; no512MiB cgroup cap imposed.",
+    "Console enabled for same-VM inspection; normal deployment uses headless start.",
+    "Thirty-two loopback requests are a smoke, not capacity/tail-latency proof.",
+    "No container build, provider billing request, cloud provisioning, deploy or Git push."
+  ],
+  "resources": {
+    "accounting": "Linux procfs whole BEAM VmRSS/VmHWM and same PID/start identity; not heap-only estimates.",
+    "after": {
+      "clock_ticks_per_second": 100,
+      "cpu_ticks": 294,
+      "pid": 244401,
+      "rss_bytes": 335540224,
+      "rss_high_water_bytes": 378621952,
+      "start_ticks": 2969270
+    },
+    "before": {
+      "clock_ticks_per_second": 100,
+      "cpu_ticks": 277,
+      "pid": 244401,
+      "rss_bytes": 331534336,
+      "rss_high_water_bytes": 378621952,
+      "start_ticks": 2969270
+    },
+    "clock_ticks_per_second": 100,
+    "cpu_ticks_delta": 17,
+    "requests": [
+      {
+        "elapsed_ms": 8.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.699999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.699999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.600000001490116,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.100000001490116,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.799999997019768,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.900000002235174,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.399999998509884,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.900000002235174,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.699999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.399999998509884,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.700000002980232,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.799999997019768,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 7.200000002980232,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.599999997764826,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.800000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.300000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.199999999254942,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.5,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 6.800000000745058,
+        "status": 200
+      },
+      {
+        "elapsed_ms": 9,
+        "status": 200
+      }
+    ]
+  },
+  "runtime": {
+    "async_threads": 2,
+    "candidate_tasks_running": false,
+    "coding_running": false,
+    "console_enabled": true,
+    "credential_probe": "Harmless model-key/operator-hash environment markers ignored; no real credentials supplied.",
+    "distributed_node": false,
+    "distribution": "none",
+    "editor_enabled": false,
+    "editor_observer_running": false,
+    "jido_action_version": "3.0.0-beta.12",
+    "jido_ai_unchanged_metadata": "2.3.0",
+    "jido_version": "3.0.0-beta.1",
+    "model_key_loaded": false,
+    "operator_hash_loaded": false,
+    "repo_running": false,
+    "schedulers": 1
+  },
+  "scope": "Actual genuine native V3 production public-only Phoenix release; does not accept editorial pipeline, Fly or complete goal."
+}

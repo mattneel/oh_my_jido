@@ -1,0 +1,48 @@
+<Layouts.app flash={@flash} operator={@operator}>
+  <div class="docs-shell">
+    <Layouts.docs_nav pages={@pages} />
+    <div class="docs-content">
+      <section class="docs-intro">
+        <p class="eyebrow">OH MY JIDO / DOCUMENTATION</p>
+        <h1>Build with the loop.<br />Keep control of the work.</h1>
+        <p class="lead">
+          Source, tools, sessions, and human decisions — the guide to running OhMyJido in your own application.
+        </p>
+        <div class="intro-note">
+          <span class="status-dot" /> Published documentation · Git-backed Markdown
+        </div>
+      </section>
+      <section aria-labelledby="guides-heading">
+        <div class="section-heading">
+          <h2 id="guides-heading">Explore the guides</h2><span>{length(@pages)} pages</span>
+        </div>
+        <div id="docs-pages" class="guide-grid">
+          <a
+            :for={{page, index} <- Enum.with_index(@pages, 1)}
+            href={~p"/docs/#{String.split(page.slug, "/")}"}
+            class="guide-card"
+          >
+            <span class="guide-number">{index |> Integer.to_string() |> String.pad_leading(2, "0")}</span>
+            <h3>{page.title}</h3>
+            <span class="guide-path">{page.slug}
+            <.icon name="hero-arrow-up-right" class="size-4" /></span>
+          </a>
+        </div>
+        <p :if={@pages == []} class="empty-state">No documentation has been published yet.</p>
+      </section>
+      <aside class="source-note">
+        <.icon name="hero-code-bracket" class="size-6" />
+        <div>
+          <h2>Documentation is source.</h2><p>
+            Editorial work happens in isolated source workspaces. Only reviewed, checked snapshots become public.
+          </p>
+        </div>
+        <a
+          :if={OhMyJidoDocsWeb.OperatorAuth.editor_enabled?()}
+          href={~p"/studio"}
+          class="text-link"
+        >Open Studio <span aria-hidden="true">→</span></a>
+      </aside>
+    </div>
+  </div>
+</Layouts.app>

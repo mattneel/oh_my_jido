@@ -1,0 +1,546 @@
+{
+  "schema_version": 1,
+  "sdk_line": "genuine native Jido V3 preview; AI package retains actual2.3.0 metadata",
+  "observed_at_utc": "2026-10-20T05:36:43.726327+00:00",
+  "scope": "current no-inherited-config source: actual native SDK/tool/controller loop and nine immutable checks, built-release preview, real source-drift refusal, exact digest approval, local publication/adoption and a new native Read",
+  "model_transport": "explicit trusted-host Jido.AI.Test callback/script through real native SDK; no separate agent loop or paid provider request",
+  "source_fingerprints": {
+    "library_sha256": "67fb8ed992954eef07171c25282300770a1f724964583e38b94bdaedf686a724",
+    "benchmark_sha256": "b02a743e679d9fd9e7379c1e6475ae76af25ac637cf43b883d044678845dfca8",
+    "mix_project_sha256": "b3b94cd8f3fe8dd46539adf525777a56a2894f7fff0230e1ef68e049957c9004",
+    "mix_lock_sha256": "f6a9d6479396d3eb8468c751056b4410b561fb484da3bca5425785e3b2486563"
+  },
+  "library_quality_gate": {
+    "evidence": "core-reconciliation-20261020.json",
+    "tests": 588,
+    "raw_output": "artifact://1526"
+  },
+  "application_quality_gate": {
+    "command": "env DOCS_CANDIDATE_PYTHON=/usr/bin/python3 ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "tests": 150,
+    "credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skips": 0,
+    "clone_budget": "0/0",
+    "architecture": "OK",
+    "raw_output": "artifact://1531"
+  },
+  "independent_consumers": {
+    "command": "env ERL_FLAGS='+S 4:4 +A 2' mix test --warnings-as-errors",
+    "plain_mix_cases": 3,
+    "own_agent_cases": 4,
+    "plain_mix_job": "bg_166",
+    "own_agent_job": "bg_170",
+    "repository_configuration_import_removed": true,
+    "minimal_api_smoke": {
+      "session_started": true,
+      "two_tuple_success": true,
+      "exact_filesystem_content": true,
+      "model_credentials_configured": false,
+      "global_model_alias_keys": [],
+      "confirmed_session_stop": true
+    }
+  },
+  "native_source_loop": {
+    "run_id": "e19f605c-ef31-4a99-8c06-c130d62ff843",
+    "native_run_id": "01a157c3-3ae3-70b6-ba31-bdf604bb90ba",
+    "source_writer_pending": false,
+    "receipts": [
+      {
+        "name": "question",
+        "status": "completed",
+        "result": {
+          "answer": "Use operator-controlled wording."
+        }
+      },
+      {
+        "name": "read",
+        "status": "completed",
+        "result": {
+          "bytes": 1005
+        }
+      },
+      {
+        "name": "edit",
+        "status": "completed",
+        "result": {
+          "changed": true,
+          "replacements": 1
+        }
+      },
+      {
+        "name": "shell",
+        "status": "completed",
+        "result": {
+          "exit_status": 0,
+          "stdout": "approved once\n",
+          "stderr": "",
+          "cleanup": "confirmed",
+          "effect": "completed"
+        }
+      }
+    ],
+    "operator_wording": true,
+    "append_count": 1,
+    "source_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7"
+  },
+  "candidate": {
+    "id": "754cef89-dbbe-493b-beb7-bac7a8f7809d",
+    "digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "diff": "diff --git a/examples/docs_site/priv/docs/index.md b/examples/docs_site/priv/docs/index.mdindex 526d0152786204f2b254a5c87451790f4166a380..6f032ca78c99dad55ed9680dcf4d3cf9f6bf66a4 100644--- a/examples/docs_site/priv/docs/index.md+++ b/examples/docs_site/priv/docs/index.md@@ -1,6 +1,6 @@ # Oh-My-Jido -A host-controlled coding agent for ordinary Elixir and Jido applications.+An operator-controlled coding agent for ordinary Elixir and Jido applications.  Jido owns agent lifecycle, Jido.AI owns model turns, and ReqLLM owns provider transport. Your application owns workspaces, credentials, permissions and approval. No model request starts merely because the library is supervised. @@ -22,3 +22,5 @@ children = [{OhMyJido, name: MyApp.Coding}] ```  Tool availability never grants permission. Credentials and execution remain explicit host decisions.++<!-- Browser proof: approved native process executed once. -->",
+    "approval_disabled_before_checks": true,
+    "publication_disabled_before_checks": true
+  },
+  "actual_default_pipeline": {
+    "status": "passed",
+    "digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "attempt_id": "1e48ee13-d249-4da8-b03e-dda9aac6f743",
+    "duration_ms": 329809,
+    "steps": [
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 628,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": "dependency_preflight",
+        "executable": "elixir",
+        "argument_count": 1,
+        "arguments_sha256": "1adb775cce3b41ec11a93bf6275bdd4ab9fca42e29461fcef755881cfaff81c2"
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 88999,
+        "owned_process_count": 20,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "deps.compile"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 5070,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "compile",
+          "--warnings-as-errors"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 98965,
+        "owned_process_count": 374,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "test",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "test",
+          "--exclude",
+          "candidate_integration"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 613,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": "dependency_preflight",
+        "executable": "elixir",
+        "argument_count": 1,
+        "arguments_sha256": "1adb775cce3b41ec11a93bf6275bdd4ab9fca42e29461fcef755881cfaff81c2"
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 73579,
+        "owned_process_count": 23,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "deps.compile"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 4859,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "compile",
+          "--warnings-as-errors"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 1695,
+        "owned_process_count": 7,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "assets.deploy"
+        ]
+      },
+      {
+        "status": "passed",
+        "exit_status": 0,
+        "command_started": true,
+        "duration_ms": 2678,
+        "owned_process_count": 3,
+        "owned_processes_complete": true,
+        "scope_error": null,
+        "cleanup": {
+          "status": "confirmed",
+          "authority": "linux_child_subreaper_waitpid",
+          "identity_verified": true,
+          "all_children_reaped": true,
+          "keeper_terminated": true,
+          "remaining_count": 0,
+          "scope_error": null
+        },
+        "mix_env": "prod",
+        "phase": null,
+        "executable": "mix",
+        "args": [
+          "release",
+          "--overwrite"
+        ]
+      }
+    ],
+    "max_retained_identity_count": 374,
+    "release_built": true,
+    "command_output_policy": "bounded full raw receipts were inspected privately; this export retains exact command outcome and physical closure metadata, not private paths or whole command source"
+  },
+  "preview": {
+    "browser": {
+      "operator_wording": true,
+      "scripts": 0,
+      "effective_origin": "null",
+      "font": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif",
+      "stylesheets": 1,
+      "all_styles_loaded": true
+    },
+    "sandbox_attribute": "",
+    "referrer_policy": "no-referrer",
+    "scriptless_edited_page_navigation_verified": true,
+    "screenshot": "docs-site-reviewed-preview-20261020.png",
+    "stop_status": "stopped",
+    "process": {
+      "status": "cancelled",
+      "exit_status": 137,
+      "command_started": true,
+      "duration_ms": 85045,
+      "owned_process_count": 3,
+      "owned_processes_complete": true,
+      "scope_error": null,
+      "cleanup": {
+        "status": "confirmed",
+        "authority": "linux_child_subreaper_waitpid",
+        "identity_verified": true,
+        "all_children_reaped": true,
+        "keeper_terminated": true,
+        "remaining_count": 0,
+        "scope_error": null
+      }
+    },
+    "cancelled_effect": "uncertain",
+    "stop_acknowledgment_is_not_physical_cleanup": true
+  },
+  "real_conflict_refusal": {
+    "error": "The host rejected this action: workspace changed. Inspect the current run and candidate before retrying.",
+    "publish_disabled": true,
+    "adopt_disabled": true,
+    "reviewed_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087"
+  },
+  "exact_restoration": {
+    "approval_digest": null,
+    "check_status": "passed",
+    "check_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "candidate_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "restored_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7",
+    "workspace_verified_after_exact_restore": true
+  },
+  "public_before_operator_approval": {
+    "status": 200,
+    "host_wording": true,
+    "operator_wording": false
+  },
+  "actual_operator_approval": {
+    "confirmations": [
+      "Approve exactly the digest shown in this source review?"
+    ],
+    "controls": {
+      "publish_enabled": true,
+      "adopt_enabled": true,
+      "reviewed_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087"
+    }
+  },
+  "actual_local_publication": {
+    "confirmations": [
+      "Publish these checked, approved docs to the editor's published snapshot?"
+    ],
+    "public_page": {
+      "status": 200,
+      "host_wording": false,
+      "operator_wording": true
+    },
+    "acknowledgment": "The host published the checked, approved documentation snapshot."
+  },
+  "durable_publication_adoption": {
+    "id": "754cef89-dbbe-493b-beb7-bac7a8f7809d",
+    "digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "check_status": "passed",
+    "check_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "approval_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "status": "published",
+    "publication_digest": "e560884e63ac7c563b7593ec8f534f19ec095ae4d9a64bda510a730a98fb619c",
+    "publication_receipt": {
+      "adopted_source_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+      "candidate_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+      "previous_digest": "49b0c1b3aea3b6a2db4612d58edf14239b3bfe840d0286566b296cced681795f",
+      "published_at": "2026-10-20T05:32:47.232188Z",
+      "published_digest": "e560884e63ac7c563b7593ec8f534f19ec095ae4d9a64bda510a730a98fb619c",
+      "started_at": "2026-10-20T05:32:43.205180Z",
+      "status": "published"
+    },
+    "adoption_status": "adopted",
+    "adopted_operator_wording": true,
+    "adopted_append_count": 1,
+    "adopted_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7",
+    "seed_source_unchanged": true,
+    "fresh_run_id": "871b49cd-e18a-4cf7-b0d7-069a38f1cf4d"
+  },
+  "adoption_receipt": {
+    "base_revision": "e9e727fe51fa5cf3b390cb84f68b58b9c02a5491d9113de26694ad9e2f49f57a",
+    "candidate_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+    "status": "adopted"
+  },
+  "fresh_native_read": {
+    "status": "completed",
+    "run_id": "871b49cd-e18a-4cf7-b0d7-069a38f1cf4d",
+    "native_run_id": "01a157cc-e937-7ef4-a89b-35eabc52f820",
+    "source_writer_pending": false,
+    "receipts": [
+      {
+        "id": "tc_1",
+        "name": "read",
+        "status": "completed",
+        "run": "01a157cc-e937-7ef4-a89b-35eabc52f820",
+        "started_at": 1792474409311,
+        "completed_at": 1792474409321,
+        "actual_success": true,
+        "returned_exact_adopted_bytes": true,
+        "returned_operator_wording": true,
+        "returned_append_count": 1
+      }
+    ],
+    "source_sha256": "566e3c9a78f998c92b6ee88b02214a7d88c68c6b8e2824aef5d9af62371f94a7",
+    "original_native_owner_stopped": true,
+    "restored_owner_strongly_stopped": true,
+    "inspection_started_no_model_turn": true
+  },
+  "actual_control_proofs": {
+    "proofs": [
+      {
+        "status": "ready",
+        "session_id": "docs-a78c2f6e-e780-4bb9-bbc6-c7496193faea",
+        "run_id": "a78c2f6e-e780-4bb9-bbc6-c7496193faea",
+        "questions": 0,
+        "source_writer_pending": false,
+        "native_run_id": "01a15768-625c-7d48-9a4a-6130835671f3",
+        "gated_write_absent": true,
+        "effect_names": [
+          "question"
+        ],
+        "event_kinds": [
+          "run_queued",
+          "workspace_prepared",
+          "source_writer_claimed",
+          "checkpoint_saved",
+          "native_turn_requested",
+          "run_started",
+          "request_started",
+          "llm_started",
+          "llm_delta",
+          "llm_completed",
+          "tool_started",
+          "approval_requested",
+          "steering_queued",
+          "control_requested",
+          "cancellation_requested",
+          "request_cancelled",
+          "run_completed",
+          "checkpoint_saved",
+          "source_writer_settled",
+          "source_writer_claimed",
+          "worker_failed",
+          "checkpoint_saved",
+          "source_writer_settled",
+          "run_resumed"
+        ]
+      },
+      {
+        "status": "cancelled",
+        "session_id": "docs-5157bd04-8f54-4ab1-a84c-c9a90db5c370",
+        "run_id": "5157bd04-8f54-4ab1-a84c-c9a90db5c370",
+        "questions": 0,
+        "source_writer_pending": false,
+        "native_run_id": "01a1576a-7b6e-7814-ba9e-500345f66427",
+        "gated_write_absent": true,
+        "effect_names": [
+          "question"
+        ],
+        "event_kinds": [
+          "run_queued",
+          "workspace_prepared",
+          "source_writer_claimed",
+          "checkpoint_saved",
+          "native_turn_requested",
+          "run_started",
+          "request_started",
+          "llm_started",
+          "llm_delta",
+          "llm_completed",
+          "tool_started",
+          "approval_requested",
+          "control_requested",
+          "cancellation_requested",
+          "request_cancelled",
+          "run_completed",
+          "checkpoint_saved",
+          "source_writer_settled"
+        ]
+      }
+    ],
+    "same_native_run_identity": true
+  },
+  "actual_denial_proof": {
+    "name": "shell",
+    "status": "completed",
+    "result": "{:error, %{message: \"Private agent operation failed\", type: :execution_error, details: %{reason: :approval_denied, retry: false, tool_call_id: \"tc_1\", tool_name: \"shell\"}, retryable?: false}, []}",
+    "run_id": "a95a20dd-e625-43ca-ad99-808abc684dfb",
+    "source_writer_pending": false,
+    "native_run_id": "01a15766-7e5d-78c6-9858-c28b342a095b",
+    "denied_marker_absent": true
+  },
+  "control_source_scope": "Actual sampled-identity steering/suspend/resume/cancel and denied process outcomes were observed before the later native built-in default-role repair; controller/tool code is unchanged. The renewed588/150-case gates cover that final source, and the current no-alias positive loop is separately repeated above.",
+  "production_evidence": "docs-site-production-capped-20261020.json",
+  "cold_restore_evidence": "docs-site-cold-restore-20261020.json",
+  "docker_path_boundary_evidence": "dockerignore-boundary-20261020.json",
+  "limits": [
+    "The source digest binds its immutable reviewed tree; later evidence/ledger-only files do not pretend to share that whole-tree digest.",
+    "Production/cold-restore records distinguish source waves and measured scope.",
+    "No paid provider, external Fly provisioning/deploy, Docker image execution, Git push or package publication is claimed."
+  ]
+}

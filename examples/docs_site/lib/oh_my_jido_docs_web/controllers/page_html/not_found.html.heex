@@ -1,0 +1,13 @@
+<Layouts.app flash={@flash} operator={@operator}>
+  <div class="docs-shell">
+    <Layouts.docs_nav pages={@pages} />
+    <section class="docs-content">
+      <p class="eyebrow">404 / DOCUMENTATION</p>
+      <h1 class="page-heading">That page is not published.</h1>
+      <p class="muted mt-4">
+        Choose a guide from the navigation, or return to the documentation index.
+      </p>
+      <a href={~p"/"} class="btn btn-primary mt-8">All documentation</a>
+    </section>
+  </div>
+</Layouts.app>

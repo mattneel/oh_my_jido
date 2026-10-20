@@ -97,6 +97,54 @@ Recovery workflow:
 
 Explicit checkpoints reject active model runs. Finish direct tool calls before requesting a safe checkpoint. Durable restore reads native `Jido.Persistence` versioned bytes/CAS state, recorded root/grants/identity and current trusted service bindings. Active runs become interrupted, running effects become uncertain, and no old question/process/PID is revived. V2 `Jido.Storage` data is not automatically converted.
 
+### Explicit operator reconciliation
+
+An old unknown outcome does not establish whether execution is still live.
+After independently stopping/reconciling the original owned BEAM workers, OS
+groups and external resources, a trusted host can record that separate execution
+boundary on an idle or suspended restored session:
+
+```elixir
+:ok =
+  OhMyJido.reconcile_interrupted(
+    restored,
+    interrupted_run_id,
+    ["interrupted-edit-call"],
+    :orphan_resources_reconciled
+  )
+```
+
+Supply the **complete exact pending effect-ID set** for that originally restored
+interrupted run. This is not a wildcard, a subset acknowledgement, or authority
+over later work. Wrong/stale identities, active/stopping sessions, live registered
+resources/scopes and ineligible runs are rejected without changing the journal.
+A currently supervised sealed session is not reopened by this operation.
+
+The record keeps `status: :uncertain` and its existing evidence; no synthetic
+result or `completed_at` is added. Its durable `execution_settlement` explicitly
+records `source: :operator`, `execution: :stopped`, `effect: :uncertain`, and
+`native_stop_confirmed: false`. It is not a native worker-closure receipt. Late
+results cannot overwrite that operator boundary, and no model request or old
+continuation is run. A subsequent explicit task can inspect real current state
+and perform new scoped work; its own execution still needs normal shutdown
+receipts.
+
+Do not expose this trusted acknowledgement as a browser, model tool or MCP input.
+The source-first CMS additionally validates its exact durable writer claim and
+old-owner absence, holds its workspace lease while restoring a temporary owner,
+and obtains a real strong stop for **that new owner** before releasing its fence.
+Its durable receipt distinguishes `operator_reconciled: true`,
+`native_stop_confirmed: false`, and `restored_owner_stop_confirmed: true`.
+
+The CMS persists private operator provenance for the exact writer claim **before**
+starting its temporary owner. It recovers the actual interrupted native run from
+the restored checkpoint even if Observer loss prevented the accepted prompt ID
+from reaching SQLite; ambiguous or unmatched pending work remains fenced. If
+the Observer dies after importing the operator settlement, recovery finishes the
+same operator path, strongly stops that temporary owner, and preserves the
+original `native_stop_confirmed: false` receipt. Only final exact-claim settlement
+clears the private origin marker. This adds no provider request or replay.
+
 ## ContextPolicy version 2
 
 The current checkpoint version is **2**. The outer session checkpoint remains its separate version-1 envelope; do not confuse that envelope with the nested ContextPolicy version.

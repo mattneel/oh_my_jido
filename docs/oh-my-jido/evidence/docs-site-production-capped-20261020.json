@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "sdk_line": "genuine native Jido V3 preview",
+  "observed_at_utc": "2026-10-20T05:37:28.165885+00:00",
+  "scope": "actual local production release under a 512MiB/no-swap user systemd process scope; not a Fly VM or Docker build claim",
+  "candidate_digest": "f736fef2c595e1206045717598cb9fe9091edf812c28eebf2dbd20e561e03087",
+  "build": "exact production release produced by all nine successful real candidate pipeline steps",
+  "command": {
+    "launcher": "systemd-run --user --scope",
+    "properties": {
+      "MemoryMax": "512M",
+      "MemorySwapMax": 0
+    },
+    "release_mode": "start_iex",
+    "environment": "private empty HOME, env -i, one scheduler, two async threads, RELEASE_DISTRIBUTION=none; harmless private-config markers supplied and ignored"
+  },
+  "runtime": {
+    "node_alive": false,
+    "schedulers": 1,
+    "application_children": [
+      "OhMyJidoDocsWeb.Endpoint",
+      "Phoenix.PubSub.Supervisor",
+      "OhMyJidoDocsWeb.Telemetry"
+    ],
+    "editor_enabled": false,
+    "model_key_present": false,
+    "operator_hash_present": false,
+    "candidate_python_config": null,
+    "sqlite_database_created": false,
+    "sdk_versions": {
+      "jido_action": "3.0.0-beta.12",
+      "jido_signal": "3.0.0-beta.4",
+      "jido": "3.0.0-beta.1",
+      "jido_ai": "2.3.0"
+    }
+  },
+  "binding": "standard production IPv6-any listener; all exercised HTTP/browser clients use loopback",
+  "kernel_resource_evidence": {
+    "memory_max_bytes": 536870912,
+    "memory_swap_max_bytes": 0,
+    "memory_current_after_workload_bytes": 275955712,
+    "memory_peak_bytes": 351395840,
+    "memory_events": {
+      "low": 0,
+      "high": 0,
+      "max": 0,
+      "oom": 0,
+      "oom_kill": 0,
+      "oom_group_kill": 0,
+      "sock_throttled": 0
+    },
+    "cpu_usage_delta_usec_between_inspections": 220763,
+    "cpu_scope": "all scope work between same-node inspections, including browser, HTTP and inspection activity; not isolated 32-request CPU cost",
+    "vm_status_kib": {
+      "VmHWM": 401728,
+      "VmRSS": 340912
+    },
+    "process_executables": [
+      "beam.smp",
+      "erl_child_setup"
+    ],
+    "python_process_present": false
+  },
+  "http": {
+    "actual_fly_probe_headers": {
+      "X-Forwarded-Proto": "https"
+    },
+    "probe_path": "/docs/index",
+    "https_probe": [
+      {
+        "forwarded_https_header": false,
+        "status": 301,
+        "operator_wording": false
+      },
+      {
+        "forwarded_https_header": true,
+        "status": 200,
+        "operator_wording": true
+      }
+    ],
+    "routes": {
+      "/": {
+        "status": 200,
+        "login_form": false
+      },
+      "/docs/index": {
+        "status": 200,
+        "login_form": false
+      },
+      "/docs/runtime": {
+        "status": 200,
+        "login_form": false,
+        "native_persistence_documented": true
+      },
+      "/docs/tools": {
+        "status": 200,
+        "login_form": false
+      },
+      "/docs/studio": {
+        "status": 200,
+        "login_form": false
+      },
+      "/docs/does-not-exist": {
+        "status": 404,
+        "login_form": false
+      },
+      "/login": {
+        "status": 404,
+        "login_form": false
+      },
+      "/studio": {
+        "status": 404,
+        "login_form": false
+      },
+      "/studio/runs/871b49cd-e18a-4cf7-b0d7-069a38f1cf4d": {
+        "status": 404,
+        "login_form": false
+      }
+    },
+    "sample_requests": 32,
+    "sample_status_counts": {
+      "200": 32
+    },
+    "sample_latency_ms": {
+      "minimum": 2.490769,
+      "maximum": 6.516437,
+      "mean": 2.84147796875
+    },
+    "sample_scope": "32 sequential unauthenticated local HTTP requests; not a Fly capacity benchmark"
+  },
+  "browser": {
+    "document": {
+      "title": "Oh-My-Jido \u00b7 OhMyJido",
+      "heading": "Oh-My-Jido",
+      "operator_wording": true,
+      "scripts": 0,
+      "forms": 0,
+      "csrf_meta": 0,
+      "editor_links": 0,
+      "font": "Inter, ui-sans-serif, system-ui, -apple-system, sans-serif",
+      "stylesheets": 1,
+      "horizontal_overflow": false
+    },
+    "stylesheet": {
+      "status": 200,
+      "content_type": "text/css"
+    },
+    "mobile": {
+      "navigation_collapsed": true,
+      "scripts": 0,
+      "viewport_width": 390,
+      "document_width": 390,
+      "horizontal_overflow": false
+    }
+  },
+  "screenshots": {
+    "desktop": "docs-site-public-capped-desktop-20261020.png",
+    "mobile": "docs-site-public-capped-mobile-20261020.png"
+  },
+  "shutdown": {
+    "requested": "System.stop(0)",
+    "observed_exit_code": 0,
+    "browser_closed": true
+  },
+  "external_effects": {
+    "fly_provisioned": false,
+    "fly_deployed": false,
+    "git_pushed": false,
+    "paid_provider_called": false
+  },
+  "limits": [
+    "Cgroup cap applies to the release scope, not the whole Fly guest or trusted editor.",
+    "Short sequential loopback samples are not a production capacity/SLA/load guarantee.",
+    "Console was explicitly enabled only for same-VM verification.",
+    "Private backup/vault and actual Fly deployment remain distinct operational effects."
+  ],
+  "source_fingerprints": {
+    "library_sha256": "67fb8ed992954eef07171c25282300770a1f724964583e38b94bdaedf686a724",
+    "benchmark_sha256": "b02a743e679d9fd9e7379c1e6475ae76af25ac637cf43b883d044678845dfca8",
+    "mix_project_sha256": "b3b94cd8f3fe8dd46539adf525777a56a2894f7fff0230e1ef68e049957c9004",
+    "mix_lock_sha256": "f6a9d6479396d3eb8468c751056b4410b561fb484da3bca5425785e3b2486563"
+  },
+  "fresh_public_data_and_home": true,
+  "prior_source_wave": {
+    "candidate_digest": "2d5f5bfec9b12fd8b051da0971e636b557820a4d8751def1230aca836590e699",
+    "memory_peak_bytes": 360243200,
+    "scope": "earlier successful measured release before the subsequent native default-role repair; not current source"
+  }
+}

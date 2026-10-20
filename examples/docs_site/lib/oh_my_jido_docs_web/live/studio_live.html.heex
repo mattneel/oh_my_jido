@@ -1,0 +1,520 @@
+<Layouts.app flash={@flash} operator={@operator} studio>
+  <div id="studio" class="studio-shell" phx-hook="StudioConnection">
+    <div class="studio-heading">
+      <div>
+        <p class="eyebrow">TRUSTED EDITOR / SOURCE WORKSPACES</p><h1>
+          Editorial Studio<span class="heading-dot">.</span>
+        </h1>
+      </div>
+      <div class="studio-connection">
+        <span class="status-dot" /><span data-connection-status>Connected to host</span><button
+          id="refresh-studio"
+          type="button"
+          phx-click="refresh"
+          class="btn btn-ghost btn-sm"
+          aria-label="Refresh durable state"
+        ><.icon name="hero-arrow-path" class="size-4" />Refresh</button>
+      </div>
+    </div>
+    <div :if={@action_label} id="host-action" class="action-progress" role="status">
+      <span class="loading loading-spinner loading-xs" />{@action_label} — waiting for the host result.
+    </div>
+
+    <div :if={!@run} class="studio-index">
+      <section class="panel request-panel" aria-labelledby="request-heading">
+        <div class="panel-heading">
+          <span class="step-number">01</span><div>
+            <h2 id="request-heading">Start from an instruction</h2><p>
+              A real agent edits an isolated source workspace. It cannot publish for you.
+            </p>
+          </div>
+        </div>
+        <.form for={@task_form} id="new-run" phx-submit="start_run" class="form-stack">
+          <.input
+            field={@task_form[:task]}
+            type="textarea"
+            label="What should change?"
+            rows="7"
+            required
+            maxlength="16384"
+            placeholder="Explain the documentation or source change, and how you will know it is correct."
+            disabled={busy?(assigns)}
+          />
+          <.input
+            field={@task_form[:mode]}
+            type="select"
+            label="Editing boundary"
+            options={[
+              {"Documentation — Markdown only", "docs"},
+              {"Application source — explicit process approvals", "coding"}
+            ]}
+            disabled={busy?(assigns)}
+          />
+          <p class="field-help">
+            Documentation mode is scoped to <code>priv/docs</code>. Coding mode may change Phoenix source; every process effect requires a human decision. Neither mode deploys automatically.
+          </p>
+          <button id="start-run" class="btn btn-primary" disabled={busy?(assigns)}>Create source workspace
+          <.icon name="hero-arrow-right" class="size-4" /></button>
+        </.form>
+      </section>
+      <section class="panel runs-panel" aria-labelledby="runs-heading">
+        <div class="section-heading">
+          <h2 id="runs-heading">Source runs</h2><span>{@run_count} shown</span>
+        </div>
+        <p :if={@run_count == 0} id="no-runs" class="empty-state">
+          Your first source change starts here. Completed runs and their durable event history will remain available after you leave.
+        </p>
+        <div id="source-runs" phx-update="stream" class="run-list">
+          <.link
+            :for={{dom_id, run} <- @streams.runs}
+            id={dom_id}
+            navigate={~p"/studio/runs/#{run.id}"}
+            class="run-card"
+          >
+            <div class="run-card-meta">
+              <span class="badge badge-sm badge-outline">{label(run.mode)}</span><span
+                class="state-tag"
+                data-state={run.status}
+              >{label(run.status)}</span>
+            </div>
+            <h3>{run.task}</h3><div class="run-card-footer">
+              <span>{timestamp(run.inserted_at)}</span><code>{short_id(run.id)}</code><.icon
+                name="hero-arrow-up-right"
+                class="size-4"
+              />
+            </div>
+          </.link>
+        </div>
+      </section>
+    </div>
+
+    <div :if={@run} class="run-workspace">
+      <nav aria-label="Studio breadcrumb" class="breadcrumbs text-sm">
+        <ul>
+          <li><.link navigate={~p"/studio"}>All source runs</.link></li><li>
+            <code>{short_id(@run.id)}</code>
+          </li><li :if={@selected_candidate}>Candidate review</li>
+        </ul>
+      </nav>
+      <section class="panel run-overview">
+        <div class="run-overview-title">
+          <span class="badge badge-outline">{label(@run.mode)}</span><span
+            id="run-status"
+            class="state-tag"
+            data-state={@run.status}
+          >{label(@run.status)}</span><span class="muted">Started {timestamp(@run.inserted_at)}</span>
+        </div>
+        <h2 id="run-task">{@run.task}</h2>
+        <p :if={present?(@run.summary)} id="run-summary" class="run-summary">{@run.summary}</p>
+        <div class="run-controls">
+          <button
+            id="suspend-run"
+            type="button"
+            phx-click="suspend"
+            disabled={busy?(assigns) || !active?(@run)}
+            class="btn btn-sm btn-outline"
+          ><.icon name="hero-pause" class="size-4" />Suspend</button>
+          <button
+            id="resume-run"
+            type="button"
+            phx-click="resume"
+            disabled={busy?(assigns) || !resumable?(@run)}
+            class="btn btn-sm btn-outline"
+          ><.icon name="hero-play" class="size-4" />Resume checkpoint</button>
+          <button
+            id="cancel-run"
+            type="button"
+            phx-click="cancel"
+            data-confirm="Cancel this native run? Completed source changes remain in its workspace."
+            disabled={busy?(assigns) || !active?(@run)}
+            class="btn btn-sm btn-ghost danger-text"
+          ><.icon name="hero-stop" class="size-4" />Cancel</button>
+          <span class="field-help">Closing this page does not stop the host. Resume restores a checkpoint; it does not replay effects.</span>
+        </div>
+        <details :if={@session_summary} class="technical-details">
+          <summary>Native session inspection</summary><pre>{pretty(@session_summary)}</pre>
+        </details>
+      </section>
+
+      <section
+        :if={@pending_questions != []}
+        id="pending-questions"
+        class="questions-panel"
+        aria-labelledby="decisions-heading"
+      >
+        <div class="panel-heading">
+          <span class="decision-mark"><.icon name="hero-hand-raised" class="size-5" /></span><div>
+            <h2 id="decisions-heading">The host is waiting for you</h2><p>
+              Decisions apply to the exact pending native question, not a browser-authored effect.
+            </p>
+          </div>
+        </div>
+        <article
+          :for={question <- @pending_questions}
+          id={"question-#{question.id}"}
+          class="question-card"
+        >
+          <h3>
+            {field(question.question, "question", "A native question needs your decision.")}
+          </h3>
+          <pre :if={present?(field(question.question, "effect"))} class="effect-spec">{pretty(field(question.question, "effect"))}</pre>
+          <div :if={field(question.question, "kind") == "process"} class="approval-buttons">
+            <button
+              id={"approve-effect-#{question.id}"}
+              type="button"
+              phx-click="approve_effect"
+              phx-value-question_id={question.id}
+              class="btn btn-primary btn-sm"
+              disabled={busy?(assigns)}
+            >Approve this process effect</button>
+            <button
+              id={"deny-effect-#{question.id}"}
+              type="button"
+              phx-click="deny_effect"
+              phx-value-question_id={question.id}
+              class="btn btn-outline btn-sm"
+              disabled={busy?(assigns)}
+            >Deny</button>
+          </div>
+          <.form
+            :if={field(question.question, "kind") != "process"}
+            for={to_form(%{})}
+            id={"answer-#{question.id}"}
+            phx-submit="answer"
+            class="form-stack"
+          >
+            <pre :if={present?(field(question.question, "options"))} class="question-options">{pretty(field(question.question, "options"))}</pre>
+            <.input type="hidden" name="question_id" value={question.id} />
+            <.input
+              type="textarea"
+              name="answer"
+              value=""
+              id={"answer-text-#{question.id}"}
+              label="Your answer"
+              rows="3"
+              maxlength="16384"
+              required
+              disabled={busy?(assigns)}
+            />
+            <button class="btn btn-primary btn-sm" disabled={busy?(assigns)}>Send answer</button>
+          </.form>
+        </article>
+      </section>
+
+      <div class="run-columns">
+        <section class="panel activity-panel" aria-labelledby="activity-heading">
+          <div class="section-heading">
+            <h2 id="activity-heading">Durable activity</h2><span>{@event_count} recent / {@run.last_seq} persisted</span>
+          </div>
+          <p class="field-help">
+            Latest native events, tool calls, results, and decisions from the host's bounded history window. Durable state reloads after reconnect.
+          </p>
+          <div id="run-events" phx-update="stream" class="event-list">
+            <article
+              :for={{dom_id, event} <- @streams.events}
+              id={dom_id}
+              class="event-card"
+              data-kind={event.kind}
+            >
+              <div class="event-heading">
+                <span class="event-sequence">{event.seq}</span><h3>{label(event.kind)}</h3><time>{timestamp(
+                  event.inserted_at
+                )}</time>
+              </div>
+              <p :if={event_text(event.payload)} class="event-text">
+                {event_text(event.payload)}
+              </p>
+              <details :if={present?(event.payload)} class="technical-details">
+                <summary>Tool / event details</summary><pre>{pretty(event.payload)}</pre>
+              </details>
+            </article>
+          </div>
+          <p :if={@event_count == 0} class="empty-state">
+            No persisted events yet. Use Refresh to read current host state.
+          </p>
+          <.form for={@steer_form} id="steer-run" phx-submit="steer" class="form-stack steer-form">
+            <.input
+              field={@steer_form[:text]}
+              type="textarea"
+              label="Direction or next source instruction"
+              rows="3"
+              maxlength="16384"
+              required
+              disabled={busy?(assigns) || !steerable?(@run)}
+            />
+            <p :if={!steerable?(@run)} class="field-help">
+              Steer an active run, or resume a suspended checkpoint before its next instruction. For a completed run, start a new source workspace.
+            </p>
+            <button class="btn btn-primary btn-sm" disabled={busy?(assigns) || !steerable?(@run)}><.icon
+              name="hero-paper-airplane"
+              class="size-4"
+            />Send to native session</button>
+          </.form>
+        </section>
+        <aside class="candidate-sidebar">
+          <section class="panel" aria-labelledby="candidates-heading">
+            <div class="section-heading">
+              <h2 id="candidates-heading">Source candidates</h2><span>{@candidate_count}</span>
+            </div>
+            <p class="field-help">
+              Capture an immutable source snapshot, then check and review that exact digest. The live host never loads edited modules.
+            </p>
+            <button
+              id="prepare-candidate"
+              type="button"
+              phx-click="prepare_candidate"
+              class="btn btn-primary btn-sm w-full mt-4"
+              disabled={busy?(assigns) || active?(@run)}
+            >Prepare source candidate <.icon name="hero-arrow-down-on-square" class="size-4" /></button>
+            <p :if={active?(@run)} class="field-help mt-2">
+              Complete or suspend the run before freezing a review snapshot.
+            </p>
+            <div id="source-candidates" phx-update="stream" class="candidate-list">
+              <.link
+                :for={{dom_id, candidate} <- @streams.candidates}
+                id={dom_id}
+                patch={~p"/studio/runs/#{@run.id}/candidates/#{candidate.id}"}
+                class={["candidate-card", candidate.id == @selected_candidate_id && "selected"]}
+              >
+                <code>{short_digest(candidate.digest)}</code><span
+                  class="state-tag"
+                  data-state={candidate.status}
+                >{label(candidate.status)}</span><small>Checks: {label(
+                  candidate.check_status || "not run"
+                )}</small>
+              </.link>
+            </div>
+            <p :if={@candidate_count == 0} class="empty-state compact">
+              No source candidate captured.
+            </p>
+          </section>
+          <section class="review-guide">
+            <p class="eyebrow">THE SOURCE-FIRST LOOP</p><ol>
+              <li>Inspect the actual diff</li><li>Run isolated project checks</li><li>
+                Open the sandboxed preview
+              </li><li>Approve the exact digest</li><li>Publish docs, adopt source, or deploy</li>
+            </ol><p>
+              Approval never bypasses checks, source conflicts, or deployment configuration.
+            </p>
+          </section>
+        </aside>
+      </div>
+
+      <section
+        :if={@selected_candidate}
+        id="candidate-review"
+        class="panel candidate-review"
+        aria-labelledby="review-heading"
+      >
+        <div class="panel-heading">
+          <span class="step-number">02</span><div>
+            <p class="eyebrow">IMMUTABLE SOURCE REVIEW</p><h2 id="review-heading">
+              Review before release
+            </h2>
+          </div><span class="state-tag" data-state={@selected_candidate.status}>{label(
+            @selected_candidate.status
+          )}</span>
+        </div>
+        <dl class="candidate-facts">
+          <div>
+            <dt>Reviewed digest</dt><dd id="reviewed-digest"><code>{@review_digest}</code></dd>
+          </div><div>
+            <dt>Source base</dt><dd><code>{@selected_candidate.base_revision}</code></dd>
+          </div><div>
+            <dt>Checks</dt><dd id="check-status">
+              {label(@selected_candidate.check_status || "not run")}
+            </dd>
+          </div><div>
+            <dt>Approval</dt><dd id="approval-status">
+              {if approved?(@selected_candidate, @review_digest),
+                do: "Approved exact digest",
+                else: "Not approved for this digest"}
+            </dd>
+          </div>
+        </dl>
+        <p
+          :if={@selected_candidate.digest != @review_digest}
+          id="digest-conflict"
+          class="inline-error"
+        >
+          This candidate changed since you opened the review. Approval authority has not changed. Reopen the candidate deliberately to review its new digest.
+        </p>
+        <div class="diff-heading">
+          <h3>Source diff</h3><span class="field-help">Plain text, escaped — never executed in Studio.</span>
+        </div>
+        <pre id="source-diff" class="source-diff"><code><span :for={line <- String.split(@selected_candidate.diff || "", "\n")} class={diff_class(line)}>{line}</span></code></pre>
+        <div class="candidate-actions">
+          <button
+            id="check-candidate"
+            type="button"
+            phx-click="check_candidate"
+            class="btn btn-outline btn-sm"
+            disabled={busy?(assigns)}
+          ><.icon name="hero-check-circle" class="size-4" />Run actual checks</button>
+          <button
+            id="cancel-check"
+            type="button"
+            phx-click="cancel_check"
+            class="btn btn-ghost btn-sm"
+            disabled={busy?(assigns) || @selected_candidate.check_status != "running"}
+          >Cancel checks</button>
+          <button
+            id="start-preview"
+            type="button"
+            phx-click="start_preview"
+            class="btn btn-outline btn-sm"
+            disabled={busy?(assigns) || !checked?(@selected_candidate)}
+          ><.icon name="hero-eye" class="size-4" />Start isolated preview</button>
+          <button
+            id="stop-preview"
+            type="button"
+            phx-click="stop_preview"
+            class="btn btn-ghost btn-sm"
+            disabled={
+              busy?(assigns) ||
+                Map.get(@selected_candidate, :preview_status) not in ["running", "starting"]
+            }
+          >Stop preview</button>
+        </div>
+        <details class="technical-details check-receipt" open>
+          <summary>
+            Actual check output · {label(@selected_candidate.check_status || "not run")}
+          </summary><pre id="check-output">{@selected_candidate.check_output || "Checks have not produced output."}</pre>
+        </details>
+        <details :if={present?(@selected_candidate.check_receipt)} class="technical-details">
+          <summary>Check process receipt</summary><pre>{pretty(@selected_candidate.check_receipt)}</pre>
+        </details>
+        <details
+          :if={present?(Map.get(@selected_candidate, :preview_output))}
+          class="technical-details"
+        >
+          <summary>
+            Preview process output · {label(
+              Map.get(@selected_candidate, :preview_status) || "not started"
+            )}
+          </summary><pre>{Map.get(@selected_candidate, :preview_output)}</pre>
+        </details>
+        <details :if={present?(@selected_candidate.preview_receipt)} class="technical-details">
+          <summary>Preview process receipt</summary><pre>{pretty(@selected_candidate.preview_receipt)}</pre>
+        </details>
+        <p :if={@preview_notice} id="preview-unavailable" role="alert" class="inline-error">
+          {@preview_notice}
+        </p>
+        <div :if={@preview_src} class="preview-container">
+          <div class="section-heading">
+            <h3>Isolated public preview</h3><span class="badge badge-outline">sandbox / no scripts or forms</span>
+          </div>
+          <p class="field-help">
+            Only this verified preview attempt's public pages and static assets are proxied. Editorial cookies and credentials are never forwarded. The scoped link expires within five minutes; use Refresh to renew it.
+          </p>
+          <iframe
+            id="candidate-preview"
+            title="Sandboxed candidate public documentation preview"
+            src={@preview_src}
+            sandbox=""
+            referrerpolicy="no-referrer"
+            loading="lazy"
+          ></iframe>
+        </div>
+        <section class="release-panel" aria-labelledby="release-heading">
+          <div>
+            <h3 id="release-heading">A human release decision</h3><p>
+              Each action below uses the digest shown in this review, not values supplied by a form. The host rechecks approval, source drift, and actual check status.
+            </p>
+          </div>
+          <button
+            id="approve-candidate"
+            type="button"
+            phx-click="approve_candidate"
+            data-confirm="Approve exactly the digest shown in this source review?"
+            class="btn btn-primary"
+            disabled={
+              busy?(assigns) || !checked?(@selected_candidate) ||
+                @selected_candidate.digest != @review_digest
+            }
+          >Approve reviewed digest</button>
+          <div class="release-options">
+            <article>
+              <h4>Publish documentation</h4><p>
+                Adopt docs-only source and atomically update this editor's reader. A separate Fly reader changes only after an approved deployment; this action does not deploy application code.
+              </p><button
+                id="publish-candidate"
+                type="button"
+                phx-click="publish_candidate"
+                data-confirm="Publish these checked, approved docs to the editor's published snapshot?"
+                class="btn btn-outline btn-sm"
+                disabled={
+                  busy?(assigns) || !checked?(@selected_candidate) ||
+                    !approved?(@selected_candidate, @review_digest)
+                }
+              >Publish checked docs</button>
+            </article>
+            <article>
+              <h4>Adopt application source</h4><p>
+                Apply the reviewed source to the durable source repository without replacing live modules. Conflicting source changes are rejected.
+              </p><button
+                id="adopt-candidate"
+                type="button"
+                phx-click="adopt_candidate"
+                data-confirm="Adopt this reviewed source into the durable repository? This does not hot-load modules."
+                class="btn btn-outline btn-sm"
+                disabled={
+                  busy?(assigns) || !checked?(@selected_candidate) ||
+                    !approved?(@selected_candidate, @review_digest)
+                }
+              >Adopt reviewed source</button>
+            </article>
+            <article>
+              <h4>Deploy the public release</h4><p>
+                Send the approved immutable source through the host's explicitly configured flyctl deployment. No configured deployment means an error, never a simulated success.
+              </p><button
+                id="deploy-candidate"
+                type="button"
+                phx-click="deploy_candidate"
+                data-confirm="Deploy this reviewed immutable source to the configured external Fly app? This is an explicit external deployment approval."
+                class="btn btn-neutral btn-sm"
+                disabled={
+                  busy?(assigns) || !checked?(@selected_candidate) ||
+                    !approved?(@selected_candidate, @review_digest)
+                }
+              >Deploy reviewed release</button><button
+                id="cancel-deploy"
+                type="button"
+                phx-click="cancel_deploy"
+                class="btn btn-ghost btn-sm danger-text"
+                disabled={busy?(assigns) || @selected_candidate.deployment_status != "running"}
+              >Cancel owned deployment</button>
+            </article>
+          </div>
+        </section>
+        <details :if={present?(@selected_candidate.publication_receipt)} class="technical-details">
+          <summary>Publication receipt</summary><pre>{pretty(@selected_candidate.publication_receipt)}</pre>
+        </details>
+        <details :if={present?(@selected_candidate.adoption_receipt)} class="technical-details">
+          <summary>
+            Source adoption receipt · {label(@selected_candidate.adoption_status)}
+          </summary><pre>{pretty(@selected_candidate.adoption_receipt)}</pre>
+        </details>
+        <details
+          :if={present?(Map.get(@selected_candidate, :deployment_status))}
+          class="technical-details"
+          open
+        >
+          <summary>
+            Deployment · {label(Map.get(@selected_candidate, :deployment_status))}
+          </summary><pre>{Map.get(@selected_candidate, :deployment_output)}</pre><pre :if={
+            present?(Map.get(@selected_candidate, :deployment_receipt))
+          }>{pretty(Map.get(@selected_candidate, :deployment_receipt))}</pre>
+        </details>
+      </section>
+      <p
+        :if={@selected_candidate_id && !@selected_candidate}
+        id="candidate-not-found"
+        role="alert"
+        class="inline-error"
+      >
+        That candidate does not belong to this run or is no longer available. Select a current source candidate.
+      </p>
+    </div>
+  </div>
+</Layouts.app>

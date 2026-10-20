@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at": "2026-10-20T05:34:12.971294+00:00",
-  "scope": "Current library core explicit execution reconciliation and native context continuity; CMS acceptance remains open",
+  "scope": "Current library core execution reconciliation and native context continuity; this core record does not itself certify the CMS or separate actual-runtime integrations",
   "result": "passed",
   "source_fingerprints": {
     "library_sha256": "67fb8ed992954eef07171c25282300770a1f724964583e38b94bdaedf686a724",
@@ -105,7 +105,7 @@
     "source_review_finding": "Cleared on both trees; source-only follow-up, not substitute for runtime proof"
   },
   "limitations": [
-    "No all-current CMS acceptance: two durable reconciliation crash windows are being repaired",
+    "CMS acceptance is recorded separately in editorial-complete-20261020.json, docs-site-production-capped-20261020.json and docs-site-cold-restore-20261020.json; no crash-window repair remains pending",
     "No external Fly provisioning, secrets, deployment, Git push or Hex publication performed",
     "Scripted native model transport, not external-provider reasoning or throughput",
     "OS safety is scoped ownership and truthful uncertainty, not a hostile same-UID sandbox"
