@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-20",
+  "scope": "Current library core explicit execution reconciliation and native context continuity; CMS acceptance remains open",
+  "result": "passed",
+  "source_fingerprints": {
+    "library_sha256": "50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9",
+    "benchmark_sha256": "fd2315bf483bca51fb295d38b5247ab7193a9769e7e3d04bbf5c60bea5f38448",
+    "mix_project_sha256": "4248f0466feeaabd2fb743fc35fef4dfd0ac1ab3b144b4ff3506754edf921990",
+    "mix_lock_sha256": "f398864718ced0fcb8ff777487f287419945f5501c841e03250f39c29a770488"
+  },
+  "application_versions": {
+    "oh_my_jido": "0.1.0",
+    "req_llm": "1.28.0",
+    "jido_action": "2.4.0",
+    "jido": "2.4.0",
+    "jido_ai": "2.4.0"
+  },
+  "quality_gate": {
+    "command": "env OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "tests_passed": 529,
+    "credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skips": 0,
+    "ex_dna_clones": 0,
+    "ex_dna_budget": 0,
+    "reach": "OK",
+    "raw_log_artifact": "artifact://1265"
+  },
+  "required_density": {
+    "file": "../../../bench/results/density-docs-stable-reconciled-20261020.json",
+    "schema": "../../../bench/density.schema.json",
+    "schema_draft": "2020-12",
+    "format_checker": true,
+    "validation_errors": 0,
+    "populations": [
+      1,
+      10,
+      100,
+      500
+    ],
+    "active": 8,
+    "rounds": 6,
+    "elapsed_ms": 80806.87,
+    "cleanup": {
+      "supervisor_stopped": true,
+      "runtime_stopped": true,
+      "driver_supervisor_stopped": true,
+      "disposable_root_removed": true,
+      "host_cwd_unchanged": true,
+      "host_environment_unchanged": true,
+      "os_live_descendants_before": 1,
+      "os_live_descendants_after": 1,
+      "os_descendants_returned_to_baseline": true
+    }
+  },
+  "independent_consumers": {
+    "compile_command": "env ERL_FLAGS='+S 4:4 +A 2' mix compile --warnings-as-errors",
+    "test_command": "env ERL_FLAGS='+S 4:4 +A 2' mix test --warnings-as-errors",
+    "plain_mix_tests_passed": 3,
+    "own_agent_tests_passed": 4,
+    "native_consumer_incidental_refs_equality_removed": false,
+    "repository_configuration_imported": false,
+    "minimal_default_runtime_read_without_model_credentials": true,
+    "current_plain_mix_job": "bg_165"
+  },
+  "standalone_reconciliation": {
+    "raw_log_artifact": "artifact://1188",
+    "source_wave": "After explicit reconciliation implementation, before malformed-journal hardening and pending CMS crash-window repairs; current core regressions separately pass.",
+    "actual_private_shutdown_confirmed": true,
+    "model_calls_before": 2,
+    "model_calls_after_reconciliation": 2,
+    "operator_reconciled": true,
+    "original_native_stop_confirmed": false,
+    "temporary_restored_owner_stop_confirmed": true,
+    "old_effect_status": "uncertain",
+    "old_result_fabricated": false,
+    "old_completed_at_fabricated": false,
+    "actual_new_read": "written once\n",
+    "actual_new_edit": "edited after restore\n",
+    "new_writer_pending": false,
+    "replay_file_exists": false
+  },
+  "malformed_checkpoint": {
+    "source": "Real native Read, native checkpoint, remove status/result/completed_at from actual effect, restore, then stop",
+    "before_failure_observed_on": "stable, with identical old native predicate confirmed by source review",
+    "before_stable_stop_result": "ok (incorrect)",
+    "after_stop_result": {
+      "error": "cleanup_uncertain",
+      "native": "confirmed",
+      "pending_effects": [
+        "tc_1"
+      ],
+      "pending_resources": []
+    },
+    "native_after_smoke_exercised": true,
+    "raw_output_reference": "Main before22:39:13 and after22:40:17 actual mix-run outputs",
+    "regression": "test/session_recovery_test.exs malformed restored effect scenario",
+    "malformed_or_unknown_records_remain_pending": true,
+    "malformed_records_not_operator_eligible": true,
+    "partial_operator_markers_not_closure": true,
+    "source_review_finding": "Cleared on both trees; source-only follow-up, not substitute for runtime proof"
+  },
+  "limitations": [
+    "No all-current CMS acceptance: two durable reconciliation crash windows are being repaired",
+    "No external Fly provisioning, secrets, deployment, Git push or Hex publication performed",
+    "Scripted native model transport, not external-provider reasoning or throughput",
+    "OS safety is scoped ownership and truthful uncertainty, not a hostile same-UID sandbox"
+  ]
+}

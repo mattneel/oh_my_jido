@@ -16,10 +16,12 @@ MIX_ENV=test mix format
 MIX_ENV=test mix test
 ```
 
-The previous independent run passed warnings-as-errors compilation, formatter
-validation and both real host scenarios; current usability checks are tracked in
-[PROGRESS](../../docs/oh-my-jido/PROGRESS.md). `deps/`, `_build/` and `mix.lock` belong
-to this project; dependency resolution cannot replace the root project's sources.
+The independent suite covers minimal no-model-config/no-credentials direct Read,
+actual native repair/restart and host controls. It does not import repository
+configuration: application settings belong to the consuming host. Current exercised
+results are tracked in [PROGRESS](../../docs/oh-my-jido/PROGRESS.md). `deps/`, `_build/`
+and `mix.lock` belong to this project; dependency resolution cannot replace the root
+project's sources.
 The library and its licensed Jido/ReqLLM snapshots use explicit canonical path
 overrides. No nested `Mix.Project.in_project` or optional QuickBEAM/Snakepit
 selection is needed. An offline `deps.get --check-locked` requires those exact
