@@ -376,6 +376,36 @@ defmodule OhMyJido.Session do
 
   def handle_call(:checkpoint, _from, state), do: {:reply, {:error, :run_active}, state}
 
+  def handle_call({:reconcile_interrupted, run_id, expected_effect_ids}, _from, state) do
+    with true <- reconciliation_idle?(state),
+         {:ok, ids} <- reconciliation_effects(state, run_id, expected_effect_ids) do
+      settlement = %{
+        source: :operator,
+        execution: :stopped,
+        effect: :uncertain,
+        native_stop_confirmed: false,
+        at_ms: now()
+      }
+
+      effects =
+        Enum.reduce(ids, state.effects, fn id, effects ->
+          Map.update!(effects, id, &Map.put(&1, :execution_settlement, settlement))
+        end)
+
+      state = %{
+        state
+        | effects: effects,
+          restored_effects: Map.delete(state.restored_effects, run_id)
+      }
+
+      payload = %{effects: ids, source: :operator, native_stop_confirmed: false}
+      {:reply, :ok, emit(state, :interrupted_execution_reconciled, payload, run_id)}
+    else
+      false -> {:reply, {:error, :execution_not_quiescent}, state}
+      {:error, reason} -> {:reply, {:error, reason}, state}
+    end
+  end
+
   def handle_call(:prepare_stop, _from, %{stop: %{result: :ok}} = state),
     do: {:reply, :ok, state}
 
@@ -648,7 +678,8 @@ defmodule OhMyJido.Session do
   def handle_call({:effect_finished, run_id, id, result}, _from, state) do
     case Map.get(state.effects, id) do
       %{run: ^run_id, status: status} = record
-      when status in [:running, :uncertain] and not is_map_key(record, :completed_at) ->
+      when status in [:running, :uncertain] and not is_map_key(record, :completed_at) and
+             not is_map_key(record, :execution_settlement) ->
         record =
           Map.merge(record, %{
             status: effect_status(result),
@@ -1153,10 +1184,14 @@ defmodule OhMyJido.Session do
     with {:ok, root} <- OhMyJido.Workspace.new(Keyword.get(saved.options, :workspace)),
          {:ok, policy} <- ContextPolicy.restore(saved.context_policy) do
       options = Keyword.put(saved.options, :workspace, root)
+      # The replacement Thread has no original request-settlement markers.
+      # Retain real complete exchanges without stale pending visibility tags.
+      conversation = Enum.map(saved.conversation, &clear_pending_context/1)
 
       state =
         saved
         |> Map.put(:events, :queue.from_list(saved.events))
+        |> Map.put(:conversation, conversation)
         |> Map.merge(%{
           ref: ref,
           config: config,
@@ -1166,7 +1201,10 @@ defmodule OhMyJido.Session do
           storage_opts: storage_opts
         })
 
-      transient_state(state, options)
+      case transient_state(state, options) do
+        {:ok, state} -> {:ok, Map.put(state, :restored_effects, restored_pending_effects(saved))}
+        {:error, _reason} = error -> error
+      end
     end
   end
 
@@ -1221,6 +1259,7 @@ defmodule OhMyJido.Session do
              state.config[:max_resources]
            ),
          native_retired: MapSet.new(),
+         restored_effects: %{},
          stop: nil
        })}
     end
@@ -1509,6 +1548,54 @@ defmodule OhMyJido.Session do
       |> emit(:run_completed, %{status: status, usage: record.usage}, id)
 
     reply_waiters(state, id, run_reply(record))
+  end
+
+  defp restored_pending_effects(saved) do
+    saved.effects
+    |> Enum.filter(fn
+      {_id, %{status: status, run: run} = effect} when status in [:running, :uncertain] ->
+        pending_effect?(effect) and interrupted_record?(Map.get(saved.runs, run))
+
+      _malformed_or_settled ->
+        false
+    end)
+    |> Enum.group_by(fn {_id, effect} -> effect.run end, fn {id, _effect} -> id end)
+    |> Map.new(fn {run_id, ids} -> {run_id, Enum.sort(ids)} end)
+  end
+
+  defp interrupted_record?(%{status: status}), do: status in [:running, :interrupted]
+  defp interrupted_record?(_record), do: false
+
+  defp reconciliation_idle?(state) do
+    reconciliation_owner_idle?(state) and reconciliation_resources_idle?(state)
+  end
+
+  defp reconciliation_owner_idle?(state) do
+    is_nil(state.active) and is_nil(state.stop) and state.status in [:idle, :suspended] and
+      map_size(state.questions) == 0
+  end
+
+  defp reconciliation_resources_idle?(state) do
+    map_size(state.resources) == 0 and map_size(state.child_leases) == 0 and
+      map_size(state.cleanup_tasks) == 0 and map_size(state.native_scopes) == 0
+  end
+
+  defp reconciliation_effects(state, run_id, expected) when is_list(expected) do
+    with %{status: :interrupted} <- Map.get(state.runs, run_id),
+         {:ok, original} <- Map.fetch(state.restored_effects, run_id),
+         ids = Enum.filter(original, &pending_effect?(Map.get(state.effects, &1))),
+         true <- reconciliation_ids_match?(expected, ids, state.config[:max_effects]) do
+      {:ok, ids}
+    else
+      _mismatch -> {:error, :reconciliation_mismatch}
+    end
+  end
+
+  defp reconciliation_effects(_state, _run_id, _expected),
+    do: {:error, :reconciliation_mismatch}
+
+  defp reconciliation_ids_match?(expected, ids, limit) do
+    ids != [] and Enum.count_until(expected, limit + 1) <= limit and Enum.sort(expected) == ids
   end
 
   defp recover_interrupted(state) do
@@ -2095,9 +2182,7 @@ defmodule OhMyJido.Session do
 
   defp pending_effects(state) do
     state.effects
-    |> Enum.filter(fn {_id, effect} ->
-      effect.status in [:running, :uncertain] and not Map.has_key?(effect, :completed_at)
-    end)
+    |> Enum.filter(fn {_id, effect} -> pending_effect?(effect) end)
     |> Enum.map(fn {id, _effect} -> id end)
     |> Enum.sort()
   end
@@ -2237,10 +2322,24 @@ defmodule OhMyJido.Session do
     end
   end
 
-  defp pending_effect?(%{status: status} = effect),
-    do: status in [:running, :uncertain] and not Map.has_key?(effect, :completed_at)
+  defp pending_effect?(%{
+         status: :uncertain,
+         execution_settlement: %{
+           source: :operator,
+           execution: :stopped,
+           effect: :uncertain,
+           native_stop_confirmed: false
+         }
+       }),
+       do: false
 
-  defp pending_effect?(_effect), do: false
+  defp pending_effect?(%{status: status} = effect) when status in [:running, :uncertain],
+    do: not Map.has_key?(effect, :completed_at)
+
+  defp pending_effect?(%{status: status}) when status in [:completed, :failed], do: false
+
+  # A malformed journal record is not evidence that execution has settled.
+  defp pending_effect?(_effect), do: true
 
   defp effect_capacity(state) do
     if map_size(state.effects) < state.config[:max_effects],

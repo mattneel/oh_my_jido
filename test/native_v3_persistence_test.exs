@@ -39,6 +39,7 @@ defmodule OhMyJido.NativeV3PersistenceTest do
     context = %OhMyJido.Context{
       session_id: "configured-native",
       workspace: Keyword.fetch!(opts, :path),
+      model: "anthropic:claude-haiku-4-5",
       permissions: MapSet.new([:read]),
       tools: [OhMyJido.Tools.Read]
     }

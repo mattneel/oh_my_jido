@@ -62,12 +62,20 @@ defmodule OhMyJido.CodingAgent do
   @doc false
   def configure(%Jido.Agent{} = agent, %Context{} = context, config) do
     defaults = Map.put(@tool_defaults, :timeout, Keyword.fetch!(config, :tool_timeout_ms))
+    profile = Jido.AI.Agent.profile(__MODULE__, :assistant)
+
+    # Native Prepare resolves this model before the request transformer runs.
+    # Bind the selected session input, not a module-default application alias
+    # that an independent host has no obligation to configure.
+    models =
+      Map.update!(profile.models, profile.reasoning.model, &Map.put(&1, :model, context.model))
 
     with {:ok, tools} <- Jido.AI.ToolCatalog.from_input(context.tools, defaults),
          {:ok, profile} <-
            Jido.AI.Profile.new(%{
-             Jido.AI.Agent.profile(__MODULE__, :assistant)
-             | tools: tools,
+             profile
+             | models: models,
+               tools: tools,
                controls: %{
                  max_iterations: Keyword.fetch!(config, :max_iterations),
                  max_model_calls: Keyword.fetch!(config, :max_iterations),

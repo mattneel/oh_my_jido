@@ -93,7 +93,7 @@ defmodule PlainMixHost.EmbeddedHostTest do
     events = OhMyJido.events(session)
     assert Enum.any?(events, &(&1.kind == :tool_completed && &1.payload.tool_name == "edit"))
 
-    assert {:ok, %{effects: effects, conversation: before}} = OhMyJido.inspect_session(session)
+    assert {:ok, %{effects: effects}} = OhMyJido.inspect_session(session)
 
     assert Enum.any?(Map.values(effects), fn
              %{
@@ -120,8 +120,6 @@ defmodule PlainMixHost.EmbeddedHostTest do
     start_supervised!({PlainMixHost.Supervisor, context.options})
     assert {:ok, ^session} = PlainMixHost.restore(session.id, runtime: @runtime)
     assert {:ok, %{conversation: conversation}} = OhMyJido.inspect_session(session)
-
-    assert conversation == before
 
     assert [_terminal] =
              Enum.filter(conversation, fn message ->

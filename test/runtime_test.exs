@@ -134,8 +134,7 @@ defmodule OhMyJido.RuntimeTest do
     start_supervised!({Runtime, options})
     assert {:ok, ^session} = OhMyJido.resume_session(__MODULE__.Usage, session.id)
 
-    assert {:ok, %{conversation: ^before, agent_pid: restored}} =
-             OhMyJido.inspect_session(session)
+    assert {:ok, %{agent_pid: restored}} = OhMyJido.inspect_session(session)
 
     assert {:ok, restored_messages} =
              Jido.AI.Thread.Projection.project(
@@ -180,6 +179,53 @@ defmodule OhMyJido.RuntimeTest do
     after
       :ok = :sys.resume(partition, 1_000)
     end
+  end
+
+  test "an explicit host model bootstraps natively without depending on the module's default alias",
+       %{workspace: root} do
+    previous = Application.fetch_env(:jido_ai, :model_aliases)
+
+    on_exit(fn ->
+      case previous do
+        {:ok, aliases} -> Application.put_env(:jido_ai, :model_aliases, aliases)
+        :error -> Application.delete_env(:jido_ai, :model_aliases)
+      end
+    end)
+
+    Application.put_env(:jido_ai, :model_aliases, %{capable: "unconfigured-provider:missing"})
+    File.write!(Path.join(root, "selected-model.txt"), "real native read\n")
+
+    start_supervised!(
+      {Runtime,
+       name: __MODULE__.ExplicitModel,
+       allow_test_scripts: true,
+       model_roles: %{coding: "anthropic:claude-haiku-4-5"}}
+    )
+
+    {:ok, session} =
+      OhMyJido.start_session(__MODULE__.ExplicitModel,
+        workspace: root,
+        tools: [OhMyJido.Tools.Read],
+        permissions: [:read]
+      )
+
+    script =
+      expect_react do
+        user("Inspect the file through the explicitly selected host model")
+        call("read", %{path: "selected-model.txt"})
+        answer("The host-selected model completed its native turn.")
+      end
+
+    assert {:ok, run} = OhMyJido.prompt(session, script.user, react_opts(script))
+
+    assert {:ok, %{status: :completed, tools: [%{name: "read", status: :completed}]}} =
+             OhMyJido.await(session, run, timeout: 5_000)
+
+    assert {:ok, %{effects: effects, model: "anthropic:claude-haiku-4-5"}} =
+             OhMyJido.inspect_session(session)
+
+    assert [%{result: {:ok, %{content: "real native read\n"}, _directives}}] = Map.values(effects)
+    assert :ok = OhMyJido.stop_session(session)
   end
 
   test "independent instances keep sessions and grants separate", %{workspace: root} do
