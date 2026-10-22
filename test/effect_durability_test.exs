@@ -81,6 +81,7 @@ defmodule OhMyJido.EffectDurabilityTest do
        storage: {Jido.Persistence.File, path: Path.join(root, ".store")},
        allow_test_scripts: true,
        tool_timeout_ms: 1_000,
+       question_timeout_ms: 1_000,
        tools: [TimeoutWrite]}
     )
 

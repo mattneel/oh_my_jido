@@ -704,7 +704,13 @@ defmodule OhMyJido.Session do
       timer =
         Process.send_after(self(), {:question_deadline, id}, state.config[:question_timeout_ms])
 
-      waiter = %{from: from, timer: timer, question: question}
+      waiter = %{
+        from: from,
+        timer: timer,
+        question: question,
+        monitor: Process.monitor(elem(from, 0))
+      }
+
       state = %{state | questions: Map.put(state.questions, id, waiter)}
       state = emit(state, :approval_requested, %{id: id, question: question}, active_id(state))
       invoke_question_host(state.context, question, id)
@@ -959,6 +965,8 @@ defmodule OhMyJido.Session do
   end
 
   def handle_info({:DOWN, monitor, :process, pid, _reason}, state) do
+    state = withdraw_questions(state, monitor)
+
     subscribers =
       case Map.get(state.subscribers, pid) do
         %{monitor: ^monitor} -> Map.delete(state.subscribers, pid)
@@ -2588,6 +2596,7 @@ defmodule OhMyJido.Session do
 
       {waiter, questions} ->
         Process.cancel_timer(waiter.timer)
+        Process.demonitor(waiter.monitor, [:flush])
         GenServer.reply(waiter.from, result)
 
         {:ok,
@@ -2602,9 +2611,21 @@ defmodule OhMyJido.Session do
     end
   end
 
+  # The operation waiting for this answer has ended, for example at its time
+  # limit. Close the question like an expired one so a later answer is rejected
+  # rather than accepted with no effect.
+  defp withdraw_questions(state, monitor) do
+    state.questions
+    |> Enum.filter(fn {_id, waiter} -> waiter.monitor == monitor end)
+    |> Enum.reduce(state, fn {id, _waiter}, acc ->
+      question_result(acc, id, {:error, :withdrawn})
+    end)
+  end
+
   defp deny_questions(state, reason) do
     Enum.each(state.questions, fn {_id, waiter} ->
       Process.cancel_timer(waiter.timer)
+      Process.demonitor(waiter.monitor, [:flush])
       GenServer.reply(waiter.from, {:error, reason})
     end)
 

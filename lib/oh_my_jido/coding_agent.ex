@@ -4,7 +4,8 @@ defmodule OhMyJido.CodingAgent do
 
   Jido's request Coordinator and Flow own reasoning, provider streaming, tool
   scheduling, steering and cancellation. Host hooks add durable effect ownership
-  and authorization. Every coding tool is declared unsafe-once with zero retries.
+  and authorization. Every coding tool is declared unsafe-once with zero retries
+  and limited by the session's `OhMyJido.Tool.call_timeout/1`.
   Private host authority is caller context, never portable Agent or Signal data.
   """
 
@@ -61,7 +62,7 @@ defmodule OhMyJido.CodingAgent do
 
   @doc false
   def configure(%Jido.Agent{} = agent, %Context{} = context, config) do
-    defaults = Map.put(@tool_defaults, :timeout, Keyword.fetch!(config, :tool_timeout_ms))
+    defaults = Map.put(@tool_defaults, :timeout, Tool.call_timeout(context))
     profile = Jido.AI.Agent.profile(__MODULE__, :assistant)
 
     # Native Prepare resolves this model before the request transformer runs.
