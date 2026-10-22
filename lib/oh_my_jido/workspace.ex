@@ -2,7 +2,7 @@ defmodule OhMyJido.Workspace do
   @moduledoc """
   Canonical workspace paths over Jido's existing file-root policy.
 
-  Every resolution supplies an explicit root to `Jido.Tools.Files.resolve_path/2`;
+  Every resolution supplies an explicit root to `Jido.Tools.Files.resolve_path(root, path)`;
   its application-wide roots remain an additional restriction. The dependency
   returns a lexical path and accepts missing ancestors, so this adapter also
   resolves symlinks, requires existing parents, and returns canonical paths.

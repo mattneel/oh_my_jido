@@ -1,16 +1,27 @@
 defmodule OhMyJido.Auth do
   @moduledoc """
-  Human-initiated authentication through an explicitly supervised account broker.
+  Manages human sign-in and account credentials through a supervised broker.
 
-  `begin_login/2` returns an authorization URL and opaque attempt reference; the
-  host owns its browser, callback listener, and human consent. Pass the exact
-  received callback to `complete_login/3`. Only account references and safe
-  metadata belong in sessions. No other application's login/token files are read.
+  Start a broker with an explicit vault and task supervisor, then initiate login:
 
-  `credentials/2` is a privileged host callback boundary, not a model-facing tool.
-  Subscription errors never choose a different account or metered API billing.
-  An API-key account must instead be selected explicitly in the host's credential
-  service and returned as explicit per-request `api_key` options.
+      {:ok, login} = OhMyJido.Auth.begin_login(MyApp.Accounts)
+      # Your application opens login.authorization_url and receives the callback.
+      {:ok, account} =
+        OhMyJido.Auth.complete_login(MyApp.Accounts, login.attempt_ref, callback)
+
+  Your application owns the browser, callback listener, and human consent.
+  Attempts are consumed once. The broker validates accounts, coordinates token
+  refresh, and keeps credential records in the configured vault.
+  Only opaque account references and safe metadata belong in sessions.
+
+  `credentials/2` is privileged application code, not a model-facing tool.
+  To use the broker as the runtime's credentials resolver, configure
+  `credentials: {OhMyJido.Auth, broker: MyApp.Accounts}`.
+  No other application's login or token files are read.
+
+  Subscription failures never select another account or fall back to metered
+  API billing. Choose API-key accounts explicitly in your own resolver and
+  return per-request `api_key` options. See the Models and accounts guide.
   """
 
   alias OhMyJido.Auth.Broker
@@ -18,6 +29,7 @@ defmodule OhMyJido.Auth do
   @doc "Starts the broker with a protected vault and host Task.Supervisor."
   defdelegate start_link(opts), to: Broker
 
+  @doc "Builds the account broker's supervision-tree entry."
   def child_spec(opts), do: Broker.child_spec(opts)
 
   @doc "Starts an explicit human sign-in attempt without opening a browser."

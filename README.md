@@ -1,251 +1,214 @@
-# OhMyJido
+# Oh-My-Jido
 
-**An embeddable, host-controlled coding-agent library on Jido and OTP.**
+**A coding agent you embed in your Elixir application.**
 
-Oh-My-Jido runs ordinary supervised coding sessions in an Elixir application.
-Jido/Jido.AI own agent lifecycle and the native ReAct model/tool loop; Jido Actions
-and `Jido.Exec` execute tools; ReqLLM owns provider transport. Your host owns
-workspaces, accounts, permissions, approvals, storage, external services and
-presentation. There is no required CLI, default coding instance or TypeScript/Bun
-tool host.
+Oh-My-Jido gives an Elixir or Phoenix application the abilities of a coding agent such as Claude Code or Codex. It can explore a repository, make careful edits, run tests and commands, use Git, refactor Elixir code, query language servers and debuggers, and hand subtasks to sub-agents. It runs as an ordinary OTP library inside your supervision tree, built on [Jido](https://github.com/agentjido/jido), [Jido.AI](https://github.com/agentjido/jido_ai) and [ReqLLM](https://github.com/agentjido/req_llm).
 
-The project declares app `:oh_my_jido`, version `0.1.0`, and Elixir `~> 1.20`.
-Historical stable usability is retained in the [dated embedding record](docs/oh-my-jido/evidence/usability-20261019.json). [Current stable core evidence](docs/oh-my-jido/evidence/core-reconciliation-20261020.json) records529 tests, strong ownership/reconciliation, independent3+4 consumers and full1/10/100/500 density/schema. The [complete docs-studio loop](docs/oh-my-jido/evidence/editorial-complete-20261020.json) adds150 CMS tests, real checked release/opaque preview, source-drift refusal, digest approval, local publication/adoption and a fresh native Read. [Current operations/evidence](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md#current-stable-core-2026-10-20) also links actual separate-node Observer, real Tidewave and AST/ElixirLS/GDB proofs. [PROGRESS](docs/oh-my-jido/PROGRESS.md) distinguishes exact source waves, support limits and external approval boundaries.
-No published Hex release or production certification is claimed; [operational boundaries](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md) remain explicit.
+Use it to build features such as an in-app documentation editor that proposes, checks and publishes its own changes, a service that repairs failing tests in a disposable checkout, or an internal tool that answers questions about your codebase.
 
-## Choose the integration level
+Your application stays in charge. It decides which directory the agent works in, which tools and permissions each session gets, which model and account pay for inference, and which actions need a human's approval.
 
-| You need | Start here | Who owns the agent? |
+> **Status:** pre-release (0.1.0), not yet on Hex. Install from GitHub. Tested on Linux x86_64 with Elixir 1.20 and OTP 28. See [project status](docs/project-status.md).
+
+## Why Oh-My-Jido
+
+- **Embedded, not bolted on.** There is no CLI, daemon or Node/Bun sidecar. Sessions are supervised processes in your application, and nothing starts until your code opens one.
+- **Real coding tools.** Exact reads, snapshot-checked edits that never overwrite newer changes, commands with explicit arguments and timeouts, Git, structural Elixir refactoring, LSP, debuggers, sub-agents and persistent Elixir/JavaScript/Python evaluation.
+- **You control authority.** Sessions start with no permissions. Sensitive actions pause for approval through your UI. Model credentials come from your code for each model request, never from the prompt or the session.
+- **Durable and honest about side effects.** With file storage, sessions checkpoint and restore after restarts. Every tool call is journaled; if a crash interrupts one, it is marked *uncertain* and never silently run again.
+- **Built for user interfaces.** Ordered, typed events report model output, tool progress, questions and approval requests, ready for a Phoenix LiveView or any process.
+- **Your choice of model.** Any provider ReqLLM supports (Anthropic, OpenAI, OpenRouter and more), with a different model per role, plus OpenAI "Sign in with ChatGPT" accounts and delegation to the official Claude Code CLI.
+
+## What the agent can do
+
+| Area | Capabilities | Tools |
 |---|---|---|
-| Scoped tools in existing Elixir code | `Context.new/1` plus native `Jido.Action` modules | Your application; no coding runtime |
-| Coding tools on your own Jido/Jido.AI agent | `OhMyJido.Plugin` and a trusted context provider | Your existing native agent and model policy |
-| Managed coding sessions, approvals, journals and recovery | `{OhMyJido, name: MyApp.Coding}` | Host-supervised Runtime using native Jido |
+| Explore | Read files exactly, list files and search text with ripgrep | `read`, `list`, `search` |
+| Edit | Atomic writes and exact replacements checked against a snapshot of the file | `write`, `edit` |
+| Run | Execute commands and tests with explicit arguments, scoped environment, timeouts and process cleanup | `shell` |
+| Version control | Status, diff, log, commits of chosen paths, isolated worktrees | `git` |
+| Understand code | Structural Elixir search and replace, language-server diagnostics, navigation and rename, step debugging | `ast`, `lsp`, `debug` |
+| Inspect live apps | Processes, supervision trees and ETS metadata of a running BEAM node; optional Tidewave tools | `observer`, `mcp` |
+| Evaluate | Persistent Elixir, JavaScript and Python cells in separate runtimes | `eval` |
+| Collaborate | Sub-agents, questions to a human, plans and goals with verified checks, memory, measured experiments | `subagent`, `question`, `goal`, `memory`, `experiment` |
+| Extend | Your own Jido Actions, approved skills, MCP servers, browser and research services, Claude Code delegation | `skill`, `mcp`, `browser`, `research`, `claude_code`, … |
 
-Tool selection and permission grants are separate. None of these entrypoints imports credentials, grants execution, installs services or starts a model request merely by being configured.
+See the [tool guide](docs/guides/tools.md) for the complete catalog.
 
-## Installation
+## How it works
 
-From an ordinary Mix consumer directory, preview setup from an approved source checkout **before** resolving the consumer dependency graph:
-
-```sh
-elixir /absolute/oh_my_jido/priv/oh_my_jido/install.exs --dry-run
-elixir /absolute/oh_my_jido/priv/oh_my_jido/install.exs --apply --yes
-mix deps.get
-mix compile
+```mermaid
+flowchart LR
+  App["Your application"] -- "start_session / prompt" --> Session
+  subgraph Runtime["Oh-My-Jido runtime (in your supervision tree)"]
+    Session["Session<br/>workspace + permissions"] --> Agent["Jido.AI agent loop"]
+    Agent -- "tool calls" --> Tools["Tools<br/>read, edit, shell, git, …"]
+    Tools -- "authorize" --> Policy["Host policy"]
+  end
+  Agent -- "model requests" --> Model[("Model provider<br/>via ReqLLM")]
+  Policy -- "approvals, credentials" --> App
+  Session -- "events" --> App
 ```
 
-This uses native Igniter and changes only the consumer's `mix.exs` dependencies. It preserves the licensed Jido/ReqLLM privacy snapshots with required top-level overrides, pins the audited Jido.AI/Action version and refuses incompatible existing declarations. It does not evaluate consumer Mix/config/formatter code during the standalone bootstrap, configure credentials, start services or set up Runtime. Initial installer tooling may require ordinary Hex downloads. Add `--snakepit` to both commands only when explicitly selecting Python Eval; Python provisioning remains separate.
+Each **session** is a Jido agent bound to one workspace directory. When you submit a task, Jido.AI runs a reasoning loop: the model proposes a tool call, Oh-My-Jido checks it against the session's permissions and your policy, runs it, records it in a durable journal and streams events back to you. The loop continues until the model answers. Read [concepts](docs/concepts.md) for the full picture.
 
-The installer requires a literal `project/0` configuration with `deps: deps()` and a literal private dependency list. Computed/incompatible layouts are refused rather than rewritten speculatively. For manual setup, retain the same source overrides:
+## Quick start
+
+These steps were tested in a new application created with `mix new my_app --sup`. Steps 1–3 need no model credentials.
+
+### 1. Add the dependency
 
 ```elixir
+# mix.exs
 defp deps do
-  root = Path.expand("../oh_my_jido", __DIR__)
-
   [
-    {:oh_my_jido, path: root},
-    {:jido, path: Path.join(root, "vendor/jido"), override: true},
-    {:req_llm, path: Path.join(root, "vendor/req_llm"), override: true},
-    {:jido_ai, "== 2.4.0"},
-    {:jido_action, "== 2.4.0"}
+    {:oh_my_jido, github: "mattneel/oh_my_jido"},
+    # Oh-My-Jido ships patched Jido and ReqLLM snapshots that keep credentials
+    # out of logs. They must override the versions from Hex.
+    {:jido, github: "mattneel/oh_my_jido", sparse: "vendor/jido", override: true},
+    {:req_llm, github: "mattneel/oh_my_jido", sparse: "vendor/req_llm", override: true}
   ]
 end
 ```
 
-Adapt the checkout location to your host. The independent
-[plain Mix example](examples/plain_mix/README.md) selects the same licensed
-Jido/ReqLLM path overrides, with its own dependencies, lockfile and build.
-It does not select optional native Eval packages.
-Do not replace the pinned Jido/ReqLLM diagnostic boundaries with stock packages
-while retaining this library's credential/privacy claims.
+Run `mix deps.get`. To use a local checkout instead, see [getting started](docs/getting-started.md#from-a-local-checkout). For the Jido 3 preview, use the [preview branch's recipe](https://github.com/mattneel/oh_my_jido/tree/jido-v3-preview#1-add-the-dependency).
 
-QuickBEAM 0.11 and Snakepit 0.14 are optional, `runtime: false` dependencies.
-No Eval language is enabled by default. A Python host must select the licensed
-`vendor/snakepit` snapshot with `override: true, runtime: false`; stock Snakepit
-lacks the required private-diagnostics boundary. Select/provision native backends
-only when needed; missing dependencies fail explicitly, without an automatic
-installer or substitute runtime. See [Eval operations](docs/oh-my-jido/EVAL_OPERATIONS.md).
+### 2. Start a runtime
 
-## Supervise and embed
-
-Place the public child directly in your application's supervision tree:
+Add a runtime to your application's supervision tree. It starts no sessions and makes no model requests.
 
 ```elixir
+# lib/my_app/application.ex
 children = [
-  {OhMyJido,
-   name: MyApp.Coding,
-   bundles: :read_only,
-   storage: {Jido.Storage.File, path: "/srv/my_app/coding_sessions"}}
+  {OhMyJido, name: MyApp.Coding}
 ]
 ```
 
-Starting the application/runtime starts no session and sends no model request.
-Create a session with an existing explicit workspace and minimal grants:
+### 3. Open a session and call a tool yourself
+
+Start `iex -S mix`, then:
 
 ```elixir
 {:ok, session} =
   OhMyJido.start_session(MyApp.Coding,
-    workspace: "/srv/projects/demo",
+    workspace: "/path/to/your/project",
     permissions: [:read]
+  )
+
+{:ok, file} = OhMyJido.execute_tool(session, "read", %{path: "mix.exs"})
+IO.puts(file.content)
+```
+
+The session can read files inside the workspace and nothing else. A write returns an error whose reason is `{:permission_denied, :edit}` until you grant `:edit`.
+
+### 4. Give the agent a task
+
+Tell Oh-My-Jido where model credentials come from. Your resolver is called before each model request with the session's account:
+
+```elixir
+# lib/my_app/model_credentials.ex
+defmodule MyApp.ModelCredentials do
+  def resolve(_context, "anthropic", _options) do
+    {:ok, [api_key: System.fetch_env!("ANTHROPIC_API_KEY")]}
+  end
+
+  def resolve(_context, _account, _options), do: {:error, :unknown_account}
+end
+```
+
+```elixir
+# lib/my_app/application.ex
+children = [
+  {OhMyJido, name: MyApp.Coding, credentials: {MyApp.ModelCredentials, []}}
+]
+```
+
+Restart `iex -S mix`, then open a session with a model and an account, and submit a task:
+
+```elixir
+{:ok, session} =
+  OhMyJido.start_session(MyApp.Coding,
+    workspace: "/path/to/your/project",
+    permissions: [:read],
+    model: "anthropic:claude-sonnet-4-6",
+    account: "anthropic"
   )
 
 :ok = OhMyJido.subscribe(session, self())
-{:ok, file} = OhMyJido.execute_tool(session, "read", %{path: "mix.exs"})
+{:ok, run_id} = OhMyJido.prompt(session, "How are this project's tests organized?")
+{:ok, result} = OhMyJido.await(session, run_id, timeout: 120_000)
+IO.puts(result.answer)
 ```
 
-Direct tools work without model credentials and still use host policy and the
-durable effect journal. To submit a model task, first configure a real host
-credential resolver and an approved matching account/model/billing choice:
+While the task runs, your process receives `{:oh_my_jido, %OhMyJido.Event{}}` messages: `:llm_delta` for model output, `:tool_started` and `:tool_completed` for tool calls, `:approval_requested` when a human must decide, and `:run_completed` at the end.
 
-With the default local host, add `credentials: {MyApp.ModelCredentials, options}` to the Runtime child; the explicit resolver implements `resolve(context, opaque_account, options)`. A supervised `OhMyJido.Auth` broker is another supported resolver. Custom hosts retain their own credential callback. Nothing reads an API key from the environment unless your resolver deliberately does so.
+To let the agent change code and run tests, grant `:edit` and `:exec`. Approve or deny a sensitive action with `OhMyJido.answer(session, question_id, :approve)`. [Getting started](docs/getting-started.md) walks through approvals, events and durable sessions.
 
-```elixir
-{:ok, run} =
-  OhMyJido.prompt(session, "Explain this project's test setup without modifying files.",
-    account: "host-selected-approved-account"
-  )
+## Choose how much to embed
 
-result = OhMyJido.await(session, run, timeout: 60_000)
-```
+| You want | Use | You get |
+|---|---|---|
+| Individual tools in your own code | `OhMyJido.Context` with `Jido.Exec` | Workspace- and permission-checked tools; no agent loop |
+| Coding tools on a Jido agent you already have | `OhMyJido.Plugin` | Your agent, your model policy, Oh-My-Jido's tools |
+| A managed coding agent | `{OhMyJido, name: MyApp.Coding}` | Sessions, events, approvals, journal, checkpoints, sub-agents |
 
-That account is an opaque reference already recognized by the host, never a key.
-Stable Jido2.4's bare role aliases are not an inference availability guarantee;
-some upstream aliases name a retired catalog model. Before model work, explicitly
-select an active provider-qualified model or host startup role configuration
-([exact configuration and limits](docs/oh-my-jido/RUNTIME_CONFIGURATION.md#six-native-model-roles-and-account-selection)).
-An OpenAI OAuth broker requires an explicitly approved OpenAI model selection.
-Failed subscription requests never fall back to separately billed API usage.
+The first two are covered in [Jido agents and standalone tools](docs/guides/jido-agents.md); the third in [running tasks](docs/guides/running-tasks.md).
 
-Keep your human/event interface responsive while another caller awaits. Delivery
-is `{:oh_my_jido, %OhMyJido.Event{}}`; an `:approval_requested` event supplies the
-question ID for `OhMyJido.answer/3` after a human decision. `Host.Local` asks for
-source-marked sensitive effects, not every shell command. A grant is not an OS
-sandbox or a universal sensitive-effect classifier.
+## Safety model
 
-Steer/cancel/suspend through the public API. Cancellation is a request, not
-rollback. `await/3` and host-only inspection preserve actual terminal results and
-uncertain effects; restore does not replay them. An idle checkpoint can be restored
-through `resume_session/2` with the same runtime name and durable store.
+- **No permissions by default.** You grant capabilities such as `:read`, `:edit`, `:exec` and `:git` per session. Making a tool available never grants its permission.
+- **Workspace confinement.** File paths are resolved inside the workspace, with traversal and symlink checks.
+- **Conflict-safe edits.** Edits are checked against a snapshot of the file; a stale snapshot is refused instead of overwriting newer changes.
+- **Explicit commands.** Shell runs an executable with an argument list, in the workspace, with a deadline and process-group cleanup. It does not parse command strings.
+- **Human approval.** Sensitive actions such as commits, applied renames and external requests wait for an approval from your UI. A stricter policy can require approval for every command.
+- **Credentials stay out of the conversation.** Your resolver supplies them for each model request; they never enter prompts, sessions or checkpoints.
+- **No blind retries.** Interrupted side effects are marked uncertain and are never retried automatically.
+- **Not an OS sandbox.** Shells, builds and language servers run real code as your OS user. Use containers, separate users and network policy for untrusted repositories. See [security](docs/guides/security.md).
 
-Outcome uncertainty and execution quiescence are separate. After independently
-reconciling an interrupted execution's actual resources, a trusted host can use
-`reconcile_interrupted/4` with that restored run's exact pending effect IDs.
-Its operator-only execution settlement preserves uncertain outcomes and never
-claims native SDK closure. See [explicit operator reconciliation](docs/oh-my-jido/PERMISSIONS_AND_RECOVERY.md#explicit-operator-reconciliation).
+## Examples
 
-The [embedding guide](docs/oh-my-jido/USER_GUIDE.md) includes a complete supervisor,
-Host callback implementation and questions/recovery guidance. The independent
-[plain Mix host](examples/plain_mix/README.md) supplies the exercised native
-scripted repair and host-restart pattern.
-
-## Individual native tools
-
-```elixir
-context =
-  OhMyJido.Context.new!(
-    workspace: "/srv/projects/demo",
-    bundles: :read_only,
-    permissions: [:read]
-  )
-
-Jido.Exec.run(
-  OhMyJido.Tools.Read,
-  %{path: "mix.exs"},
-  %{oh_my_jido: context},
-  max_retries: 0
-)
-```
-
-The constructor canonicalizes the workspace and validates host/tool/adapter bindings without starting services. Grants default empty; bundle availability defaults read-only. Compose `Tools.select!([:read_only, :editing, :elixir, :process])` for explicit host tool lists. `:live_inspection` selects structured Observer only, not arbitrary live evaluation. Direct Actions retain root/grant/host checks but do not claim the managed session journal or recovery/approval conversation.
-
-## Your own Jido agent
-
-Use `OhMyJido.Plugin` in your agent's native `plugins:` list with `%{bundles: [:read_only, :editing], context_provider: MyApp.CodingContexts}`. The provider implements `OhMyJido.Plugin.ContextProvider.fetch_context/1` and resolves a trusted Context by native module/ID. Keep `private_diagnostics?/0 == true` and, for Jido.AI, `tool_max_retries: 0`.
-
-The plugin retains your existing model/transformer policy and genuine domain tools; it does not create Runtime or CodingAgent. Native plain routes are `oh_my_jido.read`, `oh_my_jido.edit`, etc.; `Plugin.cmd/3` exposes native result/error directives without a server. Jido.AI retains native `ask`/`await`/stream/cancel. The independent [own-agent example](examples/jido_agent/README.md) contains complete plain/AI agent declarations, a host binding store and actual native tool-turn exercises.
-
-## Implemented surfaces and limits
-
-- **Coding:** exact/ranged/binary reads, guarded atomic writes/edits, ignore-aware
-  discovery/search, real Linux processes, fixed Git workflows and clean worktrees.
-- **Intelligence:** native Elixir structural work, session-bound LSP/DAP stdio
-  adapters, diff risk hints, host-approved artifacts and native image content parts.
-- **Live application:** headless, explicitly granted OTP Observer for bounded
-  metadata, plus an optional trusted-target Tidewave/MCP binding for actual app
-  docs/source/logs and separately approved last-resort live evaluation/RPC.
-  No wxWidgets, implicit attachment or replacement of isolated Eval.
-- **Cooperation:** narrowed Jido children, parent control, structured questions,
-  retained facts/plans/check evidence, bounded experiments, custom Jido Actions and
-  explicitly trusted native skills.
-- **Optional services:** scoped MCP tools/resources, browser and research adapter
-  contracts. Unconfigured/unsupported host operations remain unavailable.
-- **Eval:** persistent Elixir in a separate ERTS, QuickBEAM JavaScript only in an
-  isolated ERTS, and exclusive Snakepit-managed Python workers. Hard loss invalidates
-  state until explicit reset; execution/effects are not automatically retried.
-- **Accounts:** six native roles/account selection; explicit OpenAI SIWC brokerage
-  and metered API separation; official Claude Code is a separately approved
-  delegated agent, not a native third-party Claude subscription loop.
-- **Embedding/operations:** per-instance Config, native telemetry, bounded admission
-  and durable Jido storage. ContextPolicy v2 rejects old policy checkpoints rather
-  than relabeling their effect evidence.
-
-These are interfaces/implementations with documented prerequisites, not a statement
-that every required row is verified. Core workspace/grant controls, child ERTS and
-native quotas **do not provide an OS sandbox**. Hosts own untrusted execution,
-network policy, secret separation, resources and deployment.
-
-## Source-first docs CMS
-
-The [Phoenix docs-site example](examples/docs_site/README.md) uses the library's
-native agent loop to edit Git-backed Markdown and application source, not database
-page bodies. Its private Studio exposes durable questions, process approval,
-source diffs, isolated checks/preview and digest-bound release decisions.
-
-The same app has a public-only renderer role intended for a small Fly machine;
-model credentials, editorial execution and durable studio storage stay in the
-trusted editor. Setup, native-tool prerequisites, recovery and deployment
-boundaries are in its README. [Local production/resource evidence](docs/oh-my-jido/evidence/docs-site-production-capped-20261020.json)
-and [cold restore proof](docs/oh-my-jido/evidence/docs-site-cold-restore-20261020.json) are separate from external Fly deployment, which always requires approval.
+- [Plain Mix application](examples/plain_mix/README.md): an ordinary Mix application that supervises Oh-My-Jido, repairs a failing test, steers and cancels work, and restores sessions after a restart.
+- [Your own Jido agents](examples/jido_agent/README.md): coding tools on a plain Jido agent and on a Jido.AI agent.
+- [Docs site and studio](examples/docs_site/README.md): a Phoenix documentation site whose private studio uses Oh-My-Jido to edit its own Markdown and source, with diffs, checks, preview and approval before publishing. It is the basis for the Oh-My-Jido documentation site.
 
 ## Documentation
 
-| Guide | Contents |
+| Start here | |
 |---|---|
-| [User guide](docs/oh-my-jido/USER_GUIDE.md) | Source installation, independent embedding and Host example |
-| [Public API](docs/oh-my-jido/PUBLIC_API.md) | Functions, types, events, results and errors |
-| [Configuration](docs/oh-my-jido/RUNTIME_CONFIGURATION.md) | Exact defaults, budgets, six roles and per-instance selection |
-| [Accounts](docs/oh-my-jido/ACCOUNT_OPERATIONS.md) | Host credentials, SIWC, billing and official Claude boundary |
-| [Permissions and recovery](docs/oh-my-jido/PERMISSIONS_AND_RECOVERY.md) | Threat model, approvals, ContextPolicy v2, uncertainty and licensed diagnostic snapshots |
-| [Tools and extensions](docs/oh-my-jido/TOOLS_AND_EXTENSIONS.md) | Editing, subagents, skills, LSP/DAP, headless Observer, live Tidewave/MCP, browser, research, review and artifacts |
-| [Eval operations](docs/oh-my-jido/EVAL_OPERATIONS.md) | Three backends, native setup, trust, output and cancellation/reset limits |
-| [Operations and evidence](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md) | Telemetry, measured Linux x86_64 smoke, remaining platform/guest gates and Elixos ownership |
-| [Changelog](CHANGELOG.md) | Unreleased source/documentation changes |
+| [Getting started](docs/getting-started.md) | Install, first tool call, first AI task, events, approvals and durable sessions |
+| [Concepts](docs/concepts.md) | Runtimes, sessions, runs, permissions, policies, events and the effect journal |
+| [Guides](docs/README.md#guides) | Tasks, tools, permissions, models, recovery, sub-agents, language tools, live apps, Eval, integrations, security |
+| [Reference](docs/README.md#reference) | Public API and configuration |
+| [Operations](docs/operations.md) | Storage, telemetry, capacity and platform requirements for production |
 
-The [canonical specification index](docs/oh-my-jido/INDEX.md) remains the project's
-authority order; [PROGRESS.md](docs/oh-my-jido/PROGRESS.md) is the exact integration
-evidence ledger. The [Elixos example](examples/elixos/README.md) owns current
-source/guest workflows. Core Oh-My-Jido does not import Elixos modules or perform
-NEXT/reboot/health/COMMIT/fallback on its own.
+The [documentation map](docs/README.md) lists every page.
+
+## Requirements
+
+- Elixir `~> 1.20` (tested with 1.20.2 on OTP 28).
+- Tools that start OS processes (List, Search, Shell, Git, Claude Code, language servers, debuggers, MCP servers and Eval) need Linux with `setsid` and `/proc`. Elsewhere they fail closed with `{:capability_unavailable, :linux_process_groups}`, `:protocol_platform_unavailable` or `{:backend_unavailable, …}`. Other operating systems are untested; Read, Write, Edit, AST, Observer and the model loop do not start OS processes.
+- `rg` (ripgrep) for the list and search tools, and `git` for the Git tools.
+- Optional: a language server such as ElixirLS, a debug adapter such as GDB, and QuickBEAM or Snakepit for JavaScript or Python Eval.
+
+## Project status
+
+Oh-My-Jido 0.1.0 is pre-release software and its API may change. Two branches are maintained:
+
+- `master` uses the stable Jido 2.4 stack.
+- [`jido-v3-preview`](https://github.com/mattneel/oh_my_jido/tree/jido-v3-preview) carries the same library and examples on the Jido 3.0 beta stack.
+
+[Project status](docs/project-status.md) explains what is verified, on which platform, and where the evidence lives. The [changelog](CHANGELOG.md) lists unreleased changes.
 
 ## Development
 
-Preserve the generated [AGENTS.md](AGENTS.md) project guidance:
-
 ```sh
 mix deps.get
-mix ci
+mix ci     # compile with warnings as errors, format check, tests, Credo, Dialyzer, ExDNA, Reach
+mix docs   # API reference and guides in doc/
 ```
 
-`mix ci` runs warnings-as-errors compilation, formatter check, tests, strict Credo,
-Dialyzer, ExDNA and Reach in the preferred test environment. The
-[density harness](bench/README.md) and independent hosts have their own
-human-invoked commands; do not equate a focused/smoke result with the full gate.
-Recorded Linux x86_64 evidence does not establish aarch64 or actual guest delivery.
+The project's specification, delivery ledger and verification records live in [`docs/oh-my-jido/`](docs/oh-my-jido/README.md).
 
-The generated documentation guidance still applies: documentation can be generated
-with [ExDoc](https://github.com/elixir-lang/ex_doc) and published on
-[HexDocs](https://hexdocs.pm). This checkout does not currently declare ExDoc or a
-documentation task; configure that tooling through the normal approved dependency
-workflow before use. No documentation or package has been published by this work,
-and a Hex dependency/HexDocs location is only applicable after an actual approved
-release exists.
+## License
+
+Oh-My-Jido is licensed under the [Apache License 2.0](LICENSE). The vendored Jido and ReqLLM snapshots keep their Apache-2.0 licenses, and the vendored Snakepit snapshot keeps its MIT license.

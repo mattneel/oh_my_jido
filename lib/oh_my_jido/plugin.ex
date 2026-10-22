@@ -1,18 +1,19 @@
 defmodule OhMyJido.Plugin do
   @moduledoc """
-  Attaches explicitly scoped coding tools to the caller's native Jido agent.
+  Adds coding tools to a Jido agent you already own.
 
-  Declare the plugin on an ordinary `Jido.Agent` or `Jido.AI.Agent`:
+  Use this instead of a managed session when your agent should keep its own
+  model loop and lifecycle. Declare the plugin on `Jido.Agent` or `Jido.AI.Agent`:
 
       plugins: [
         {OhMyJido.Plugin,
          %{bundles: [:read_only, :editing], context_provider: MyApp.CodingContexts}}
       ]
 
-  The agent must export `def private_diagnostics?, do: true`. AI agents must also
-  configure `tool_max_retries: 0`. The provider implements
-  `OhMyJido.Plugin.ContextProvider`; it resolves authority from host-owned
-  bindings by native agent identity, never signal data or model arguments.
+  Before starting the agent, export `def private_diagnostics?, do: true`.
+  AI agents must also configure `tool_max_retries: 0`. The provider implements
+  `OhMyJido.Plugin.ContextProvider` and looks up a trusted context using the
+  native agent's identity, never signal data or model arguments.
 
   Plain agents receive `oh_my_jido.read`, `oh_my_jido.edit`, and corresponding
   routes for the selected bundles. These use native instructions with retries
@@ -31,12 +32,12 @@ defmodule OhMyJido.Plugin do
   ID is rejected without changing an existing request or emitting a failure for
   it. Native cast-based `ask` cannot create a distinct handle for a reused ID.
 
-  This lightweight attachment does not start an `OhMyJido.Runtime`, session,
-  model, service, approval UI, durable effect journal, recovery worker, or
-  subagent. Managed Goal/Memory/Subagent tools and Eval are not available here.
-  A host approval request without a managed session returns `:approval_required`.
-  Native cancellation cannot roll back an effect; reconcile uncertain effects
-  with the host rather than replaying a request.
+  This attachment starts no `OhMyJido.Runtime`, session, model, service,
+  approval UI, durable effect journal, recovery worker, or subagent.
+  Managed Goal/Memory/Subagent tools and Eval are unavailable here.
+  Host approval without a managed session returns `:approval_required`.
+  Cancellation cannot roll back an effect; reconcile uncertain effects in your
+  application rather than replaying the request. See the Jido agents guide.
   """
 
   use Jido.Plugin,

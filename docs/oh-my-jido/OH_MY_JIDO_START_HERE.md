@@ -12,7 +12,7 @@ The target is an embeddable, Jido-native coding harness. It is not a TypeScript 
 4. Enter the following objective in the TUI:
 
 ```text
-/goal Deliver the complete Oh-My-Jido library defined in OH_MY_JIDO_GOAL.md and docs/oh-my-jido/INDEX.md. Follow the operating rules and quality gates. Implement all required capability areas with tests and evidence. Maintain docs/oh-my-jido/PROGRESS.md after each substantial milestone. Work autonomously in small verified steps. Do not call the goal complete until all acceptance gates pass. Keep the session interactive so I can steer decisions and approve effects.
+/goal Deliver the complete Oh-My-Jido library defined in docs/oh-my-jido/OH_MY_JIDO_GOAL.md and docs/oh-my-jido/INDEX.md. Follow the operating rules and quality gates. Implement all required capability areas with tests and evidence. Maintain docs/oh-my-jido/PROGRESS.md after each substantial milestone. Work autonomously in small verified steps. Do not call the goal complete until all acceptance gates pass. Keep the session interactive so I can steer decisions and approve effects.
 ```
 
 5. Watch the TUI, inspect changes, and steer the agent whenever necessary.
@@ -28,7 +28,7 @@ The goal itself already directs the agent to the same rules, so the skill is opt
 
 ## Contents
 
-- `OH_MY_JIDO_GOAL.md` — canonical mission and completion contract.
+- `docs/oh-my-jido/OH_MY_JIDO_GOAL.md` — canonical mission and completion contract.
 - `docs/oh-my-jido/INDEX.md` — document order and authority.
 - `docs/oh-my-jido/OPERATING_RULES.md` — anti-detour rules and daily workflow.
 - `docs/oh-my-jido/ARCHITECTURE.md` — embeddable package boundaries.

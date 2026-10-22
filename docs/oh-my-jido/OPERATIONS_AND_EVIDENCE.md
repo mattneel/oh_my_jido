@@ -1,79 +1,45 @@
-# Operations, evidence and Elixos ownership
+# Verification and evidence record
 
-This document separates implemented interfaces, exercised observations and pending gates. It does **not** certify the capability matrix, a release, subscription parity or an OS generation. [PROGRESS.md](PROGRESS.md) remains the integration owner's exact current-revision ledger; [ACCEPTANCE.md](ACCEPTANCE.md) defines required gates. Evidence recorded before a source change is not a green check of that changed source.
+This record separates implemented interfaces, exercised observations and pending gates. It does **not** certify a release, subscription parity or an OS generation. [PROGRESS.md](PROGRESS.md) is the detailed capability and source-revision ledger; [ACCEPTANCE.md](ACCEPTANCE.md) defines the required gates. Evidence recorded before a source change is not a green check of that changed source. For an evaluator's summary, read [project status](../project-status.md).
 
 ## Host operating responsibilities
 
-Before admitting work:
-
-- Supervise explicit named runtimes; choose finite session/run/effect/resource ceilings and a private durable store.
-- Give each session an existing canonical workspace, minimal registered Actions and grants. Choose actual OS containment before shell/Eval/candidate/native execution over untrusted code.
-- Supervise account brokerage and approval presentation outside the model; keep vault keys/tokens out of repo, argv, model input and generation images.
-- Keep native ReqLLM debug off and use the approved Jido/ReqLLM diagnostic snapshots, plus licensed Snakepit private diagnostics when Python is enabled. Export metadata, not raw native state.
-- Provision optional native libraries/executables/servers deliberately, with target/ABI/licensing checks. An entry in `adapters`/`eval.backends` is not proof the service exists.
-- Own adapter cancellation/teardown and identity rebuilding after host restart. Journal uncertainty instead of automatically replaying effects.
-- Archive run/effect/session histories according to host policy; capacity refusal is deliberate, not an undocumented infinite queue.
-
-No session changes the host VM cwd/environment. Check external packages' host-startup behavior too: the curated Python infrastructure path avoids upstream Snakepit application's global-environment/installer bootstrap. Scrub inherited secret environment/mount/code access through the actual worker isolation policy; never rely on a bridge API to hide secrets from arbitrary code running under the same OS user.
+Production setup, storage, private-data protection, backup, capacity, platform requirements and upgrade procedures now live in [Run Oh-My-Jido in production](../operations.md). The dated observations below remain verification history, not operating instructions.
 
 ## Events and telemetry
 
-The stable host envelope is documented in [the API reference](PUBLIC_API.md#events). Keep question handling responsive while another caller awaits completion. Track event cursors and re-subscribe explicitly if a consumer was detached; a bounded event ring is not a guaranteed audit log. Host-only inspections include an intentional native PID and private conversation/evidence; do not serialize/export the whole map.
-
-The harness emits:
-
-```elixir
-[:oh_my_jido, :event]
-# measurements: %{seq: integer, at_ms: integer}
-# metadata: %{session_id: binary, kind: atom}
-```
-
-Installed native telemetry supplies Jido command/signal/directive/queue-overflow events, `[:jido, :ai, :request, ...]`, `[:jido, :ai, :llm, ...]`, `[:jido, :ai, :tool, ...]`, and ReqLLM request/reasoning/usage events. AI normalized measures include `duration_ms`, token counters, retry count and queue_ms where observed. ReqLLM `duration` is native monotonic time, not milliseconds; convert with `System.convert_time_unit/3`. Missing usage/queue measurements are not synthetic zero-latency evidence.
-
-A metadata-only collector can use the actual Telemetry API without logging payloads:
-
-```elixir
-:telemetry.attach(
-  "my-app-coding-event-count",
-  [:oh_my_jido, :event],
-  fn _event, measurements, metadata, collector ->
-    send(collector, {:coding_event_metric, metadata.kind, measurements.seq, measurements.at_ms})
-  end,
-  self()
-)
-```
-
-Use a supervised host collector in production and detach the handler at its lifecycle boundary. Do not perform slow synchronous work inside a telemetry handler. Credential-bearing native turns force ReqLLM `payloads: :none`; never turn on raw payload capture to debug live tokens. Redaction and native diagnostic patches have a documented scope, not a promise that arbitrary host/native crash logs are safe.
-
-Monitor actual counts/latency/errors, active admission, mailbox pressure, port/OS descendants, resource cleanup, pending questions, usage/plan errors and uncertain effects. The core has immediate admission refusal, **not** a generic model queue. Distinguish native queue/scheduler pressure, client mailbox delays and host-added backlog. UI output/plan status is not proof the repository test suite passed.
+The telemetry contract and collector example moved to [Collect telemetry without logging payloads](../operations.md#collect-telemetry-without-logging-payloads). Public event kinds and payloads are documented in the [API reference](../reference/api.md).
 
 ## Density harness: commands for the integration owner
 
-[`bench/density.exs`](../../bench/density.exs), [its operational reference](../../bench/README.md) and [schema](../../bench/density.schema.json) implement a human-invoked credential-free native workload. Nothing in `bench/` is loaded by the library application. Use these only after integration edits have stopped; no command below was run by this documentation task.
+Commands moved to [Run the density benchmark](../operations.md#run-the-density-benchmark). The [benchmark guide](../../bench/README.md) explains options, outputs, workload boundaries and interpretation. Retained measurements and their historical limits remain below.
 
-Full required populations, selecting a new output file:
+## Current stable core and documentation pass (2026-10-22)
 
-```sh
-MIX_ENV=test mix run bench/density.exs -- --output bench/results/density-full.json
-```
+The [documentation pass record](evidence/docs-usability-20261022.json) covers the
+rewritten user documentation and the explicitly approved fix for tool-call and
+approval time limits. It binds library fingerprint
+`2960370eec7a740b3abbab75179b7fcc52228a8c0d82fcd37b46e4abcdeea2fa`. The
+20 October application, live-runtime and tool observations below were not rerun.
 
-Default populations are **1, 10, 100, 500**, active ceiling 8, six repetitions per distinct offered concurrency, idle observation 250 ms and sample interval 25 ms. Simulated gateway delays are 120/240/180/300 ms; authorized read/edit/exec delays are 10/20/10 ms; actual subprocess sleeps are 80/160/120/240 ms. Tool/run/workload deadlines default to 5,000/15,000/180,000 ms, with separate bounded teardown. The offered sweep includes one excess offered task where the population permits it, and a final session-capacity probe.
+| Gate | Observed result |
+|---|---|
+| Full opt-in `mix ci` | 533 tests; Credo 0, Dialyzer 0/0, ExDNA 0/0 and Reach OK (`artifact://2066`) |
+| Independent consumers | Plain Mix 3/3 and own-agent plugin 4/4 with `--warnings-as-errors`, after the final library change |
+| Docs-site `mix ci` | 150 tests and all strict static gates (`artifact://2112`) |
+| Tool-call and approval limits | Reproduced first: an agent question answered after 20 s was killed at Jido.AI 2.4's fixed 15,000 ms tool deadline. Four public-API regressions pass; three failed before the fix |
+| Newcomer path | A new Mix project ran the README quick start, getting-started steps 4–8, the stricter host policy and the event inbox example against the working tree |
+| Documentation | `mix docs`: 0 warnings; Markdown links and anchors: 0 problems; every generated HTML link resolves, including 4 cross-branch links checked against the `jido-v3-preview` worktree |
+| [Required density](../../bench/results/density-docs-stable-call-limits-20261022.json) | 1/10/100/500, active 8/six rounds; 80,210.598 ms work; all cleanup invariants and exact OS baseline 1→1 pass |
+| Density schema | Draft 2020-12 with an enforced RFC 3339 date-time checker: 0 errors |
 
-The smaller source-backed smoke command is:
+Earlier records that report date-time validation used a format checker that did
+not enforce `date-time`. A strict re-check finds 0 errors in the 2026-10-20
+density report as well.
 
-```sh
-MIX_ENV=test mix run bench/density.exs -- --populations 1,3 --active 1 --rounds 1 --idle-ms 25 --model-ms 10,15,10,15 --tool-ms 1,2,1 --process-ms 10,20 --run-timeout-ms 3000 --tool-timeout-ms 1000 --deadline-ms 20000 --output bench/results/density-smoke-new.json
-```
+## Stable core (2026-10-20)
 
-Linux procfs and `sh`, `setsid`, `mkfifo`, `cat`, `kill`, `sleep` are required. Existing evidence files are refused rather than overwritten; choose a new path or omit output to get a unique timestamped path. Preserve the emitted JSON artifact and schema/fingerprints, not only a terminal summary.
-
-The installed Jido.AI scripted loop calls real Read, snapshot-guarded Write and Shell. The harness checks actual bytes/digests/process exit/cleanup, separate output streams, receipts and child-only cwd/env observations. Gateway delays are simulated inside the native transformer, **not provider RTTs**. Each job's fixture slot is replaced outside measured run latency; this is not growing-history, Eval, subagent or live-provider throughput.
-
-Reports distinguish offered/admitted/rejected/completed outcomes, accepted/rejected call latency, run latency, driver dispatch, actual leases/mailboxes/VM run queues and cleanup. Rejected runs are not automatically queued/retried. Small nearest-rank p50/p95/p99 sets do not establish stable tails. OS RSS (`VmRSS`), VM-allocated memory (`:erlang.memory`), process-lifetime `VmHWM` and descendant RSS sums are different measurements. Per-population empty-runtime baselines include Mix/driver/native code and allocator effects; do not divide a changing whole-VM delta by N and present it as proven per-agent memory.
-
-## Current stable core (2026-10-20)
-
-The [current core record](evidence/core-reconciliation-20261020.json) covers stable
+The [core record](evidence/core-reconciliation-20261020.json) covers stable
 Jido2.4 explicit interrupted-execution reconciliation and fail-closed journals.
 The [earlier stop milestone](evidence/native-stop-stable-20261020.json) separately
 retains its actual Shell leader/child/Session closure proof. Those core records do
@@ -89,12 +55,12 @@ Fly provisioning, secrets and deployment still require explicit approval.
 | Explicit reconciliation | Actual native Read/Edit after host reconciliation, no model call during import, prior outcome remains uncertain; current core regressions pass |
 | Malformed journal | Real corrupt checkpoint blocks overall stop even when native owner closure is confirmed; no operator eligibility for unknown records |
 | Required density |1/10/100/500, active8/six rounds;80,806.87ms work; all cleanup invariants and exact OS baseline1→1 pass |
-| Density schema | Draft2020-12 and date-time formats:0 errors |
+| Density schema | Draft2020-12:0 errors. The date-time check was not enforced then; a strict RFC 3339 re-check during the documentation pass also finds 0 errors |
 | [Actual source/language/debug tools](evidence/real-tools-current-20261020.json) | Real AST/Edit child compile/run; ElixirLS0.31.1 navigation/diagnostics and same-LSP function/spec9 + variable2 rename; GDB15.1 counter1→3 and confirmed owned cleanup. Optional module rename refuses unproved Mix.Project; no server renameProvider/fallback claim |
 | [Actual local/separate-node Observer](evidence/observer-current-20261020.json) | Registered SDK2 Action against genuine owned OTP apps; bounded/truncated metadata, unchanged private state, typed timeout/target loss, grants/root denial, unchanged Observer distribution/cookies; owned nodes/EPMD/fixtures removed. SDK2 tuple-denial message projection retained |
 | [Actual real Tidewave](evidence/tidewave-current-20261020.json) | Upstream0.9.1/Bandit1.13.1 in distinct client/proxy/app VMs; exact docs/source/log/approved state and RPC/ERPC,0 denied atom growth/no on_load, timeout effect exactlyonce/no retry;0 remaining owned processes/listeners |
 
-The [current density artifact](../../bench/results/density-docs-stable-reconciled-20261020.json)
+The [2026-10-20 density artifact](../../bench/results/density-docs-stable-reconciled-20261020.json)
 records library fingerprint
 `50ac2c60b770a18f6175ec3f1adf6137f92617a0e67436eae6bb8801cd3076d9`.
 These are scripted native model turns and real filesystem/process effects, not
@@ -199,32 +165,7 @@ Historical367-case gate367/consumer366 and19Oct462-case gate546/consumer bg_115 
 
 ## Quality and independent-host commands
 
-After all slices land, the main integration owner runs the repository's generated instructions:
-
-```sh
-mix deps.get
-mix ci
-```
-
-The actual `ci` alias uses test environment and runs warnings-as-errors compilation, formatter check, tests, strict Credo, Dialyzer, ExDNA zero-clone check and Reach architecture/smells. All rows remain subject to the required acceptance evidence; documentation or a focused passing subset does not make that alias green.
-
-The independent plain host has its own project/lock/build. From `examples/plain_mix`:
-
-```sh
-HEX_OFFLINE=1 MIX_ENV=test mix deps.get --check-locked
-MIX_ENV=test mix compile --warnings-as-errors
-MIX_ENV=test mix test
-```
-
-It reuses already installed sources and pinned native overrides, not a published package. Its tests authorize native scripts only in test-owned runtimes and still execute real tools. Production `allow_test_scripts` remains false. The example README includes its formatter/operator guidance; those commands are not auto-invoked by the library.
-
-The real native Python suite is separately opt-in after the approved environment/native components are available:
-
-```sh
-OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/srv/my_app/python/bin/python MIX_ENV=test mix test test/eval_python_test.exs
-```
-
-Use a real preprovisioned executable instead of that illustrative host path; native config can select it instead of an environment override. This is not an installer, a credentials command or an instruction to alter the VM per session. Default skipped opt-in tests must not be reported as native backend success.
+The current gate definitions, Python opt-in and independent-consumer commands moved to [Run the quality gates](../project-status.md#run-the-quality-gates). A focused result is not a substitute for a full source-bound gate. Dated results above remain unchanged.
 
 ## Elixos: host-owned integration and operational workflow
 

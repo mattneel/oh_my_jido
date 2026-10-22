@@ -1,14 +1,21 @@
 defmodule OhMyJido.Runtime do
   @moduledoc """
-  An ordinary host-supervised instance of the coding library.
+  Supervises sessions and resource limits for one named Oh-My-Jido runtime.
 
-  Each instance owns a Jido supervisor, a session registry, bounded session and
-  task supervisors, and optional Eval kernels. No agent starts with the library
-  application. `name` is a host-chosen atom; session and run IDs stay strings.
+  Add the runtime through the public facade in your application's supervision tree:
 
-  Storage implements `Jido.Storage`; the default ETS adapter survives worker
-  restart but not host restart. Supply `Jido.Storage.File` or a durable host
-  adapter for restart across host lifetimes.
+      {OhMyJido, name: MyApp.Coding, max_sessions: 100, max_active: 4}
+
+  Each runtime owns a Jido supervisor, a session registry, bounded session
+  and task supervisors, and optional Eval kernels. Starting it makes no
+  session or model request. Choose a stable atom for `:name`; session and run
+  IDs remain strings.
+
+  Storage implements `Jido.Storage`. The default ETS adapter survives worker
+  restart only while its table remains available. Use
+  `storage: {Jido.Storage.File, path: "/private/coding-sessions"}` or another
+  durable adapter to restore sessions after your application restarts.
+  See the Sessions and recovery guide and Configuration reference.
   """
 
   use Supervisor
@@ -86,11 +93,14 @@ defmodule OhMyJido.Runtime do
   end
 
   @doc """
-  Starts a rooted, capability-scoped coding session.
+  Starts a session in an existing workspace with explicit permissions.
 
-  `:bundles` selects composable tool availability; `:tools` supplies an explicit
-  action list instead. A session selection replaces the runtime selection, never
-  adds permissions. Supplying both options fails before starting an agent.
+  `:bundles` selects available tools; `:tools` supplies an explicit Action list
+  instead. A session selection replaces the runtime selection and never adds
+  permissions. Supplying both options fails before an agent starts.
+  Permissions default to none. `:id` must be a string of 1 to 128 bytes.
+  A stored ID restores its checkpoint rather than resetting the session;
+  an already supervised ID returns `{:error, :session_exists}`.
   """
   @spec start_session(atom(), keyword()) :: {:ok, SessionRef.t()} | {:error, term()}
   def start_session(runtime, opts) when is_atom(runtime) and is_list(opts) do
