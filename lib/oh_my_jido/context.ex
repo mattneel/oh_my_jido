@@ -1,9 +1,30 @@
 defmodule OhMyJido.Context do
   @moduledoc """
-  Explicit session identity and authority passed to Jido Actions.
+  Gives tools a trusted workspace, permissions, and application service bindings.
 
-  A capability grant authorizes a class of operation, not unrestricted OS access.
-  The host still evaluates every effect. Repository text cannot modify this value.
+  Build a context when you want to run individual Jido Actions without a
+  managed coding session:
+
+      context =
+        OhMyJido.Context.new!(
+          workspace: "/path/to/project",
+          permissions: [:read],
+          bundles: [:read_only]
+        )
+
+      Jido.Exec.run(OhMyJido.Tools.Read, %{path: "mix.exs"},
+        %{oh_my_jido: context}
+      )
+
+  Tool availability does not grant permission. Constructors default to no
+  permissions and the read-only tool bundle. They validate bindings without
+  starting a runtime, model, credentials resolver, or optional service.
+  A standalone context does not create a durable effect journal or approval
+  conversation; use managed sessions when you need those features.
+
+  Context is trusted application configuration, never a model request schema.
+  Repository text and tool parameters must not choose its workspace, permissions,
+  host policy, or adapters. Permissions are library policy, not an OS sandbox.
   """
 
   alias OhMyJido.{Host, Tools, Workspace}
@@ -68,8 +89,8 @@ defmodule OhMyJido.Context do
 
   `:workspace` is required and must identify an existing directory; symlinks are
   canonicalized by `OhMyJido.Workspace.new/1`. `:session_id` defaults to a native
-  Jido-generated ID. `:permissions` defaults to no grants and accepts a list or
-  `MapSet` of non-nil, non-boolean atoms, including host-defined capabilities.
+  Jido-generated ID. `:permissions` defaults to an empty set and accepts a list
+  or `MapSet` of non-nil, non-boolean atoms, including application-defined capabilities.
 
   `:bundles` selects tool availability through `OhMyJido.Tools.select/1` and
   defaults to `[:read_only]`. Alternatively, `:tools` supplies an explicit list
@@ -125,7 +146,7 @@ defmodule OhMyJido.Context do
   def fetch(%{oh_my_jido: %__MODULE__{} = context}), do: {:ok, context}
   def fetch(_context), do: {:error, :missing_context}
 
-  @doc "Checks an explicit grant; a model-facing string never creates an atom."
+  @doc "Checks an existing permission atom; never converts model-facing strings to atoms."
   @spec permitted?(t(), atom()) :: boolean()
   def permitted?(%__MODULE__{permissions: permissions}, permission) do
     MapSet.member?(permissions, permission)

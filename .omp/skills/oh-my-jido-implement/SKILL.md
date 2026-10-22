@@ -8,7 +8,7 @@ description: Implement and verify the full embeddable Oh-My-Jido coding-agent ha
 Use this skill for the Oh-My-Jido library objective.
 This repository targets an embeddable Jido-native coding harness, not a literal Oh My Pi port.
 
-1. Read `OH_MY_JIDO_GOAL.md` from the repository root.
+1. Read `docs/oh-my-jido/OH_MY_JIDO_GOAL.md`.
 2. Read `docs/oh-my-jido/INDEX.md` and the documents in its authority order.
 3. Inspect the current `mix.exs`, `mix.lock`, `AGENTS.md`, dependency usage rules, and tests.
 4. Follow `docs/oh-my-jido/OPERATING_RULES.md` for architecture decisions and milestone work.

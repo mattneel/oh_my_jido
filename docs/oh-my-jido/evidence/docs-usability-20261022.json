@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-22T05:52:39Z",
+  "scope": "Documentation and usability pass on jido-v3-preview (native Jido 3 preview), including the explicitly approved fix for tool-call and approval time limits. Gates, newcomer smokes and density ran on the final working-tree source identified by source_fingerprints; base_revision is the published commit these changes were made on.",
+  "result": "passed",
+  "base_revision": {
+    "branch": "jido-v3-preview",
+    "commit": "1e8a245e3d656d40fc7c4a17d85b158579d9ca43"
+  },
+  "source_fingerprints": {
+    "library_sha256": "4cee4fa82d3fa469cc162057e9aa61a047dc2dae4774ac6ef0e546e705c69a19",
+    "benchmark_sha256": "b02a743e679d9fd9e7379c1e6475ae76af25ac637cf43b883d044678845dfca8",
+    "mix_project_sha256": "e048f84dd66ac05010dc9e6039997c5c66383608329429025485e0ccffb450b6",
+    "mix_lock_sha256": "47eb59ea3841be6b4401787319538b723c8b1954cd7cae184e624895b3ca305a"
+  },
+  "application_versions": {
+    "oh_my_jido": "0.1.0",
+    "req_llm": "1.28.0",
+    "jido_action": "3.0.0-beta.12",
+    "jido": "3.0.0-beta.1",
+    "jido_ai": "2.3.0"
+  },
+  "user_decisions": [
+    "Guides live in the GitHub docs/ folder.",
+    "License: Apache-2.0.",
+    "OH_MY_JIDO_GOAL.md and OH_MY_JIDO_START_HERE.md moved into docs/oh-my-jido/.",
+    "ExDoc added as a dev-only dependency.",
+    "Fix the runtime now: honor tool-call and approval time limits on both branches, with regressions and docs."
+  ],
+  "documentation": {
+    "delivered": [
+      "Product README with a tested quick start",
+      "docs/README.md, getting started and concepts",
+      "Twelve task-oriented guides",
+      "API and configuration references",
+      "Operations and project status",
+      "Rewritten example READMEs, docs-site pages and benchmark guide",
+      "Module docs for the facade and key modules",
+      "Apache-2.0 LICENSE",
+      "ExDoc with guide extras through docs/support/ex_doc_links.exs"
+    ],
+    "removed_superseded_guides": [
+      "USER_GUIDE.md",
+      "PUBLIC_API.md",
+      "RUNTIME_CONFIGURATION.md",
+      "ACCOUNT_OPERATIONS.md",
+      "PERMISSIONS_AND_RECOVERY.md",
+      "TOOLS_AND_EXTENSIONS.md",
+      "EVAL_OPERATIONS.md"
+    ],
+    "removed_guides_contract_audit": "independent coverage audit found no lost contract",
+    "reviews": [
+      "newcomer",
+      "accuracy and coverage",
+      "V3 consistency",
+      "final verification fixes"
+    ]
+  },
+  "quality_gate": {
+    "command": "env OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "tests_passed": 592,
+    "tests_failed": 0,
+    "exunit_seconds": 175.9,
+    "credo_files": 163,
+    "credo_mods_funs": 3932,
+    "credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skips": 0,
+    "ex_dna_files": 103,
+    "ex_dna_clones": 0,
+    "ex_dna_budget": 0,
+    "reach": "OK",
+    "raw_log_artifact": "artifact://2088"
+  },
+  "docs_site_gate": {
+    "directory": "examples/docs_site",
+    "command": "env DOCS_CANDIDATE_PYTHON=/usr/bin/python3 ERL_FLAGS='+S 4:4 +A 2' mix ci",
+    "tests_passed": 150,
+    "tests_failed": 0,
+    "exunit_seconds": 433.4,
+    "credo_files": 58,
+    "credo_mods_funs": 1396,
+    "credo_issues": 0,
+    "dialyzer_errors": 0,
+    "dialyzer_skips": 0,
+    "ex_dna_files": 41,
+    "ex_dna_clones": 0,
+    "reach": "OK",
+    "raw_log_artifact": "artifact://2113",
+    "earlier_attempt": {
+      "tests": "149/150 passed",
+      "static_gates": "all clean",
+      "raw_log_artifact": "artifact://2097",
+      "cause": "read-only immutable candidate snapshots left in tmp/ by interrupted runs made ExUnit tmp_dir File.rm_rf! fail with :eexist",
+      "recovery": "cleared the owned trees with OhMyJidoDocs.Candidates.Source.remove_tree/1, then reran the full gate"
+    }
+  },
+  "independent_consumers": {
+    "command": "mix test --warnings-as-errors",
+    "run_after_final_library_change": true,
+    "plain_mix_tests_passed": 3,
+    "own_agent_tests_passed": 4,
+    "repository_configuration_imported": false
+  },
+  "required_density": {
+    "file": "../../../bench/results/density-docs-native-v3-call-limits-20261022.json",
+    "schema": "../../../bench/density.schema.json",
+    "schema_draft": "2020-12",
+    "format_checker": "explicit RFC 3339 date-time checker; negative controls rejected",
+    "validation_errors": 0,
+    "recorded_at": "2026-10-22T05:22:16.942568Z",
+    "result": "passed",
+    "configuration": {
+      "active": 8,
+      "deadline_ms": 180000,
+      "tool_timeout_ms": 5000,
+      "idle_ms": 250,
+      "populations": [
+        1,
+        10,
+        100,
+        500
+      ],
+      "rounds": 6,
+      "sample_ms": 25,
+      "model_ms": [
+        120,
+        240,
+        180,
+        300
+      ],
+      "tool_ms": {
+        "read": 10,
+        "exec": 10,
+        "edit": 20
+      },
+      "process_ms": [
+        80,
+        160,
+        120,
+        240
+      ],
+      "run_timeout_ms": 15000
+    },
+    "elapsed_ms": 95755.8,
+    "errors": [],
+    "cleanup": {
+      "supervisor_stopped": true,
+      "runtime_stopped": true,
+      "driver_supervisor_stopped": true,
+      "gateway_stopped": true,
+      "disposable_root_removed": true,
+      "host_cwd_unchanged": true,
+      "host_environment_unchanged": true,
+      "os_live_descendants_before": 3,
+      "os_live_descendants_after": 3,
+      "os_descendants_returned_to_baseline": true
+    },
+    "fingerprints_match_working_tree": true
+  },
+  "date_time_validation_correction": "The default jsonschema FormatChecker in the validating interpreter does not enforce date-time, so earlier ledger claims of date-time validation did not check it. The explicit RFC 3339 checker finds 0 errors in this report and in the 2026-10-20 density reports cited before this pass.",
+  "tool_call_time_limits": {
+    "problem": "On the Jido 2.4 stack, agent-started tool calls used Jido.AI's fixed 15,000 ms per-tool deadline instead of tool_timeout_ms. On both stacks an approval or question wait counted against the tool deadline, so the wait was killed and recorded uncertain long before question_timeout_ms.",
+    "reproduction_before_fix": {
+      "probe": "agent-started Question tool through the public API with a delayed answer",
+      "tool_timeout_ms": 30000,
+      "question_timeout_ms": 300000,
+      "answered_after_ms": 35001,
+      "question_effect": "uncertain",
+      "failure": "killed at tool_timeout_ms; question_timeout_ms was unreachable",
+      "answer_result": "{:error, :unknown_question}"
+    },
+    "after_fix": {
+      "answered_after_ms": 35066,
+      "answer_result": ":ok",
+      "question_effect": "completed"
+    },
+    "contract": [
+      "With a session coordinator, an agent-started or direct tool call may run for tool_timeout_ms plus question_timeout_ms; a standalone context uses tool_timeout_ms.",
+      "Commands still stop at tool_timeout_ms, answers at question_timeout_ms and runs at run_timeout_ms.",
+      "A question whose waiting call ends is withdrawn: :approval_answered reports {:error, :withdrawn} and a later answer returns {:error, :unknown_question}.",
+      "Cancellation, run completion and stop_session/1 close pending questions without an :approval_answered event."
+    ],
+    "regression_tests": {
+      "file": "test/tool_call_limits_test.exs",
+      "cases": [
+        {
+          "name": "an agent-started call ends at the runtime's tool and question limits",
+          "before_fix": "passed: this SDK already honored tool_timeout_ms for agent calls",
+          "after_fix": "passed"
+        },
+        {
+          "name": "an agent-started question may wait longer than the tool budget",
+          "before_fix": "failed: the question was killed at the 300 ms tool budget and the answer returned {:error, :unknown_question}",
+          "after_fix": "passed"
+        },
+        {
+          "name": "a direct call may wait for approval longer than the tool budget",
+          "before_fix": "failed: the approval wait was killed at the 1,000 ms tool limit",
+          "after_fix": "passed"
+        },
+        {
+          "name": "a question is withdrawn when its waiting call ends",
+          "before_fix": "failed: no :approval_answered withdrawal event within 5,000 ms",
+          "after_fix": "passed"
+        }
+      ]
+    },
+    "reviews": [
+      {
+        "review": "first independent review",
+        "findings": 4,
+        "status": "all addressed"
+      },
+      {
+        "review": "closure review",
+        "code_findings": 0,
+        "documentation_findings": 3,
+        "status": "documentation findings addressed; the event inbox example was verified with a negative control"
+      }
+    ]
+  },
+  "newcomer_smokes": {
+    "local_checkout": {
+      "project": "new Mix project using the documented local-checkout dependency recipe against this working tree",
+      "resolved_sdk_versions_equal_repository_lock": true,
+      "readme_quick_start": {
+        "direct_write": "{:permission_denied, :edit}",
+        "fake_anthropic_endpoint": "received streamed POST /v1/messages HTTP/1.1 with x-api-key",
+        "result": "passed"
+      },
+      "getting_started_steps_4_to_8": {
+        "console_helper": "copied verbatim from the guide",
+        "storage": "Jido.Persistence.File restore",
+        "result": "passed"
+      },
+      "stricter_host_policy": {
+        "runtime_shortcut_conflict": "ArgumentError",
+        "approve": "command ran with exit 0",
+        "deny": "approval-denied error",
+        "model_turn_with_policy_credentials": "completed",
+        "result": "passed"
+      },
+      "event_inbox_example": {
+        "source": "MyApp.CodingInbox extracted verbatim from docs/guides/running-tasks.md",
+        "cancelled_run": {
+          "inbox_after_cancel": "empty",
+          "late_answer": "{:error, :unknown_question}",
+          "run_status": "cancelled"
+        },
+        "answered_question": {
+          "inbox_after_answer": "empty",
+          "run_status": "completed"
+        },
+        "negative_control": "on the stable working tree, without the cancellation and run-completion clause the cancelled question stayed in the inbox",
+        "result": "passed"
+      }
+    },
+    "published_dependency": {
+      "recipe": "seven-entry GitHub dependency recipe for jido-v3-preview",
+      "revision": "1e8a245e3d656d40fc7c4a17d85b158579d9ca43",
+      "readme_quick_start": "passed",
+      "note": "Run before the time-limit fix against the published revision; troubleshooting first-run error shapes were captured there."
+    }
+  },
+  "limitations": [
+    "Model turns were scripted or served by a local fake Anthropic endpoint; no external or paid provider was called.",
+    "The live-application, real-tool, Observer, Tidewave, capped-release and cold-restore observations are dated 20 October 2026 and were not rerun. The docs-site gate reran that application's test suite only.",
+    "The approval allowance covers one wait per tool call; a call that asks more than once, such as a Git commit, shares it.",
+    "Interrupted docs-site test runs leave read-only immutable candidate snapshots that make the next run's ExUnit tmp_dir setup fail; clear them with OhMyJidoDocs.Candidates.Source.remove_tree/1 before rerunning.",
+    "Linux x86_64 only. No push, HexDocs publication, Fly provisioning, secrets or deployment was performed."
+  ],
+  "documentation_checks": {
+    "markdown": {
+      "checker": "relative links and heading anchors in every Markdown file",
+      "files": 49,
+      "relative_links": 572,
+      "problems": 0,
+      "checker_negative_controls": "passed"
+    },
+    "exdoc": {
+      "command": "mix docs",
+      "exit_status": 0,
+      "warnings": 0,
+      "html_pages": 110,
+      "internal_links": 2348,
+      "github_links": 648,
+      "cross_branch_links": 2,
+      "cross_branch_links_verified_against": "master worktree files and heading anchors",
+      "unresolved_links": 0
+    },
+    "branch_neutral_prose": "lines edited in this pass are identical on both branches except branch-specific facts"
+  }
+}

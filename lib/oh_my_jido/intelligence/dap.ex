@@ -51,6 +51,12 @@ defmodule OhMyJido.Intelligence.DAP do
     end
   end
 
+  @doc """
+  Closes the session's debug adapter, given as the trusted `:server` option, at session teardown.
+
+  Returns `:ok` once cleanup of the owned adapter process group is confirmed or the
+  adapter is already closed, and `{:error, reason}` otherwise.
+  """
   @spec close_session(map(), keyword()) :: :ok | {:error, term()}
   defdelegate close_session(context, opts), to: Stdio
 

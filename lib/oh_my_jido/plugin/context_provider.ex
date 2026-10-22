@@ -1,19 +1,23 @@
 defmodule OhMyJido.Plugin.ContextProvider do
   @moduledoc """
-  Host-owned authority for a native agent with `OhMyJido.Plugin` attached.
+  Looks up a trusted tool context for an agent using `OhMyJido.Plugin`.
 
-  The provider is selected in the agent's trusted plugin declaration. It receives
-  only the native agent module and ID, never signal data or tool arguments. Keep
-  bindings in host-owned resources, not the agent's state or checkpoints. Lookups
-  run inside each coding Action, not during pure native Agent construction,
-  preparation, or admission.
+  Implement `fetch_context/1` and select your module in the agent's plugin
+  configuration. The callback receives only `%{agent_module: module, agent_id: id}`.
+  Look up those identities in application-owned resources; do not take authority
+  from signal data, tool arguments, agent state, or checkpoints.
 
-  Return a validated `OhMyJido.Context` with explicit workspace, grants, and tool
-  availability. A missing binding must return `{:error, :not_bound}`. No services,
-  credentials, models, or default permission grants are supplied by the plugin.
+  Return `{:ok, context}` with a validated `OhMyJido.Context` containing the
+  workspace, permissions, tool selection, and service bindings. Return
+  `{:error, :not_bound}` when the application has no binding for that agent.
+
+  Lookups run inside each coding Action, not during native agent construction,
+  preparation, or admission. The plugin supplies no credentials, models,
+  services, or default permissions. See the Jido agents guide.
   """
 
   @type identity :: %{required(:agent_module) => module(), required(:agent_id) => String.t()}
 
+  @doc "Resolves an agent identity to its application-approved context or an explicit error."
   @callback fetch_context(identity()) :: {:ok, OhMyJido.Context.t()} | {:error, term()}
 end

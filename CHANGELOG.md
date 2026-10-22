@@ -2,7 +2,7 @@
 
 ## Unreleased — 0.1.0 source work
 
-Historical stable usability acceptance records516 tests/static gates in the [dated stable source evidence](docs/oh-my-jido/evidence/usability-20261019.json), not native V3 acceptance. Earlier [stable library-scope acceptance](docs/oh-my-jido/evidence/library-acceptance-20261019.json) is also historical; [PROGRESS](docs/oh-my-jido/PROGRESS.md) records current588-core/150-CMS native gates, source-bound density and actual native-runtime proofs. No published Hex/HexDocs release or production/OS-sandbox certification is claimed.
+Oh-My-Jido has not been released or published to Hex yet. This branch carries the library on the Jido 3.0 beta stack; [project status](docs/project-status.md) explains what is verified and where the evidence lives.
 
 ### Embedding usability
 
@@ -53,23 +53,23 @@ Historical stable usability acceptance records516 tests/static gates in the [dat
 - Retain the host-selected keeper Python in actual project-check children, including tests exercising nested process ownership; do not fall back to an unsupported ambient interpreter.
 - Separate complete bounded candidate process history from live ownership refresh. Retain1,024 identities in matching keeper/controller/durable-lease bounds, require version2 status and keep physical pidfd/ECHILD/keeper-exit authority unchanged; partial observations cannot replace the last good live inventory or produce a passing check.
 
-### Public documentation
+### Documentation and packaging
 
-- Replace the generated TODO introduction with an actual embeddable-library README while preserving project metadata, generated development guidance and conditional ExDoc/HexDocs guidance.
-- Add source-backed guides for the complete public API/types/events, supervision/Host embedding, independent plain-Mix usage, per-instance Config and six-role/account selection.
-- Document explicit SIWC versus metered API billing, official Claude Code's separate-agent/OS-user boundary, permission/approval ownership and the absence of an OS sandbox.
-- Cover durable effects/uncertainty/no replay, ContextPolicy v2 retained tool evidence and rejection of old version-1 policy checkpoints, subagents/worktrees/questions/plans/experiments/custom Actions/native skills.
-- Describe actual AST/LSP/DAP/MCP surfaces, browser/research host contracts, artifact/header versus approved native image inputs, and all three optional Eval backends with real prerequisites, limits and cancellation/reset semantics.
-- Record measured Linux x86_64 native density smoke and full 1/10/100/500 populations separately from aarch64/guest/live-provider/complete quality gates; update the benchmark README's outdated unexecuted wording without modifying evidence JSON.
-- Retain the dated stable18Oct authorized native Luna Low coding repair, exact failing-before/passing-after/independent-test observations, durable restore and aggregate usage/pricing separately from native V3, subscription and full-quality gates.
-- Document Elixos service/candidate/generation ownership and link the independently maintained guest workflow; core library documentation does not claim guest promotion/fallback or modify canonical specifications/progress.
-- Correct `inspect_session/1` documentation: its native `agent_pid` is an intentional transient host-only diagnostic, not serializable public UI/telemetry state.
+- Rewrite the README as a product overview: what Oh-My-Jido is, what the agent can do, how it works, a tested quick start, integration levels, the safety model and a documentation map.
+- Reorganize user documentation under `docs/`: getting started, concepts, twelve task-oriented guides, API and configuration references, operations and project status. The former guides in `docs/oh-my-jido/` (`USER_GUIDE`, `PUBLIC_API`, `RUNTIME_CONFIGURATION`, `ACCOUNT_OPERATIONS`, `PERMISSIONS_AND_RECOVERY`, `TOOLS_AND_EXTENSIONS` and `EVAL_OPERATIONS`) are replaced; `docs/oh-my-jido/` now holds only the specification, delivery ledger and verification records.
+- Document installation from GitHub, with sparse overrides for the bundled Jido, Jido.AI, Jido.Action and ReqLLM snapshots and pinned Jido.Signal and Zoi revisions, verified end to end in a new Mix project.
+- Add the Apache-2.0 `LICENSE`.
+- Add ExDoc as a dev-only dependency. `mix docs` builds the API reference together with the guides and examples; a dev-only Markdown processor, `docs/support/ex_doc_links.exs`, rewrites GitHub-relative links so they resolve in the generated site.
+- Improve the module documentation of the public facade and key modules, and document the session-close functions of the LSP, DAP and MCP adapters.
+- Move `OH_MY_JIDO_GOAL.md` and `OH_MY_JIDO_START_HERE.md` into `docs/oh-my-jido/`.
+- Refresh the docs-site example's README and published pages, the plain Mix and own-agent example READMEs, and the density benchmark guide.
+- The lockfile records `castore` 1.0.22 and `tls_certificate_check` 1.36.0, the certificate-bundle versions the dependency resolver now selects.
 
 ### Compatibility and operational boundaries
 
 - ContextPolicy checkpoint version **2** uses immutable tool payload identity rather than whole native-message envelope digests. Older policies fail explicitly; there is no version-only migration or replay shim.
-- Jido 2.4.0 and ReqLLM 1.28.0 path snapshots preserve Apache-2.0 notices; optional Snakepit0.14.0 preserves MIT notices. Original-source inventories and separately identified modifications remain in `UPSTREAM.json`. Supported native private-diagnostic boundaries are required, not a replacement agent loop/transport or global logging bypass.
+- Jido 3.0.0-beta.1, Jido.Action 3.0.0-beta.12, Jido.AI (native Jido 3 support; upstream version metadata 2.3.0) and ReqLLM 1.28.0 path snapshots preserve Apache-2.0 notices; optional Snakepit 0.14.0 preserves MIT notices. Original-source inventories and separately identified modifications remain in `UPSTREAM.json`. Supported native private-diagnostic boundaries are required, not a replacement agent loop/transport or global logging bypass.
 - Host credential/adapter bindings remain deliberately transient and are rebound from trusted runtime policy on restore. Optional QuickBEAM/Snakepit dependencies do not start or install themselves through the coding library.
 - The native official Claude permission-mode contract is`manual`, not rejected`default`. Exact host-approved tools are forwarded to its permission allowlist. Separately approved actual Read/Edit-only subscription coding repair passed independent tests; it remains a delegated official agent, not native Jido inference.
 
-Exact exercised commands, verified library scope and supported/unexercised provider/platform boundaries remain in the integration ledger and [operations guide](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md). External Elixos/guest work and publication are not claimed.
+Exact exercised commands, verified library scope and supported/unexercised provider/platform boundaries are summarized in [project status](docs/project-status.md) and recorded in the [delivery ledger](docs/oh-my-jido/PROGRESS.md) and [verification records](docs/oh-my-jido/OPERATIONS_AND_EVIDENCE.md). External Elixos/guest work and publication are not claimed.

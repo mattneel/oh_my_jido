@@ -1,18 +1,34 @@
 defmodule OhMyJido.Models do
   @moduledoc """
-  Six coding-harness roles over native model inputs and optional Jido aliases.
+  Selects the model and account used for each coding-agent role.
 
-  `select/2` resolves each selection from explicit session options, a retained
-  `:session_selection`, an approved declarative `:project_config`, `:user_config`,
-  and application defaults, in that order. Each configuration layer can supply
-  `:model_roles` whose values are model inputs or `%{model: input, account: ref}`.
-  A retained selection can also contain `:role`, `:model`, and `:account` directly.
-  Models remain ReqLLM inputs; account references are nonempty strings, atoms,
-  integers, or tuples of those opaque values, never credential maps or handles.
+  Supported roles are `:coding`, `:planning`, `:exploration`, `:review`,
+  `:advisor`, and `:compaction`. Resolve an explicit selection without making
+  a provider request:
 
-  Project overrides require the host's `:project_approved` boolean, or an
-  `:project_config` envelope of `%{approved: true, config: declarative_map}`.
-  This module never reads or evaluates repository configuration files.
+      OhMyJido.Models.select(
+        [role: :coding, model: "anthropic:claude-sonnet-4-6", account: "anthropic"],
+        []
+      )
+
+  `select/2` checks explicit session options, retained `:session_selection`,
+  approved `:project_config`, `:user_config`, and application defaults, in
+  that order. Each layer can supply `:model_roles` with a model input or
+  `%{model: input, account: reference}` per role. Retained selections can also
+  contain `:role`, `:model`, and `:account` directly.
+
+  Defaults use Claude Sonnet 4.6 for coding, planning, review, and advisor work,
+  and Claude Haiku 4.5 for exploration and compaction. You can use explicit
+  ReqLLM model inputs or configured Jido aliases. `describe/1` reads local
+  metadata and never discovers models over the network.
+
+  Account references are nonempty strings, atoms, integers, or tuples of those
+  values, not secrets, credential maps, or process handles. Credentials must
+  come from the application's resolver for each request.
+
+  Project overrides require `:project_approved` to be true, or an envelope
+  `%{approved: true, config: declarative_map}`. This module never reads or
+  evaluates repository configuration files. See the Models and accounts guide.
   """
 
   alias Jido.AI.Reasoning.ReAct.ToolSelection

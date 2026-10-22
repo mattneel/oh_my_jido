@@ -1,9 +1,10 @@
 defmodule OhMyJido.Plugin do
   @moduledoc """
-  Host-bound coding tools for the caller's native Jido V3 Agent.
+  Adds coding tools to a Jido V3 agent you already own.
 
-  Attach this Plugin in the native `agent do` block and declare each input route
-  explicitly in `routes do`, for example:
+  Use this instead of a managed session when your agent should keep its own
+  model loop and lifecycle. Declare the plugin in `agent do` and each input
+  route in `routes do`, for example:
 
       plugin OhMyJido.Plugin,
         config: %{bundles: [:read_only], context_provider: MyApp.CodingContexts}
@@ -11,10 +12,10 @@ defmodule OhMyJido.Plugin do
       # In routes do:
       route "oh_my_jido.read", OhMyJido.Plugin.Tools.Read
 
-  The Agent must export `private_diagnostics?/0` returning `true`. The
-  `OhMyJido.Plugin.ContextProvider` receives only the native Agent module and ID.
-  Private bindings are resolved at the tool effect boundary, never from Signal
-  data, model arguments, Agent state, or a checkpoint.
+  Before starting the agent, export `private_diagnostics?/0` returning `true`.
+  `OhMyJido.Plugin.ContextProvider` receives only the agent module and ID,
+  then looks up a trusted context. Never derive these bindings from signal
+  data, model arguments, agent state, or checkpoints.
 
   `cmd/3` sends a native Signal through the original Agent. A direct coding
   command stores its public result in `agent.state.oh_my_jido_tools`; the Plugin
@@ -36,11 +37,11 @@ defmodule OhMyJido.Plugin do
   no synthetic request handle, rejected model turn, or second loop is created.
   Reused request IDs are rejected without terminating the original stream.
 
-  This attachment starts no OhMyJido Runtime, session, model, service, recovery
+  This attachment starts no Oh-My-Jido runtime, session, model, service, recovery
   worker, or subagent. Managed Goal/Memory/Subagent tools and Eval are unavailable.
   Host approval without a managed session returns `:approval_required`.
-  Cancellation cannot roll back an effect; uncertain effects require host
-  reconciliation rather than replay.
+  Cancellation cannot roll back an effect; uncertain effects require application
+  reconciliation rather than replay. See the Jido agents guide.
   """
 
   use Jido.Plugin

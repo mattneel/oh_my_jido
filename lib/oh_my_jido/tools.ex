@@ -1,5 +1,17 @@
 defmodule OhMyJido.Tools do
-  @moduledoc "The native Jido Actions available to a coding session, subject to host capabilities."
+  @moduledoc """
+  Selects which Jido Actions a session or standalone context can expose.
+
+      {:ok, actions} = OhMyJido.Tools.select([:read_only, :editing])
+
+  Bundles compose in caller order and remove duplicate Actions. Use `bundles/0`
+  to inspect their contents or `select!/1` for trusted configuration that should
+  raise on an invalid bundle name. An empty selection exposes no tools.
+
+  Availability is separate from permissions: selecting editing tools does not
+  grant `:edit`. `default/0` returns the complete registry, not a recommended
+  permission set. Optional services still need application-supplied bindings.
+  """
 
   alias OhMyJido.Tools
 

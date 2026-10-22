@@ -1,11 +1,21 @@
 defmodule OhMyJido.Host.Local do
   @moduledoc """
-  Reference host for ordinary Mix projects.
+  Provides the default authorization and service policy for coding sessions.
 
-  Session grants are checked by the tool dispatcher before this policy runs.
-  Sensitive effects require an operator answer. Optional services and credentials
-  must be explicitly supplied by the host; no ambient provider keys are imported.
-  This policy is not an OS sandbox for shell or Eval code.
+  Tools check session permissions before calling this policy. Effects marked
+  `sensitive: true` require human approval; other effects are allowed by this
+  policy. This does not mean every shell command asks for approval.
+
+  Configure a credential resolver with
+  `credentials: {MyApp.ModelCredentials, []}` on the runtime. It must implement
+  `resolve(context, account, options)` and return explicit ReqLLM options.
+  No ambient provider keys or other applications' login files are imported.
+
+  Optional services come from the context's adapter map. Missing services return
+  `{:error, {:capability_unavailable, capability}}`. Questions remain pending
+  until your application answers them through `OhMyJido.answer/3`.
+
+  This policy is not an OS sandbox for shell commands or Eval code.
   """
 
   @behaviour OhMyJido.Host
