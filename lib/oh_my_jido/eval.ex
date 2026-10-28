@@ -6,7 +6,12 @@ defmodule OhMyJido.Eval do
   is enabled implicitly. Elixir and JavaScript require `isolation: :trusted` for
   explicitly trusted code, or `isolation: :os, launcher: {path, argv_prefix}` for
   a host-provided isolation launcher. A separate ERTS is crash separation, not an
-  operating-system sandbox. Python uses Snakepit's managed workers exclusively.
+  operating-system sandbox. Python uses Snakepit's managed workers by default.
+
+  `backend: Module` in a language's options selects a host-supplied
+  `OhMyJido.Eval.Backend` instead of the built-in one, for example a browser
+  host's JavaScript or Pyodide kernels. The remaining options go to its
+  `open/2`, together with the kernel's `:bridge`, `:generation` and `:language`.
 
   A timeout, hard cancellation, crash or idle expiry invalidates retained state.
   The next cell fails until the host explicitly resets or closes the kernel.

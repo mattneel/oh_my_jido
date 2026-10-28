@@ -321,7 +321,8 @@ These cell deadlines do not raise the outer limits. A tool call is stopped after
 
 | Backend option | Default | Applies to |
 |---|---|---|
-| `isolation` | None; required | All languages; `:trusted` or the language-specific `:os` contract below |
+| `isolation` | None; required | Built-in backends; `:trusted` or the language-specific `:os` contract below |
+| `backend` | Built-in | A module implementing `OhMyJido.Eval.Backend`; the remaining options are its own |
 | `launcher` | None | Application-provided OS launcher/wrapper |
 | `schedulers` | `2` | Elixir/JavaScript child ERTS; also starts one async thread |
 | `boot_timeout` | `15_000` ms | Elixir/JavaScript startup |
@@ -333,6 +334,12 @@ These cell deadlines do not raise the outer limits. A tool call is stopped after
 | `adapter_env` | `[]` | Trusted Python worker environment additions; Eval sets its own `PYTHONPATH` and ownership fields |
 
 QuickBEAM budgets are engine limits, not total worker/application RSS limits or OS security guarantees.
+
+### Supply your own backend
+
+`backend: MyApp.MyKernel` replaces a language's built-in backend with a module implementing `OhMyJido.Eval.Backend` (`open/2`, `execute/2`, `interrupt/2`, `reset/1`, `close/1`). The kernel controller still owns admission, deadlines, cancellation, output budgets, redaction and tool callbacks. `open/2` receives your remaining options plus `:bridge`, `:generation` and `:language`, and must return a handle whose `:worker` is a live PID the controller can monitor. Send output and tool requests through `OhMyJido.Eval.Bridge.call(bridge, generation, execution_id, operation)`, where `operation` is `{:output, :stdout | :stderr, text, clipped?}`, `{:display, text}` or `{:tool, name, parameters}`. `execute/2` returns `{:ok, %{status: :ok | :error, display: text}}`, optionally with `:error`, `:diagnostics` and `:truncated`.
+
+The [browser example](../../examples/browser/README.md) uses this to run JavaScript cells in the page and Python cells in Pyodide. A module that does not export the five callbacks fails to open with `{:invalid_backend, module}`.
 
 ### Python worker identity
 

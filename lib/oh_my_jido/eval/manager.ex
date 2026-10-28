@@ -220,11 +220,31 @@ defmodule OhMyJido.Eval.Manager do
     end
   end
 
-  defp backend(language, opts) when language in [:elixir, :javascript],
+  defp backend(language, opts) do
+    case Keyword.pop(opts, :backend) do
+      {nil, opts} -> builtin_backend(language, opts)
+      {module, opts} -> host_backend(module, Keyword.put(opts, :language, language))
+    end
+  end
+
+  defp builtin_backend(language, opts) when language in [:elixir, :javascript],
     do: {:ok, Peer, Keyword.put(opts, :language, language)}
 
-  defp backend(:python, opts), do: {:ok, Python, opts}
-  defp backend(language, _opts), do: {:error, {:backend_unavailable, language}}
+  defp builtin_backend(:python, opts), do: {:ok, Python, opts}
+  defp builtin_backend(language, _opts), do: {:error, {:backend_unavailable, language}}
+
+  defp host_backend(module, opts) when is_atom(module) do
+    exported =
+      Code.ensure_loaded?(module) and
+        Enum.all?(
+          [open: 2, execute: 2, interrupt: 2, reset: 1, close: 1],
+          fn {name, arity} -> function_exported?(module, name, arity) end
+        )
+
+    if exported, do: {:ok, module, opts}, else: {:error, {:invalid_backend, module}}
+  end
+
+  defp host_backend(module, _opts), do: {:error, {:invalid_backend, module}}
 
   defp child(state, id), do: OhMyJido.Eval.child(state.supervisor, id)
 

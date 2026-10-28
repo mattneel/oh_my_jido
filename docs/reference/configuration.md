@@ -73,7 +73,7 @@ These are source defaults, not measured capacity guarantees. Times are milliseco
 | `adapters` | `%{}` | Capability atoms mapped to `{AdapterModule, keyword_options}` exporting `invoke/3` |
 | `metadata` | `%{}` | Trusted metadata map used when constructing session contexts |
 | `limits` | `%{}` | Tool-budget map; merged over integer runtime options to form `Context.limits` |
-| `eval` | `[backends: %{}, max_kernels: 8]` | Eval manager options; no language backend is enabled by default |
+| `eval` | `[backends: %{}, max_kernels: 8]` | Eval manager options; no language backend is enabled by default. `backend: Module` in a language's options selects a host-supplied `OhMyJido.Eval.Backend` |
 | `max_jido_tasks` | `1_000` | Native Jido task budget; dependency validation applies |
 
 The `credentials:` shortcut is normalized into the local host options. It checks the resolver's module and callback but does not obtain credentials at startup. A custom host plus this shortcut is rejected instead of overriding that host's credential policy. Configure a custom host's own `credentials/3` callback instead.
