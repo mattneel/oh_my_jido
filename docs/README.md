@@ -25,6 +25,8 @@ Oh-My-Jido embeds a coding agent in your Elixir application. These pages explain
 | [Connect external tools and artifacts](guides/integrations.md) | Bind MCP servers, browsers, research services, artifact readers and review services |
 | [Add coding tools to your Jido agents](guides/jido-agents.md) | Use the tools without a managed session, or add them to agents you already have |
 | [Protect your application and session data](guides/security.md) | Understand what the library protects, what it does not, and how to isolate untrusted work |
+| [Run the agent in a browser](guides/browser.md) | Run Oh-My-Jido inside a browser tab on Popcorn, with fetch-based model streaming and host Eval kernels |
+| [Run models on the user's GPU](../packages/web_llm/README.md) | `web_llm`: WebLLM as a keyless ReqLLM provider, reached from a page VM or from a server through a LiveView component |
 
 ## Reference
 
@@ -48,7 +50,9 @@ Oh-My-Jido embeds a coding agent in your Elixir application. These pages explain
 | [Plain Mix application](../examples/plain_mix/README.md) | Supervision, coding tasks, events, controls and restoring a session after a restart |
 | [Your own Jido agents](../examples/jido_agent/README.md) | Coding tools on a plain Jido agent and a Jido.AI agent |
 | [Docs site and studio](../examples/docs_site/README.md) | A Phoenix application whose agent edits its own docs and source behind review, checks and approval |
+| [Oh-My-Jido in the browser](../examples/browser/README.md) | The whole agent in a browser tab on Popcorn: OpenRouter or local WebLLM models, JavaScript and Python Eval, and an agent that changes its own page |
+| [Server agent, browser GPU](../examples/phoenix_webgpu/README.md) | A server-side agent delegates a subagent to the user's browser GPU, which reads and changes the user's page |
 
 ## Project records
 
-The [`oh-my-jido/`](oh-my-jido/README.md) folder holds the project's specification, delivery ledger and verification evidence. You do not need it to use the library. The [changelog](../CHANGELOG.md) lists unreleased changes.
+The [`oh-my-jido/`](oh-my-jido/README.md) folder holds the project's specification, delivery ledger and verification evidence. You do not need it to use the library. [Browser port](oh-my-jido/BROWSER_PORT.md) classifies every capability for the browser. The [changelog](../CHANGELOG.md) lists unreleased changes.

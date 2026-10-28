@@ -60,3 +60,12 @@ by the canonical goal.
 
 Never narrow the canonical goal to match the features that already work.
 If an external service blocks a requirement, retain its row as blocked with explicit evidence.
+
+On 2026-10-28 the human set a browser-port goal: run Oh-My-Jido fully client-side on
+Popcorn, with an agent that updates its own UI, scripted and real end-to-end runs, and a
+classification of every capability row. During the work the human replaced Sign in with
+ChatGPT by an OpenRouter key (OpenAI's endpoints send no CORS headers), replaced source
+recompilation by live DOM edits through JavaScript Eval, added Python Eval in Pyodide and
+local WebLLM models, asked for the WebLLM pieces as a `web_llm` library (to be proposed to
+ReqLLM piecemeal), and added a server agent that delegates to the user's browser GPU. See
+[`BROWSER_PORT.md`](BROWSER_PORT.md).

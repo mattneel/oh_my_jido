@@ -1,0 +1,125 @@
+{
+  "recorded_date": "2026-10-28",
+  "scope": "Oh-My-Jido running inside a web page (Popcorn), WebLLM as a keyless ReqLLM provider (packages/web_llm), and a server agent delegating to a browser-GPU subagent (examples/phoenix_webgpu). Capability classification: docs/oh-my-jido/BROWSER_PORT.md.",
+  "environment": {
+    "page_vm": {"popcorn": "1.0.0", "erlang": "29.0.4", "elixir": "1.20.4-otp-29"},
+    "server_vm": {"erlang": "28.5.0.2", "elixir": "1.20.2"},
+    "page_runtimes": {"@mlc-ai/web-llm": "0.2.86", "pyodide": "314.0.7"},
+    "phoenix_demo": {"phoenix": "1.8.16", "phoenix_live_view": "1.2.13", "bandit": "1.14.1"},
+    "test_browser": "Playwright 1.64.1, chromium_headless_shell-1248 on Linux (WSL2)",
+    "webgpu_browser": "Chrome on Windows 11, NVIDIA GeForce RTX 5090 Laptop GPU (WebGPU adapter vendor nvidia, architecture blackwell, maxBufferSize 2147483648)",
+    "webgpu_in_test_browser": "navigator.gpu present, requestAdapter() returned null in WSLg Chromium; real GPU runs used the user's Windows Chrome"
+  },
+  "scripted_suites": {
+    "examples/browser": {
+      "command": "mise exec -- mix test test/browser_test.exs (part of mix ci)",
+      "specs_passed": 4,
+      "specs": [
+        "the agent changes its own page through JavaScript and Python Eval",
+        "a local WebLLM model drives tool calls through the in-page bridge",
+        "the OpenRouter key is stored encrypted, survives a reload and can be forgotten",
+        "the library's capability probes pass inside the browser VM"
+      ],
+      "probes_passed_in_page_vm": ["A03", "A05", "A06", "A07", "A08", "B02", "B09", "B10", "C07", "C11", "C13", "D01", "D02", "D04", "D05", "D06", "D07", "D08", "D14", "E05", "E06", "F03", "L1"],
+      "process_tools_in_page_vm": {
+        "search": "{:capability_unavailable, :ripgrep}",
+        "git": ":enoent",
+        "shell": "{:executable_not_found, \"sh\"}",
+        "session_after_calls": "idle"
+      }
+    },
+    "packages/web_llm": {"command": "mix ci", "exunit_tests_passed": 10, "node_tests_passed": 20},
+    "examples/phoenix_webgpu": {
+      "command": "mix ci",
+      "specs_passed": 1,
+      "spec": "server delegation evaluates in the requesting tab, not another connected tab"
+    }
+  },
+  "real_runs": {
+    "R1_openrouter_in_page": {
+      "where": "examples/browser in the test Chromium (headed), page VM only",
+      "provider": "openrouter",
+      "model": "openai/gpt-6-luna",
+      "reasoning_effort": "low",
+      "credential": "explicit OpenRouter account entered in the page; value never recorded",
+      "streamed_requests": 2,
+      "response": "200 text/event-stream",
+      "tools_offered": ["edit", "eval", "question", "read", "write"],
+      "page_title": {"before": "Oh-My-Jido", "after": "Popcorn Agent"},
+      "accent": {"before": "#38bdf8", "after": "#f97316"},
+      "same_document": true,
+      "usage": {"input_tokens": 3332, "output_tokens": 123, "cost_usd": 0.000325},
+      "key_persisted_across_browser_restart": true,
+      "screenshot": {"path": "browser-port-20261028/openrouter-self-edit.webp", "sha256": "1d8754d11a2994845a3fdb6444cfc12dce8006a2965c7b0c240b65a9d87d184b"}
+    },
+    "R2_webllm_in_page": {
+      "where": "examples/browser in the user's Windows Chrome, run by the user",
+      "model": "Llama-3.1-8B-Instruct-q4f16_1-MLC",
+      "prompt": "Change the page title to Oh-My-WebGPU",
+      "tool_calls": ["eval"],
+      "page_title_after": "Oh-My-WebGPU",
+      "usage": {"input_tokens": 4066, "output_tokens": 65},
+      "dedicated_gpu_memory_observed_gb": "13.2 of 24.0",
+      "screenshot": {"path": "browser-port-20261028/popcorn-llama-3.1-8b-self-edit.png", "sha256": "375c8ce7cfd4a9dc22fb81461aac60c08338a11b3f470002dd743863c10eb0a6"}
+    },
+    "R3_server_to_gpu_subagent": {
+      "where": "examples/phoenix_webgpu served from WSL; page in the user's Windows Chrome, driven through the omp browser relay",
+      "parent": {"side": "server", "model": "openrouter:openai/gpt-6-luna", "credential": "OPENROUTER_API_KEY in the server environment; value never recorded"},
+      "child": {
+        "side": "user's browser GPU through the LiveView socket",
+        "model": "Qwen3-8B-q4f16_1-MLC",
+        "weights": "loaded from the origin's Cache Storage: 113 shards, 4395 MB, about 5 seconds",
+        "browser_eval_source": "document.getElementById('demo-heading').textContent = 'Hello from an RTX 5090'; const items = Array.from(document.querySelectorAll('#demo-list li')).map(i => i.textContent.trim()); return items;",
+        "browser_eval_result": ["Inspect the heading and list.", "Change the DOM without reloading.", "Report the result back to the server agent."],
+        "status": "completed",
+        "usage": {"input_tokens": 2303, "output_tokens": 2331}
+      },
+      "page_heading_after": "Hello from an RTX 5090",
+      "same_document": true,
+      "parent_answer_reported_heading_and_items": true,
+      "elapsed_seconds": 83,
+      "screenshot": {"path": "browser-port-20261028/server-to-gpu-subagent.png", "sha256": "d90faa692aa4d96f4767eaeca999c308d66fbc24051eb34587aee5529a1a1926"},
+      "defects_found_by_earlier_attempts_and_fixed": [
+        "the bridge required an explicit model load; requests now load their model on demand",
+        "a thinking model was silent past ReqLLM's 30-second stream wait; thinking now streams as reasoning_content and the child request sets receive_timeout",
+        "token-sized reasoning deltas each became a ReqLLM reasoning record and exceeded the 120000-byte context budget; reasoning is now sent in batches",
+        "expression cells without return evaluated to null; a single expression now returns its value and an empty result says so"
+      ]
+    }
+  },
+  "system_prompt_guidance": "For a local WebLLM model without parallel tool calls or image input, the composed system prompt includes: 'Use small explicit steps and verify intermediate facts rather than assuming a long implicit reasoning chain.' 'Do not claim to inspect images; request a supported representation through an approved host capability.' 'Issue tool calls sequentially; this model does not advertise parallel tool calling.' and lists only the granted tools.",
+  "cross_origin_blockers": {
+    "openai_inference": "POST https://api.openai.com/v1/responses returned 200 without Access-Control-Allow-Origin; Chromium reported corsError MissingAllowOriginHeader and net::ERR_FAILED",
+    "openai_auth": "OpenID discovery and JWKS on auth.openai.com returned no Access-Control-Allow-Origin, so the page could not complete sign-in"
+  },
+  "upstream_findings": [
+    "ReqLLM streaming is tied to Finch.stream/5; a per-request transport (vendored change) lets providers run elsewhere",
+    "ReqLLM has no way for a provider to declare that it needs no credentials; OhMyJido now honours credentials_required?/0",
+    "ReqLLM's default response builder keeps one reasoning_details record per streamed reasoning chunk, so token-sized reasoning_content streams grow history by about 150 bytes per token"
+  ],
+  "limitations": [
+    "Real GPU runs need a WebGPU browser outside WSLg; the automated suites use a fake engine",
+    "Sessions in the page last as long as the page; no IndexedDB-backed Jido.Storage adapter is shipped",
+    "The Qwen3.8-27B q3f16_1 weights were still downloading at a 2 MiB/s cap when this record was written; its model library is compiled but the model has not run"
+  ],
+  "custom_model_toolchain": {
+    "pinned_to": "binary-mlc-llm-libs web-llm-models/v0_2_86/build-manifest.json: akaashrp/tvm@be03dc94 (tvm-ffi df463f9b, dlpack 84d107bf, libbacktrace 79392187), akaashrp/mlc-llm@42fa8558, Emscripten 3.1.56",
+    "tvm": "0.28.dev0 built with LLVM 18.1.3, no CUDA",
+    "reproduced_bitcode": {"mlc_wasm_runtime.bc": "c264de85f69ef6eed5a787da58a10a82566fce7bc0ef33b72bd91b40d1a07422 (matches the manifest)"},
+    "validation_run": {
+      "where": "examples/browser in the user's Windows Chrome through the omp relay",
+      "model": "Qwen3.5-0.8B q4f16_1: mlc-ai weights, model library compiled with this toolchain",
+      "loaded": true,
+      "prompt": "What is the capital of France? Answer in one short sentence.",
+      "answer": "The capital of France is Paris.",
+      "finish_reason": "stop",
+      "usage": {"prompt_tokens": 32, "completion_tokens": 12},
+      "elapsed_ms": 204
+    },
+    "qwen3.8_27b_library": {
+      "file": "Qwen3.8-27B-heretic-ara-q3f16_1-ctx16k_cs1k-webgpu.wasm",
+      "bytes": 8704156,
+      "mlc_memory_estimate_mb": {"parameters": 11553.18, "temporary_buffers": 1171.53, "kv_cache_per_token": 0.25}
+    }
+  }
+}

@@ -4,6 +4,16 @@
 
 Oh-My-Jido has not been released or published to Hex yet. [Project status](docs/project-status.md) explains what is verified and where the evidence lives.
 
+### Browser and WebGPU
+
+- Run Oh-My-Jido entirely inside a web page: [`examples/browser`](examples/browser) runs the library, Jido and ReqLLM in an OTP 29 BEAM compiled to WebAssembly (Popcorn 1.0). The agent changes its own live page through JavaScript Eval, runs Python in Pyodide, keeps an OpenRouter key encrypted in the browser and can run local WebLLM models on the user's GPU. [Browser port](docs/oh-my-jido/BROWSER_PORT.md) classifies every capability row as verified in the browser or unavailable, with the browser limit.
+- Add [`packages/web_llm`](packages/web_llm): WebLLM (in-browser WebGPU inference) as the keyless ReqLLM provider `:web_llm`, with a `fetch` transport for a BEAM in the page and a Phoenix LiveView component, hook and transport for a BEAM on a server.
+- Add [`examples/phoenix_webgpu`](examples/phoenix_webgpu): a server-side agent delegates a subagent to the user's browser GPU, and the subagent reads and changes the user's page.
+- Eval accepts `backend: Module` for a language, so a host can supply its own backend (the browser runs JavaScript in the page and Python in Pyodide this way).
+- A provider whose module declares `credentials_required?/0` false runs without account or credential resolution. Every other provider still requires an explicit host credential.
+- Create-without-overwrite falls back to an exclusive create and rename on filesystems without hard links, such as the browser's in-memory filesystem.
+- Vendored ReqLLM streams through a transport named in the request (`:req_llm_stream_transport` in the Finch request's private map) or a configured `:finch_stream_adapter` instead of `Finch.stream/5`. Proposed upstream.
+
 ### Embedding usability
 
 - Add the public supervised `{OhMyJido, options}` child, per-layer/session bundle selection and an explicit default-host credential resolver shortcut without starting sessions, services or provider requests.
