@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Oh-My-Jido in the browser</title>
+    <link rel="stylesheet" href="./app.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <div id="app" data-state="booting">
+      <header id="omj-header">
+        <h1 id="omj-title">Oh-My-Jido</h1>
+        <p id="omj-status">Starting the BEAM…</p>
+      </header>
+      <section id="omj-models">
+        <label for="omj-model">Model</label>
+        <select id="omj-model"></select>
+        <progress id="omj-model-progress" max="1" value="0" hidden></progress>
+      </section>
+      <section id="omj-account" hidden>
+        <form id="omj-key-form">
+          <label for="omj-key">OpenRouter API key</label>
+          <input id="omj-key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-or-…" />
+          <button type="submit">Save key</button>
+        </form>
+        <p>
+          The key is encrypted with a non-extractable browser key and kept in this browser's
+          IndexedDB. It is sent only to openrouter.ai.
+        </p>
+      </section>
+      <main id="omj-log" aria-live="polite"></main>
+      <section id="omj-approvals" aria-live="assertive"></section>
+      <form id="omj-composer">
+        <textarea id="omj-prompt" rows="3" placeholder="Ask the agent to change this page…"></textarea>
+        <button id="omj-send" type="submit" disabled>Send</button>
+        <button id="omj-forget" type="button" hidden>Forget key</button>
+      </form>
+    </div>
+  </body>
+</html>

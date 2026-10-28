@@ -1,0 +1,95 @@
+:root {
+  --accent: #38bdf8;
+  --background: #0b1120;
+  --surface: #111827;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font: 15px/1.5 system-ui, sans-serif;
+}
+
+#app {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+#omj-title {
+  margin: 0;
+  color: var(--accent);
+  font-size: 1.75rem;
+}
+
+#omj-status {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.message {
+  background: var(--surface);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.message .role {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.message .text {
+  white-space: pre-wrap;
+}
+
+.message.tool,
+.message.system {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.approval {
+  border: 1px solid var(--accent);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+button {
+  background: var(--accent);
+  color: var(--background);
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+textarea,
+input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--muted);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+  font: inherit;
+}
+
+#omj-composer {
+  display: grid;
+  gap: 0.5rem;
+}
