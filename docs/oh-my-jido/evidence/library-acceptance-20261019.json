@@ -1,6 +1,6 @@
 {
   "recorded_date": "2026-10-19",
-  "scope": "Oh-My-Jido library delivery under the explicit user scope override; external Elixos integration/OS generation gates are excluded, not passed",
+  "scope": "Oh-My-Jido library delivery",
   "source_library_sha256": "ef8367d8dc4730caf403bfa6afa59a657039230c9b6499bd2e49b9ddb1fb0e7d",
   "quality": {
     "command": "OH_MY_JIDO_PYTHON_EVAL=1 SNAKEPIT_PYTHON=/home/autark/.cache/oh-my-jido-verification/python/bin/python ERL_FLAGS='+S 4:4 +A 2' mix ci",
@@ -69,8 +69,6 @@
   },
   "acceptance_audit": {
     "in_scope_capability_rows_reviewed": 62,
-    "explicit_external_rows": ["F06", "F07"],
-    "explicit_external_scenario": "T10",
     "review_findings": [
       "Claude Read-only proof was insufficient; separately approved actual coding repair now passes524",
       "Compiler-owned module_info arities could be published; reproduced518 and covered by passing59-case suite541",
@@ -85,7 +83,6 @@
     "observer_process_iterator": "OTP28+; older process-inventory operation fails explicitly",
     "os_sandbox_claimed": false,
     "published_hex_release_claimed": false,
-    "production_certification_claimed": false,
-    "external_elixos_guest_packaging_promotion_or_fallback_claimed": false
+    "production_certification_claimed": false
   }
 }

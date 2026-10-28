@@ -6,7 +6,6 @@ Build and verify **Oh-My-Jido**, a reusable Mix library that embeds Oh My Pi-cla
 
 Jido and Jido.AI own the agent runtime. OTP owns processes, lifecycle, supervision, recovery, and concurrency.
 Oh My Pi supplies a behavioral reference for coding-agent potency, not an implementation blueprint.
-Elixos is the principal host integration target, but the library must not import or depend on Elixos modules.
 
 ## Required result
 
@@ -38,7 +37,6 @@ Do not produce a standalone CLI product as the core deliverable.
 - Do not introduce Rustler, Zigler, Rust helper processes, or Zig helper processes without measured or documented need.
 - Do not execute arbitrary Elixir Eval code in the host application's BEAM.
 - Do not modify global VM working directories or environment variables per agent.
-- Do not load agent-authored Elixos system code into the active Elixos generation.
 - Do not disable tests, weaken acceptance checks, or present stub behavior as completion.
 
 ## Delivery contract

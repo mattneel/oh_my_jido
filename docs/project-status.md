@@ -91,11 +91,7 @@ Run `mix docs` to build the API reference, guides and examples into `doc/`. No H
 - **Model access is account-specific.** On `master`, configure an active model explicitly. OpenAI subscription eligibility remains account/model-specific. Official Claude Code is a delegated agent, not Claude credential brokerage or native third-party subscription inference. Failed subscription calls do not fall back to separately billed API use.
 - **Platform evidence is Linux x86_64.** macOS, Windows, Linux aarch64, musl/guest packaging and new compiled-library ABI combinations are not verified by these records.
 
-## Out of scope: Elixos guest work
-
-The library delivery excludes capability rows F06/F07 and guest scenario T10 by explicit scope decision. Elixos owns its adapter, target/OS image packaging, guest boot/health, generation provenance, promotion, COMMIT and fallback. These are external work, not passed library capabilities or remaining Oh-My-Jido tasks. Historical [Elixos examples](../examples/elixos/README.md) do not prove guest delivery or authorize external changes.
-
-The generic `OhMyJido.Host` contract and independent Elixir application embedding remain part of the library. External Fly provisioning, secret installation and deployment are also separate approval-controlled effects, not a consequence of local release evidence. Publishing repository branches did not publish a package or deploy an application.
+External Fly provisioning, secret installation and deployment are separate approval-controlled effects, not a consequence of local release evidence. Publishing repository branches did not publish a package or deploy an application.
 
 ## Related
 

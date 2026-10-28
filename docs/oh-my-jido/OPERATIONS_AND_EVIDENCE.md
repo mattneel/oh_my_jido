@@ -68,7 +68,7 @@ provider throughput, a scaling improvement or proof of an OS sandbox.
 
 ## Historical final-source library acceptance (2026-10-19)
 
-The [safe final acceptance record](evidence/library-acceptance-20261019.json) reconciles all62 in-scope capability rows, the explicitly excluded external Elixos gates and the independent reviews' repaired findings. No publication or production/OS-sandbox certification is implied.
+The [safe final acceptance record](evidence/library-acceptance-20261019.json) reconciles 62 verified capability rows and the independent reviews' repaired findings. No publication or production/OS-sandbox certification is implied.
 
 | Gate | Actual historical19Oct source result | Retained evidence |
 |---|---|---|
@@ -161,36 +161,8 @@ The continuation regression was real: a signed native checkpoint token appeared 
 
 The dated stable18Oct authorized coding scenario changed only `unit_price + quantity` to `unit_price * quantity`; tests, configuration and shipping behavior were unchanged. Native canonical aggregate usage was **21,299 input / 427 output tokens**, with reported price **USD 0.002873**. The `input`/`output` aliases describe the last turn, not that aggregate. That observation used actual `events/2` and durable native Action result tuples, restored its completed checkpoint, excluded the supplied key from public/restored views and child environment, and cleaned disposable roots. It is a dated real-provider observation, not a current native V3 run or permission to replay uncertain work.
 
-Historical367-case gate367/consumer366 and19Oct462-case gate546/consumer bg_115 remain dated milestones, not current-source certification. Current529-case/native588-case gates, truly independent consumers and source-bound density are separate records. Optional unavailable branches never count as native execution. Linux aarch64/Elixos guest packaging/promotion remains explicitly external, not passed.
+Historical367-case gate367/consumer366 and19Oct462-case gate546/consumer bg_115 remain dated milestones, not current-source certification. Current529-case/native588-case gates, truly independent consumers and source-bound density are separate records. Optional unavailable branches never count as native execution.
 
 ## Quality and independent-host commands
 
 The current gate definitions, Python opt-in and independent-consumer commands moved to [Run the quality gates](../project-status.md#run-the-quality-gates). A focused result is not a substitute for a full source-bound gate. Dated results above remain unchanged.
-
-## Elixos: host-owned integration and operational workflow
-
-The separately owned [Elixos example and guest workflow](../../examples/elixos/README.md) is the executable integration reference. It compiles selected **actual current Elixos service source** into an independent host application; core Oh-My-Jido has no Elixos imports/dependency or OS boot callback. Source compilation/fixtures are not the complete OS baseline or a guest boot.
-
-Host service mapping:
-
-- `Elixos.Session` captures the requester's group-leader-specific cwd **before** crossing Agents/Runtime; no VM-global cwd/env changes.
-- `Elixos.Agents` owns the adapter's lifecycle and identity-only snapshots. Oh-My-Jido/Jido storage owns coding conversations/checkpoints; native PIDs/account credentials are not Elixos lifecycle snapshots.
-- `Elixos.Ask` supplies real confirmations/clarifications. Only the host's explicit boolean consent grants sensitive effects; defaults/dismissals/timeouts/late replies do not.
-- `Elixos.Browser`/CDP stays host-owned. The example's singleton lease requires exclusive routing and enforced network/script boundaries; release does not close the shared native page or isolate cookies/storage. Core close/click/fill remain unavailable on that native API.
-- `Elixos.Candidate`, Health, Image and control/shim services own builds, suites, provenance, NEXT, reboot/health/COMMIT and fallback. `Elixos.Privileges`/fixed helpers remain independent host capability grants; the library does not provide host-root helpers or arbitrary UID/argv escalation.
-
-The source-backed operator flow is:
-
-1. Create/check out an isolated candidate workspace through actual `Elixos.Candidate.checkout/1` and bind the requester's root with `Elixos.Session.cd/1`.
-2. Open `ElixosHost` under host supervision; grant only the needed core Actions/account. Receive coding/Ask evidence through the existing UI.
-3. If separately approved, grant `:candidate` and register `ElixosHost.Tools.Candidate` through `OhMyJido.register_tool/2`. Its exact tool name is `"elixos_candidate"`; operations are build/test/evidence/provenance/propose.
-4. Supply trusted build options: actual system source/dependency location, target/tool suites/timeouts and generation parent. The adapter records durable library identity, selected model and hashes of actual registered tool BEAMs. Models cannot supply provenance, service PIDs, host MFAs or build policy.
-5. Build/test in non-distributed data-only child ERTS, inspect immutable evidence and actual Health outcomes. Those VMs are not filesystem/network sandboxes: authored execution needs the approved host boundary.
-6. Proposal requires all of `:deploy`, trusted `deployment_enabled: true` and fresh human confirmation. Defaults disable deployment. A successful proposal reports NEXT written, **not promotion acknowledged**, and never implicitly reboots or COMMITs.
-7. The operator/Elixos established boot flow owns normal NEXT → reboot → health → COMMIT and defective-candidate fallback. Protected factory/OTP/Elixir modules cannot be overwritten through a candidate overlay, bypassed or unstuck.
-
-**Current human scope override:** Elixos integration belongs on the Elixos side and is excluded from this library delivery. Historical source/build approvals and observations do not authorize more external work. No further external repository changes, images, QEMU or guest effects are scheduled here; existing external work is left untouched. The generic Host contract and independent plain-Mix demonstration remain library requirements.
-
-Factory packaging is pinned to OTP **29.1.1** / Elixir **1.20.4**, distinct from the measured host OTP 28 / Elixir 1.20.2. Compile/build/test candidate/factory code in the approved child/factory toolchain, not by loading authored OS modules or running its build inside host ERTS. New Elixos runtime dependencies require its own ADR/packaging/lock approval. The independent example does not prove the live OS already ships this integration or its optional native backends.
-
-This section is a historical ownership reference, not a remaining library action plan. No Elixos packaging, promotion, COMMIT/fallback or provider gate is declared complete by these documents.

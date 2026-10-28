@@ -8,7 +8,7 @@
 4. `CAPABILITY_MATRIX.md` — required behavior and scope.
 5. `ACCEPTANCE.md` — verification requirements.
 6. `DELIVERY_PLAN.md` — default execution sequence.
-7. Specialized specifications — `EVAL.md`, `AUTH_AND_MODELS.md`, `ELIXOS_INTEGRATION.md`, and `SECURITY.md`.
+7. Specialized specifications — `EVAL.md`, `AUTH_AND_MODELS.md`, and `SECURITY.md`.
 8. `RESEARCH.md` — external sources and reuse guidance.
 9. `PROGRESS.md` — current evidence and next action.
 
@@ -33,7 +33,7 @@ Autonomous work can continue across many interactive goal turns, with human appr
 
 Record proposed changes in `PROGRESS.md` and explain their effect on acceptance.
 
-The human explicitly changed the delivery boundary on2026-10-18: Elixos integration belongs on the Elixos side; deliver Oh-My-Jido-specific features here. External adapters, OS packaging and guest promotion/fallback are not library completion gates. Generic host contracts and independent Mix embedding remain required. `PROGRESS.md` records this override and preserves historical external observations without claiming their completion.
+On 2026-10-28 the human removed OS-level integration from the project: hosts integrate Oh-My-Jido, not the other way around.
 
 The human subsequently added structured, headless live OTP/application inspection (explicitly not the wxWidgets Observer app), and retained live IEx-style evaluation/RPC as an explicitly authorized last resort, citing Tidewave MCP runtime tools. These are tracked as C13/C14 and T12/T13. They do not replace isolated Eval or authorize connecting to real user applications without the host's target/grant/approval policy.
 

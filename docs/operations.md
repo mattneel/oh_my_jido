@@ -165,7 +165,7 @@ Tools that start OS processes (List, Search, Shell, Git, Claude Code, language s
 | MCP servers | The Linux stdio launcher requirements and a configured trusted server executable. Your application owns permissions and cleanup policy. |
 | Browser, research and live-application integrations | Explicit application-owned adapters, services, permissions and cleanup policy. |
 
-No macOS, Windows, Linux aarch64 or Elixos guest support is established by the Linux x86_64 record. Declaring a dependency or starting a separate ERTS is not proof of target support or OS isolation. Sessions and managed process calls do not change the application VM's working directory or environment; inherited environment variables, mounts and same-user filesystem access still require your isolation policy. The curated Python infrastructure path avoids Snakepit's global-environment/installer startup; it does not hide inherited secrets from arbitrary worker code.
+No macOS, Windows or Linux aarch64 support is established by the Linux x86_64 record. Declaring a dependency or starting a separate ERTS is not proof of target support or OS isolation. Sessions and managed process calls do not change the application VM's working directory or environment; inherited environment variables, mounts and same-user filesystem access still require your isolation policy. The curated Python infrastructure path avoids Snakepit's global-environment/installer startup; it does not hide inherited secrets from arbitrary worker code.
 
 ## Troubleshoot dependency mismatches
 
@@ -187,10 +187,6 @@ See [security](guides/security.md#keep-the-bundled-patched-dependencies) for wha
 4. Replace the application as a unit, rebuild trusted service bindings and restore only compatible sessions. Confirm permissions, account references and pending decisions before resuming work.
 
 The V3 preview uses `Jido.Persistence.Adapter`, not `Jido.Storage`. It has a different file layout and byte/compare-and-swap contract. There is no automatic V2-to-V3 checkpoint conversion. Treat switching SDK tracks as a clean cutover with a separate store, not a drop-in upgrade or shared writable directory. See [getting started](getting-started.md) for the matching install recipe.
-
-## Elixos ownership
-
-Elixos integration belongs to Elixos. Oh-My-Jido has no Elixos dependency or OS boot callback. Elixos owns its adapter lifecycle, request-local workspace, confirmations, browser ownership, target packaging, build provenance, privilege helpers and the NEXT → reboot → health → COMMIT/fallback workflow. The library does not provide root escalation, reboot or guest promotion. The [Elixos example](../examples/elixos/README.md) is a historical integration reference, not a claim that a deployed OS includes the library or its optional backends.
 
 ## Related
 

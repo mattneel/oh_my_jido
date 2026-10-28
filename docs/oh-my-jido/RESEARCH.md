@@ -15,7 +15,6 @@ Prefer the installed dependency source and test suite over third-party summaries
 | https://hexdocs.pm/quickbeam | Optional JavaScript Eval runtime and injected host APIs |
 | https://hexdocs.pm/snakepit | Optional Python Eval worker pools and session affinity |
 | https://hexdocs.pm/snakebridge | Optional typed Python library bindings |
-| https://github.com/mattneel/elixos | Principal host, candidate generation, and OS service contracts |
 
 The source versions can change. Verify package names, versions, and API functions against `mix.lock`.
 Do not copy an example from a newer version without checking compatibility.
@@ -26,9 +25,6 @@ Study Oh My Pi to understand effective coding workflows, tool behavior, context 
 Map each important behavior to the nearest Jido or Elixir primitive.
 Use reference behavior tests for outcomes, safety, and recoverability when useful.
 Do not require identical TypeScript classes, package boundaries, JSON encoders, runtime schemas, or hidden factories.
-
-The old Elixos OMP inventory can inform research after the OS rollback.
-Do not import its compatibility architecture or its QuickBEAM tool runtime.
 
 ## Reuse candidates
 

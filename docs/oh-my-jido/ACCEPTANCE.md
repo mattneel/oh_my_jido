@@ -3,7 +3,7 @@
 A test validates a public behavior, not a private implementation detail.
 Prefer stable behavior tests and scripted model fixtures over upstream byte-level differential tests.
 
-Current core quality, independent consumers, interrupted-recovery and density/schema results are retained in the [source-bound core record](evidence/core-reconciliation-20261020.json) and [progress ledger](PROGRESS.md). The earlier [462-case library record](evidence/library-acceptance-20261019.json) is historical, not acceptance of later CMS/native-preview work. Human scope decisions in [INDEX](INDEX.md#scope-change) exclude external Elixos F06/F07/T10 and narrowly authorize the private-editor Linux keeper; they do not waive generic host, provider coding, quality, density or the added CMS runtime gates.
+Current core quality, independent consumers, interrupted-recovery and density/schema results are retained in the [source-bound core record](evidence/core-reconciliation-20261020.json) and [progress ledger](PROGRESS.md). The earlier [462-case library record](evidence/library-acceptance-20261019.json) is historical, not acceptance of later CMS/native-preview work. Human scope decisions in [INDEX](INDEX.md#scope-change) narrowly authorize the private-editor Linux keeper; they do not waive generic host, provider coding, quality, density or the added CMS runtime gates.
 
 ## Required test layers
 
@@ -13,7 +13,7 @@ Current core quality, independent consumers, interrupted-recovery and density/sc
 | Component | Jido agent turns with scripted model and host callback fixtures | Real Jido runtime traces |
 | Integration | Git, filesystem, shell, LSP, DAP, Eval backends, MCP, browser | Actual adapter operations |
 | Fault | Worker crash, cancellation, timeout, partial result, restart | Recovery and no duplicate effects |
-| Host | Independent plain Mix application; external Elixos adapter excluded by explicit scope override | Host-owned lifecycle and tool authority |
+| Host | Independent plain Mix application | Host-owned lifecycle and tool authority |
 | Live opt-in | Authorized subscription accounts and external services | Explicit, redacted smoke-test report |
 | Performance | Multiple concurrent agent and tool populations | Memory, latency, queue and error measurements |
 
@@ -87,15 +87,6 @@ Exercise a debugger breakpoint, step, variable lookup, and session teardown.
 Use fake adapters for baseline tests and real servers for optional smoke tests.
 The configured native Elixir rename alternative must prove cross-file symbol identity, default-arity/multiclause and import/capture handling, scoped bindings, destination conflicts, immutable preview and snapshot/version-guarded publication. Native package success without complete supported-source evidence is not a passing rename.
 Corroborate the native server's source buffers with actual confined text before trusting semantic locations; unchanged version counters alone do not prove freshness after same-length disk edits.
-
-
-### T10: Elixos candidate generation
-
-Use an Elixos host adapter to implement a change in an isolated workspace.
-Submit that change through the host's candidate builder and test suite.
-Verify provenance, health evaluation, and normal generation promotion.
-Introduce a failed candidate and verify the established fallback behavior.
-Do not load untested agent-authored OS modules into the active BEAM generation.
 
 ### T11: process density
 

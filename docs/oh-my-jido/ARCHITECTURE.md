@@ -8,7 +8,7 @@ Oh-My-Jido owns the coding-specific harness and its model-facing behavior.
 Jido and OTP provide generic agent execution and lifecycle primitives.
 
 ```text
-Elixos / Phoenix / any Elixir host
+Phoenix / any Elixir host
   Host-provided permission, workspace, persistence, approvals and UI adapters
   |
   +-- OhMyJido.Runtime (ordinary supervised child)
@@ -71,7 +71,7 @@ Expose behaviors or equivalent typed callback contracts for these capabilities:
 | Presentation | Consume events and display progress, output, and questions |
 | Deployment | Evaluate and promote candidate code outside the library |
 
-Ship reference adapters for normal Elixir projects. Elixos provides its own adapters without a reverse dependency.
+Ship reference adapters for normal Elixir projects.
 The reference workspace adapter must enforce an explicit root even without an OS sandbox.
 
 ## Agent state and events

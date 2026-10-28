@@ -84,7 +84,7 @@ Update row status in `PROGRESS.md`. Preserve a blocker if access or provider pol
 | E06 | Eval safety | Cancellation, timeouts, permission checks, and limits work across runtimes |
 | E07 | Host tools in Eval | Each language calls explicitly granted Jido tools through a narrow bridge |
 
-## F. Operating quality and Elixos
+## F. Operating quality
 
 | ID | Required capability | Observable behavior |
 |---|---|---|
@@ -92,9 +92,7 @@ Update row status in `PROGRESS.md`. Preserve a blocker if access or provider pol
 | F02 | Testability | Normal tests run without network credentials or external paid providers |
 | F03 | Observability | Telemetry reports agent health, tool errors, time, and queue pressure |
 | F04 | Density benchmark | Benchmarks report memory and latency for idle and active agent populations |
-| F05 | Platform support | Runtime contracts work on Elixos Linux targets with optional backend packaging |
-| F06 | Elixos host adapter | Existing Elixos services supply questions, workspaces, browser, and lifecycle |
-| F07 | Generation safety | The agent submits a candidate, while Elixos owns validation, promotion, and fallback |
+| F05 | Platform support | Runtime contracts work on Linux with optional backend packaging |
 | F08 | End-to-end coding task | Embedded agent completes a nontrivial repository fix with passing tests |
 | F09 | Documentation | API, architecture, configuration, permissions, operations, and examples are usable |
 

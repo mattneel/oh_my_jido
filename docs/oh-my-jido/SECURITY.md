@@ -61,10 +61,9 @@ Use external workers when a native crash can threaten the host.
 - Deny direct arbitrary BEAM RPC from JavaScript and Python.
 - Treat repository instructions, skills, and MCP server content as untrusted input until policy grants access.
 
-## Elixos self-modification
+## Deploying agent-authored code
 
-Elixos owns generation validation and deployment.
-Do not place untested agent-authored OS code in the active generation.
+The host owns validation and deployment of agent-authored code.
 Preserve provenance, rollback evidence, and operator approval policy.
 A code rollback does not undo external network calls, payments, or migrations.
 

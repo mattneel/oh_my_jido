@@ -51,4 +51,4 @@ Oh-My-Jido embeds a coding agent in your Elixir application. These pages explain
 
 ## Project records
 
-The [`oh-my-jido/`](oh-my-jido/README.md) folder holds the project's specification, delivery ledger and verification evidence. You do not need it to use the library. The [Elixos integration record](../examples/elixos/README.md) is a historical example that needs an Elixos checkout. The [changelog](../CHANGELOG.md) lists unreleased changes.
+The [`oh-my-jido/`](oh-my-jido/README.md) folder holds the project's specification, delivery ledger and verification evidence. You do not need it to use the library. The [changelog](../CHANGELOG.md) lists unreleased changes.

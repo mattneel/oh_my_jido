@@ -37,7 +37,6 @@ The goal itself already directs the agent to the same rules, so the skill is opt
 - `docs/oh-my-jido/ACCEPTANCE.md` — executable quality gates.
 - `docs/oh-my-jido/EVAL.md` — Elixir, JavaScript, and Python Eval design.
 - `docs/oh-my-jido/AUTH_AND_MODELS.md` — subscription login and model roles.
-- `docs/oh-my-jido/ELIXOS_INTEGRATION.md` — host contracts for the OS.
 - `docs/oh-my-jido/SECURITY.md` — isolation, credentials, and effect safety.
 - `docs/oh-my-jido/RESEARCH.md` — source research and reuse criteria.
 - `docs/oh-my-jido/PROGRESS.md` — durable delivery ledger.

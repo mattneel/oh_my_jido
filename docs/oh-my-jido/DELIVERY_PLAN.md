@@ -96,23 +96,13 @@ The agent can refine the order as evidence emerges, but it must preserve the com
 
 **Gate:** Each language completes multi-cell stateful tests with bounded and authorized effects.
 
-## Milestone 8: prove Elixos integration
-
-1. Build an Elixos adapter without importing Elixos modules into the core library.
-2. Connect existing Elixos Ask, Session, Browser, Agents, and Image services through host contracts.
-3. Submit candidate changes through Elixos generation validation, not direct live code replacement.
-4. Verify isolated builds, health checks, provenance, and rollback through the established Elixos interfaces.
-5. Keep every change to the Elixos repository subject to explicit human approval.
-
-**Gate:** The same core library works in a conventional Mix host and an Elixos host.
-
-## Milestone 9: density, operational quality, and release
+## Milestone 8: density, operational quality, and release
 
 1. Measure idle agent memory and active agent memory at several session counts.
 2. Measure tool latency, concurrency, event delivery, cancellation, and recovery.
 3. Compare observed capacity against equivalent baseline workloads when practical.
 4. Optimize proven hot paths only after profiling and correctness tests.
-5. Verify native backend packaging constraints on x86_64 and aarch64 targets.
+5. Verify native backend packaging constraints on Linux x86_64.
 6. Document public APIs, supervision, configuration, OAuth, security, and host adapters.
 7. Run all unit, integration, fault, and acceptance tests.
 8. Audit the complete capability matrix and record every direct evidence link.

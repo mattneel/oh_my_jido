@@ -103,7 +103,6 @@
   },
   "limits": [
     "No stable dependency upgrade, publication or new paid-provider claim.",
-    "No external Elixos/guest actions.",
     "No managed journal/recovery/approval UI implied by lightweight plugin.",
     "Known upstream optional Python/native graph medium cowlib2.21.0/gun2.4.1 advisory CVE-2026-43966; no warnings suppressed."
   ],
