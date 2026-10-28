@@ -1,0 +1,11 @@
+{
+  "name": "web_llm",
+  "version": "0.1.0",
+  "type": "module",
+  "module": "./priv/static/web_llm.js",
+  "main": "./priv/static/web_llm.js",
+  "files": ["priv/static"],
+  "scripts": {
+    "test": "node --test test/js/*.test.mjs"
+  }
+}
