@@ -1,6 +1,7 @@
 # Modified by Oh-My-Jido contributors, 2026-10-13: opt-in provider error
-# normalization before native observers, logs and propagation. Original ReqLLM
-# 1.28.0 source remains under Apache License 2.0; see LICENSE and UPSTREAM.json.
+# normalization before native observers, logs and propagation; 2026-10-28:
+# per-request and configured stream transports. Original ReqLLM 1.28.0 source
+# remains under Apache License 2.0; see LICENSE and UPSTREAM.json.
 defmodule ReqLLM.Streaming.FinchClient do
   @moduledoc """
   Finch HTTP client for ReqLLM streaming operations.
@@ -333,18 +334,30 @@ defmodule ReqLLM.Streaming.FinchClient do
     end
   end
 
+  # A provider can route one request through another transport by putting a
+  # module under `:req_llm_stream_transport` in the Finch request's private
+  # map, for example a model that runs in the user's browser. Otherwise
+  # `config :req_llm, finch_stream_adapter: Module` replaces `Finch.stream/5`
+  # for every request, for hosts without sockets such as a BEAM running in a
+  # browser. Both use the `Finch.stream/5` contract and receive the final
+  # request after `on_finch_request` and config-level request adapters.
   defp stream_with_connection_pool(request, finch_name, acc, callback, opts) do
     {pool_options, private} = Map.pop(request.private, :req_llm_pool_options)
+    {transport, private} = Map.pop(private, :req_llm_stream_transport)
+    request = %{request | private: private}
 
-    opts =
-      if pool_options do
-        :ok = ensure_connection_pool(finch_name, request_pool(request), pool_options)
-        Keyword.put(opts, :start_pool?, false)
-      else
-        opts
-      end
+    case transport || Application.get_env(:req_llm, :finch_stream_adapter) do
+      nil -> stream_with_finch(request, finch_name, pool_options, acc, callback, opts)
+      adapter -> adapter.stream(request, finch_name, acc, callback, opts)
+    end
+  end
 
-    Finch.stream(%{request | private: private}, finch_name, acc, callback, opts)
+  defp stream_with_finch(request, finch_name, nil, acc, callback, opts),
+    do: Finch.stream(request, finch_name, acc, callback, opts)
+
+  defp stream_with_finch(request, finch_name, pool_options, acc, callback, opts) do
+    :ok = ensure_connection_pool(finch_name, request_pool(request), pool_options)
+    Finch.stream(request, finch_name, acc, callback, Keyword.put(opts, :start_pool?, false))
   end
 
   defp ensure_connection_pool(finch_name, pool, pool_options) do

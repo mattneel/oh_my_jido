@@ -4,7 +4,7 @@
   "source": "https://github.com/agentjido/req_llm",
   "license": "Apache-2.0",
   "originalCopyright": "Copyright 2026 Mike Hostetler <mike.hostetler@gmail.com>",
-  "purpose": "Narrow native streaming failure safety patch; no replacement transport",
+  "purpose": "Narrow native streaming failure safety patch, plus pluggable stream transports for hosts without sockets and for models running in the user's browser",
   "excludedNonRuntimeFiles": [
     "AGENTS.md",
     ".hex"
@@ -25,6 +25,17 @@
       {
         "path": "lib/req_llm/streaming/web_socket_client.ex",
         "change": "Normalizes attach/task failures and forwarded native WebSocket error events with the request's bound model context."
+      }
+    ],
+    "inventory_note": "The files inventory and unmodifiedSnapshotDigest retain original upstream hashes and lengths; modified files carry local notices."
+  },
+  "transport_updates": {
+    "date": "2026-10-28",
+    "contributors": "Oh-My-Jido contributors",
+    "modified_upstream_files": [
+      {
+        "path": "lib/req_llm/streaming/finch_client.ex",
+        "change": "Streams through the module named by the Finch request's private :req_llm_stream_transport, else the configured :finch_stream_adapter, else Finch.stream/5; both alternatives use the Finch.stream/5 contract. Proposed upstream."
       }
     ],
     "inventory_note": "The files inventory and unmodifiedSnapshotDigest retain original upstream hashes and lengths; modified files carry local notices."
