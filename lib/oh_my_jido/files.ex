@@ -499,7 +499,10 @@ defmodule OhMyJido.Files do
         :ok
 
       {:error, :eexist} ->
-        failure(:stale_snapshot, %{expected_snapshot: "missing", actual_snapshot: "exists"})
+        stale_missing()
+
+      {:error, reason} when reason in [:emlink, :enotsup, :eperm] ->
+        reserve_and_replace(temp, path)
 
       {:error, reason} ->
         {:error, reason}
@@ -507,6 +510,37 @@ defmodule OhMyJido.Files do
   end
 
   defp commit(temp, path, _current), do: File.rename(temp, path)
+
+  # Filesystems without hard links, such as the browser VM's in-memory one,
+  # still never overwrite: reserve the name exclusively, then atomically
+  # replace that empty reservation with the staged content.
+  defp reserve_and_replace(temp, path) do
+    case File.open(path, [:write, :exclusive, :raw]) do
+      {:ok, descriptor} ->
+        :ok = File.close(descriptor)
+        replace_reservation(temp, path)
+
+      {:error, :eexist} ->
+        stale_missing()
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp replace_reservation(temp, path) do
+    case File.rename(temp, path) do
+      :ok ->
+        :ok
+
+      {:error, _reason} = error ->
+        _ = File.rm(path)
+        error
+    end
+  end
+
+  defp stale_missing,
+    do: failure(:stale_snapshot, %{expected_snapshot: "missing", actual_snapshot: "exists"})
 
   defp cleanup(context, temp) do
     case Workspace.resolve(context, temp) do
