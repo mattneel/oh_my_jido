@@ -1,0 +1,30 @@
+:root { color-scheme: dark; font: 16px/1.55 system-ui, sans-serif; background: #101820; color: #eaf2f8; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 1400px; margin: auto; padding: 2.5rem; }
+h1, h2 { line-height: 1.2; }
+h1 { font-size: clamp(1.8rem, 4vw, 3rem); margin: .4rem 0; }
+h2 { font-size: 1.25rem; }
+header { margin-bottom: 2rem; }
+.eyebrow { color: #7dd3c9; text-transform: uppercase; letter-spacing: .14em; font-size: .8rem; }
+.columns { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
+.panel { padding: 1.5rem; border: 1px solid #334352; border-radius: 1rem; background: #192530; }
+label { display: block; margin: .8rem 0 .4rem; }
+textarea, select, button { font: inherit; border-radius: .5rem; padding: .65rem; }
+textarea, select { width: 100%; background: #101820; color: inherit; border: 1px solid #506273; }
+button { background: #7dd3c9; color: #101820; border: 0; cursor: pointer; margin-top: .75rem; }
+button:disabled, select:disabled { opacity: .5; cursor: wait; }
+:focus-visible { outline: 2px solid #7dd3c9; outline-offset: 3px; }
+.notice, #agent-status { font-size: .85rem; color: #b6c8d6; }
+#transcript { min-height: 12rem; max-height: 55vh; overflow: auto; }
+.message { border-left: 3px solid #506273; padding: .6rem .8rem; margin: .75rem 0; }
+.message.assistant { border-color: #7dd3c9; }
+.message.browser { border-color: #bd9fff; }
+.message.gpu-tool { border-color: #fbbf24; }
+.message.gpu-tool pre { font-family: ui-monospace, monospace; font-size: .85rem; }
+.message.error { border-color: #fca5a5; }
+.message strong { text-transform: uppercase; font-size: .75rem; color: #b6c8d6; }
+.message pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; margin: .4rem 0; }
+#web-llm, #demo-page { margin-top: 1.5rem; padding: 1rem; background: #101820; border-radius: .6rem; }
+#demo-heading { color: #bd9fff; }
+@media (max-width: 850px) { main { padding: 1rem; } .columns { grid-template-columns: 1fr; } }
