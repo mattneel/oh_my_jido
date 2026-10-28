@@ -85,6 +85,19 @@ Never return both an API key and an OAuth access token. Keep refresh tokens, ide
 
 Do not pass secrets, Authorization headers, credential maps, or auth-file paths through `start_session/2`, `prompt/3`, a model input, or project configuration. Do not call `ReqLLM.put_key/2` to select a session account, or log/serialize resolver results or `OhMyJido.Auth.credentials/2` results.
 
+### Use a provider that needs no credential
+
+A ReqLLM provider that never sends a credential declares it by exporting `credentials_required?/0` returning `false`. [`web_llm`](../../packages/web_llm/README.md)'s `:web_llm` provider, which runs models on the user's GPU, is one. Requests to such a provider skip account selection and the resolver entirely, so no key is resolved, registered or sent, even when the session's account belongs to another provider:
+
+```elixir
+OhMyJido.start_session(MyApp.Runtime,
+  workspace: "/srv/workspace",
+  model: WebLLM.model("Qwen3-8B-q4f16_1-MLC")
+)
+```
+
+Every other provider still needs an explicit credential from your resolver. A provider that does not declare `credentials_required?/0` is never treated as keyless, so ReqLLM cannot fall back to an ambient key.
+
 ### Configure ReqLLM before making requests
 
 Set these application-level options in your own configuration:

@@ -46,7 +46,7 @@ defmodule OhMyJido.Models.Transformer do
          :ok <- supported_model_boundary(scripted?, metadata),
          {:ok, tools} <- Models.granted_tools(context, requested),
          tools = if(tools_enabled?(metadata), do: tools, else: %{}),
-         {:ok, credentials} <- credentials(context, scripted?),
+         {:ok, credentials} <- credentials(context, metadata, scripted?),
          :ok <- register_secrets(context, credentials, scripted?),
          {:ok, merged} <- merge_credentials(opts, credentials),
          merged = discard_generated_continuation(merged, state),
@@ -64,9 +64,13 @@ defmodule OhMyJido.Models.Transformer do
   def transform_request(_request, _state, _config, _runtime_context),
     do: {:error, :invalid_model_request}
 
-  defp credentials(_context, true), do: {:ok, []}
+  defp credentials(_context, _model, true), do: {:ok, []}
 
-  defp credentials(%Context{account: account, coordinator: coordinator} = context, false) do
+  defp credentials(context, metadata, false) do
+    if Models.credentials_required?(metadata), do: host_credentials(context), else: {:ok, []}
+  end
+
+  defp host_credentials(%Context{account: account, coordinator: coordinator} = context) do
     cond do
       not Models.account_reference?(account) ->
         {:error, :account_required}

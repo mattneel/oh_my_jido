@@ -58,6 +58,29 @@ defmodule OhMyJido.Models do
   @spec lifecycle_options?(term()) :: boolean()
   def lifecycle_options?(opts), do: option_fields?(opts, @lifecycle_keys)
 
+  @doc """
+  Whether requests to `model`'s provider need a host credential.
+
+  A ReqLLM provider declares that it never uses credentials by exporting
+  `credentials_required?/0` returning `false`; WebLLM, which runs in the
+  user's browser, is one. Requests to such a provider skip account and
+  credential resolution. Every other provider needs an explicit credential.
+  """
+  @spec credentials_required?(term()) :: boolean()
+  def credentials_required?(%{provider: provider}) when is_atom(provider) do
+    case ReqLLM.provider(provider) do
+      {:ok, module} -> not declares_keyless?(module)
+      {:error, _reason} -> true
+    end
+  end
+
+  def credentials_required?(_model), do: true
+
+  defp declares_keyless?(module) do
+    Code.ensure_loaded?(module) and function_exported?(module, :credentials_required?, 0) and
+      module.credentials_required?() == false
+  end
+
   defp option_fields?(opts, forbidden) do
     Enum.any?(option_pairs(opts), fn
       {key, value} ->

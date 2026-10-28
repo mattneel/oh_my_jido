@@ -83,6 +83,18 @@ defmodule OhMyJido.Models.TransformerTest do
     def credentials(_context, _account, _opts), do: {:error, :subscription_expired}
   end
 
+  defmodule KeylessProvider do
+    use ReqLLM.Provider,
+      id: :keyless_fixture,
+      default_base_url: "http://keyless.invalid/v1"
+
+    use ReqLLM.Provider.Defaults
+
+    @provider_schema []
+
+    def credentials_required?, do: false
+  end
+
   defmodule FixtureHost do
     def credentials(_context, _account, _opts), do: {:error, :credentials_not_expected}
 
@@ -349,6 +361,44 @@ defmodule OhMyJido.Models.TransformerTest do
              })
 
     refute_receive {:registered_secrets, _}
+  end
+
+  test "only a provider that declares itself keyless runs without an account or host credential" do
+    {:ok, :keyless_fixture} = ReqLLM.Providers.register(KeylessProvider)
+    on_exit(fn -> ReqLLM.Providers.unregister(:keyless_fixture) end)
+
+    registry = start_supervised!({Registry, observer: self()})
+    state = State.new("Inspect", nil)
+    config = Config.new(model: :fast, tools: [])
+
+    keyless = %{
+      id: "local-model",
+      provider: :keyless_fixture,
+      base_url: "http://keyless.invalid/v1",
+      capabilities: %{tools: %{enabled: true}}
+    }
+
+    context = %{context(registry, {DeniedCredentialsHost, []}) | account: nil, model: keyless}
+
+    assert {:ok, override} =
+             Transformer.transform_request(request(config, state), state, config, %{
+               oh_my_jido: context
+             })
+
+    refute Keyword.has_key?(override.llm_opts, :api_key)
+    refute_receive {:registered_secrets, [_ | _]}
+
+    keyed = %{id: "turn-model", provider: :openai, capabilities: %{tools: %{enabled: true}}}
+
+    assert {:error, :account_required} =
+             Transformer.transform_request(request(config, state), state, config, %{
+               oh_my_jido: %{context | model: keyed}
+             })
+
+    assert {:error, :subscription_expired} =
+             Transformer.transform_request(request(config, state), state, config, %{
+               oh_my_jido: %{context | model: keyed, account: "account-ref"}
+             })
   end
 
   test "base credentials are rejected before host access rather than cleared from retained native config" do
